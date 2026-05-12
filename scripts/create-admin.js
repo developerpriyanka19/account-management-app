@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Creates default admin (admin / admin123). Requires: npx prisma generate
+ * Run via npm script so `.env` is loaded (`node --env-file=.env`).
  */
-const path = require("path");
 const { PrismaClient } = require("@prisma/client");
-const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
+const { PrismaPg } = require("@prisma/adapter-pg");
 const bcrypt = require("bcryptjs");
 
 function createPrisma() {
-  const envUrl = process.env.DATABASE_URL;
-  const url = envUrl?.startsWith("file:")
-    ? envUrl
-    : `file:${path.join(__dirname, "..", "dev.db")}`;
-  const adapter = new PrismaBetterSqlite3({ url });
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error("DATABASE_URL is required (use: npm run create-admin)");
+    process.exit(1);
+  }
+  const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({ adapter });
 }
 
