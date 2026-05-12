@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Farmer / land customer record (full detail for admin).
+model Customer {
+  id        Int      @id @default(autoincrement())
+  slNo      Int?
+  createdAt DateTime @default(now())
+
+  // --- Basic ---
+  farmerName        String?
+  changedFarmerName String?
+  vendorCode        String?
+  surveyNo          String?
+  newSurveyNo       String?
+
+  // --- RTC ---
+  rtcExtentAcre  Float?
+  rtcExtentGunta Float?
+  rtcAKharab     Float?
+  rtcBKharab     Float?
+
+  // --- Balance extent ---
+  balanceExtentAcre  Float?
+  balanceExtentGunta Float?
+
+  // --- Lease ---
+  leaseExtentAcre        Float?
+  leaseExtentGunta       Float?
+  leaseAmount            Float?
+  leaseDeedStampDuty     Float?
+  leaseDeedRegCharges    Float?
+
+  // --- Area totals ---
+  totalGunta Float?
+  totalCents Float?
+
+  // --- Rent ---
+  rentPerAcre       Float?
+  balanceRentAmount Float?
+  rentAmount        Float?
+  tdsAmount         Float?
+
+  // --- AES advance ---
+  aesAdvanceChequeAmount Float?
+  aesAdvanceDate         String? // YYYY-MM-DD
+  aesAdvanceChequeNo     String?
+  aesAdvanceBankName     String?
+
+  // --- Shortage ---
+  shortageChequeAmount Float?
+  shortageDate         String? // YYYY-MM-DD
+  shortageChequeNo     String?
+  shortageBankName     String?
+
+  // --- ATL / PAO ---
+  atlStampDuty  Float?
+  atlRegCharges Float?
+  atlTotal      Float?
+  paoStampDuty  Float?
+  paoRegCharges Float?
+  paoTotal      Float?
+
+  // --- Other charges ---
+  landConversion   Float?
+  podiFee          Float?
+  cropCompensation Float?
+
+  // --- Debit note ---
+  debitNoteNo     String?
+  debitNoteAmount Float?
+
+  // --- Received ---
+  receivedNeftAmount Float?
+  receivedDate       String? // YYYY-MM-DD
+  balanceReceivable  Float?
+
+  // --- Other ---
+  loanAmount Float?
+  notes      String?
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
