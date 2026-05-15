@@ -1,4 +1,5 @@
 import type { Customer } from "@prisma/client";
+import { CUSTOMER_FORM_FIELD_NAMES } from "@/lib/customer-field-layout";
 
 function numToInput(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "";
@@ -21,9 +22,6 @@ export function customerToFormValues(customer: Customer): Record<string, string>
     balanceExtentGunta: numToInput(customer.balanceExtentGunta),
     leaseExtentAcre: numToInput(customer.leaseExtentAcre),
     leaseExtentGunta: numToInput(customer.leaseExtentGunta),
-    leaseAmount: numToInput(customer.leaseAmount),
-    leaseDeedStampDuty: numToInput(customer.leaseDeedStampDuty),
-    leaseDeedRegCharges: numToInput(customer.leaseDeedRegCharges),
     totalGunta: numToInput(customer.totalGunta),
     totalCents: numToInput(customer.totalCents),
     rentPerAcre: numToInput(customer.rentPerAcre),
@@ -46,66 +44,18 @@ export function customerToFormValues(customer: Customer): Record<string, string>
     paoTotal: numToInput(customer.paoTotal),
     landConversion: numToInput(customer.landConversion),
     podiFee: numToInput(customer.podiFee),
-    cropCompensation: numToInput(customer.cropCompensation),
+    leaseDeedStampDuty: numToInput(customer.leaseDeedStampDuty),
+    leaseDeedRegCharges: numToInput(customer.leaseDeedRegCharges),
     debitNoteNo: customer.debitNoteNo ?? "",
     debitNoteAmount: numToInput(customer.debitNoteAmount),
     receivedNeftAmount: numToInput(customer.receivedNeftAmount),
     receivedDate: customer.receivedDate ?? "",
     balanceReceivable: numToInput(customer.balanceReceivable),
+    cropCompensation: numToInput(customer.cropCompensation),
     loanAmount: numToInput(customer.loanAmount),
-    notes: customer.notes ?? "",
   };
 }
 
-const EMPTY_KEYS = [
-  "farmerName",
-  "changedFarmerName",
-  "vendorCode",
-  "surveyNo",
-  "newSurveyNo",
-  "rtcExtentAcre",
-  "rtcExtentGunta",
-  "rtcAKharab",
-  "rtcBKharab",
-  "balanceExtentAcre",
-  "balanceExtentGunta",
-  "leaseExtentAcre",
-  "leaseExtentGunta",
-  "leaseAmount",
-  "leaseDeedStampDuty",
-  "leaseDeedRegCharges",
-  "totalGunta",
-  "totalCents",
-  "rentPerAcre",
-  "balanceRentAmount",
-  "rentAmount",
-  "tdsAmount",
-  "aesAdvanceChequeAmount",
-  "aesAdvanceDate",
-  "aesAdvanceChequeNo",
-  "aesAdvanceBankName",
-  "shortageChequeAmount",
-  "shortageDate",
-  "shortageChequeNo",
-  "shortageBankName",
-  "atlStampDuty",
-  "atlRegCharges",
-  "atlTotal",
-  "paoStampDuty",
-  "paoRegCharges",
-  "paoTotal",
-  "landConversion",
-  "podiFee",
-  "cropCompensation",
-  "debitNoteNo",
-  "debitNoteAmount",
-  "receivedNeftAmount",
-  "receivedDate",
-  "balanceReceivable",
-  "loanAmount",
-  "notes",
-] as const;
-
 export function emptyCustomerFormValues(): Record<string, string> {
-  return Object.fromEntries(EMPTY_KEYS.map((k) => [k, ""]));
+  return Object.fromEntries(CUSTOMER_FORM_FIELD_NAMES.map((k) => [k, ""]));
 }

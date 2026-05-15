@@ -19,6 +19,14 @@
   }
 }
 
+/* Customers area always uses light enterprise UI */
+.customers-layout-shell {
+  --background: #ffffff;
+  --foreground: #111827;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

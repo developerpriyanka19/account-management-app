@@ -1,15 +1,30 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { useState } from "react";
 
 export function LogoutButton() {
+  const [pending, setPending] = useState(false);
+
+  async function onLogout() {
+    setPending(true);
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      window.location.assign("/login");
+    }
+  }
+
   return (
     <button
       type="button"
-      onClick={() => void signOut({ callbackUrl: "/login" })}
-      className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+      onClick={onLogout}
+      disabled={pending}
+      className="rounded-md border border-[#E5E7EB] bg-white px-3 py-1.5 text-xs font-medium text-[#111827] transition hover:bg-[#F5F7FA] disabled:cursor-not-allowed disabled:opacity-60"
     >
-      Log out
+      {pending ? "Signing out…" : "Log out"}
     </button>
   );
 }

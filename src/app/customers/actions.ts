@@ -7,6 +7,11 @@ import {
   validateCustomerForm,
   type CustomerFormState,
 } from "@/lib/customer-form-validation";
+import type { CustomerListRow } from "@/lib/customer-list-format";
+import {
+  CUSTOMER_LIST_SELECT,
+  customerListWhere,
+} from "@/lib/customer-list-query";
 
 export type CreateCustomerState = CustomerFormState;
 export type UpdateCustomerState = CustomerFormState;
@@ -55,6 +60,16 @@ export async function updateCustomer(
   revalidatePath("/customers");
   revalidatePath(`/customers/${id}`);
   redirect(`/customers/${id}`);
+}
+
+export async function fetchCustomersForExport(
+  searchQuery: string,
+): Promise<CustomerListRow[]> {
+  return prisma.customer.findMany({
+    where: customerListWhere(searchQuery),
+    orderBy: { id: "asc" },
+    select: CUSTOMER_LIST_SELECT,
+  });
 }
 
 export async function deleteCustomer(id: number) {

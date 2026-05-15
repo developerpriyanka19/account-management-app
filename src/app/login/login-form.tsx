@@ -1,11 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { useState, type FormEvent } from "react";
 
 export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -24,30 +21,23 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
     }
 
     setIsPending(true);
-    const res = await signIn("credentials", {
-      username,
-      password,
-      redirect: false,
-      callbackUrl,
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+      credentials: "include",
     });
     setIsPending(false);
 
-    if (res?.error) {
-      const detail =
-        res.error === "CredentialsSignin"
-          ? "Invalid username or password."
-          : `Sign-in error: ${res.error}${res.code ? ` (${res.code})` : ""}`;
-      setError(detail);
+    if (!res.ok) {
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      setError(j?.error ?? "Sign-in failed. Please try again.");
       return;
     }
 
-    if (res?.ok) {
-      router.push(callbackUrl);
-      router.refresh();
-      return;
-    }
-
-    setError("Sign-in failed. Please try again.");
+    window.location.assign(callbackUrl);
   }
 
   return (
