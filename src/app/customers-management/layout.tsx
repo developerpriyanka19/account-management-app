@@ -1,6 +1,8 @@
 import { AppModuleShell } from "@/components/app-module-shell";
 import { ToastProvider } from "@/components/customer/toast";
 
+export const dynamic = "force-dynamic";
+
 export default function CustomersManagementLayout({
   children,
 }: {
