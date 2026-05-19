@@ -73,7 +73,7 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
   { row: "field", label: "Loan", name: "loanAmount", inputType: "number", variant: "money" },
   { row: "field", label: "Rent", name: "rentAmount", inputType: "number", variant: "money" },
   { row: "field", label: "TDS", name: "tdsAmount", inputType: "number", variant: "money" },
-  { row: "parent", label: "Shortage Amount Paid from Cheque by AES" },
+  { row: "parent", label: "Shortage Amount Paid by AES through Cheque" },
   {
     row: "field",
     label: "Cheque Amount",
@@ -88,7 +88,7 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
   { row: "field", label: "Stamp Duty", name: "atlStampDuty", inputType: "number", variant: "money" },
   { row: "field", label: "Reg Charges", name: "atlRegCharges", inputType: "number", variant: "money" },
   { row: "field", label: "Total", name: "atlTotal", inputType: "number", variant: "money" },
-  { row: "parent", label: "PAO/GPA" },
+  { row: "parent", label: "POA/GPA" },
   { row: "field", label: "Stamp Duty", name: "paoStampDuty", inputType: "number", variant: "money" },
   { row: "field", label: "Reg Charges", name: "paoRegCharges", inputType: "number", variant: "money" },
   { row: "field", label: "Total", name: "paoTotal", inputType: "number", variant: "money" },
@@ -137,11 +137,19 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
   },
   {
     row: "field",
+    label: "Other Charges",
+    name: "otherCharges",
+    inputType: "number",
+    variant: "money",
+  },
+  {
+    row: "field",
     label: "Crop Compensation",
     name: "cropCompensation",
     inputType: "number",
     variant: "money",
   },
+  { row: "field", label: "Remark", name: "remark", inputType: "text" },
 ];
 
 export const CUSTOMER_FORM_FIELD_NAMES = CUSTOMER_FIELD_LAYOUT.filter(

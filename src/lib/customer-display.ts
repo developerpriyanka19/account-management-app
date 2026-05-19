@@ -6,6 +6,15 @@ export function formatAmount(value: number | null | undefined): string {
   }).format(value);
 }
 
+/** Whole numbers only (e.g. crop compensation). */
+export function formatIntegerAmount(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
 export function cellText(value: string | null | undefined): string {
   const t = value?.trim();
   return t && t.length > 0 ? t : "—";

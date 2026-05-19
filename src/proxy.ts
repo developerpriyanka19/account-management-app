@@ -15,7 +15,7 @@ export async function proxy(request: NextRequest) {
 
   if (pathname.startsWith("/login")) {
     if (user) {
-      return NextResponse.redirect(new URL("/customers", request.url));
+      return NextResponse.redirect(new URL("/farmer", request.url));
     }
     return NextResponse.next();
   }
@@ -36,8 +36,10 @@ export const config = {
   matcher: [
     "/",
     "/login",
-    "/customers",
-    "/customers/:path*",
+    "/farmer",
+    "/farmer/:path*",
+    "/customers-management",
+    "/customers-management/:path*",
     "/invoice",
     "/invoice/:path*",
     "/debit-note",

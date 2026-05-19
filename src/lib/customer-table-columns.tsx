@@ -1,8 +1,13 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CustomerListRow } from "@/lib/customer-list-format";
-import { cellText, formatAmount, formatOptionalDate } from "@/lib/customer-display";
+import {
+  cellText,
+  formatAmount,
+  formatIntegerAmount,
+  formatOptionalDate,
+} from "@/lib/customer-display";
 
-export const HEADER_ROW_H = 28;
+export const HEADER_ROW_H = 36;
 
 export const PINNED_LEFT = ["farmerName", "changedFarmerName", "vendorCode"] as const;
 export const PINNED_RIGHT = ["actions"] as const;
@@ -15,6 +20,19 @@ function extentCell(value: number | null | undefined) {
 
 function moneyCell(value: number | null | undefined) {
   const text = formatAmount(value);
+  if (text === "—") return <span className="font-mono text-[#6B7280]">—</span>;
+  const negative = value != null && value < 0;
+  return (
+    <span
+      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-medium"}`}
+    >
+      {text}
+    </span>
+  );
+}
+
+function integerMoneyCell(value: number | null | undefined) {
+  const text = formatIntegerAmount(value);
   if (text === "—") return <span className="font-mono text-[#6B7280]">—</span>;
   const negative = value != null && value < 0;
   return (
@@ -79,7 +97,9 @@ export const LEAF_COLUMN_IDS = [
   "receivedNeftAmount",
   "receivedDate",
   "balanceReceivable",
+  "otherCharges",
   "cropCompensation",
+  "remark",
 ] as const;
 
 export type ExportGroup = {
@@ -114,7 +134,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
   { label: "Total Cents", leafLabels: ["Total Cents"], leafIds: ["totalCents"] },
   { label: "Rent Per Acre", leafLabels: ["Rent Per Acre"], leafIds: ["rentPerAcre"] },
   {
-    label: "AES Advance",
+    label: "AES Advance per Acre",
     leafLabels: ["Cheque Amount", "Date", "Cheque No", "Bank Name"],
     leafIds: [
       "aesAdvanceChequeAmount",
@@ -134,7 +154,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafIds: ["loanAmount", "rentAmount", "tdsAmount"],
   },
   {
-    label: "Shortage Amount",
+    label: "Shortage Amount Paid by AES through Cheque",
     leafLabels: ["Cheque Amount", "Date", "Cheque No", "Bank Name"],
     leafIds: [
       "shortageChequeAmount",
@@ -149,7 +169,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafIds: ["atlStampDuty", "atlRegCharges", "atlTotal"],
   },
   {
-    label: "PAO/GPA",
+    label: "POA/GPA",
     leafLabels: ["Stamp Duty", "Reg Charges", "Total"],
     leafIds: ["paoStampDuty", "paoRegCharges", "paoTotal"],
   },
@@ -179,10 +199,16 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafIds: ["balanceReceivable"],
   },
   {
+    label: "Other Charges",
+    leafLabels: ["Other Charges"],
+    leafIds: ["otherCharges"],
+  },
+  {
     label: "Crop Compensation",
     leafLabels: ["Crop Compensation"],
     leafIds: ["cropCompensation"],
   },
+  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
 ];
 
 const MONEY_IDS = new Set<string>([
@@ -208,6 +234,7 @@ const MONEY_IDS = new Set<string>([
   "debitNoteAmount",
   "receivedNeftAmount",
   "balanceReceivable",
+  "otherCharges",
   "cropCompensation",
   "rtcExtentAcre",
   "rtcExtentGunta",
@@ -225,10 +252,18 @@ export function getExportCellValue(
   row: CustomerListRow,
   id: (typeof LEAF_COLUMN_IDS)[number],
 ): string | number {
+  if (id === "remark") {
+    const t = cellText(row.notes);
+    return t === "—" ? "" : t;
+  }
   const v = row[id as keyof CustomerListRow];
   if (DATE_IDS.has(id)) {
     const t = formatOptionalDate(v as string | null);
     return t === "—" ? "" : t;
+  }
+  if (id === "cropCompensation") {
+    if (v == null || Number.isNaN(v as number)) return "";
+    return Math.round(v as number);
   }
   if (MONEY_IDS.has(id)) {
     if (v == null || Number.isNaN(v as number)) return "";
@@ -380,7 +415,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "aesAdvance",
-      header: "AES Advance",
+      header: "AES Advance per Acre",
       columns: [
         {
           id: "aesAdvanceChequeAmount",
@@ -448,7 +483,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "shortage",
-      header: "Shortage Amount",
+      header: "Shortage Amount Paid by AES through Cheque",
       columns: [
         {
           id: "shortageChequeAmount",
@@ -509,7 +544,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "pao",
-      header: "PAO/GPA",
+      header: "POA/GPA",
       columns: [
         {
           id: "paoStampDuty",
@@ -622,11 +657,25 @@ export function buildCustomerTableColumns(
       size: 110,
     },
     {
+      id: "otherCharges",
+      accessorKey: "otherCharges",
+      header: "Other Charges",
+      cell: ({ getValue }) => moneyCell(getValue() as number),
+      size: 105,
+    },
+    {
       id: "cropCompensation",
       accessorKey: "cropCompensation",
       header: "Crop Compensation",
-      cell: ({ getValue }) => moneyCell(getValue() as number),
+      cell: ({ getValue }) => integerMoneyCell(getValue() as number),
       size: 110,
+    },
+    {
+      id: "remark",
+      accessorKey: "notes",
+      header: "Remark",
+      cell: ({ getValue }) => textCell(getValue() as string),
+      size: 140,
     },
     actionsColumn,
   ];

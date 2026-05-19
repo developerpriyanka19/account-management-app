@@ -112,7 +112,9 @@ export type ValidatedCustomerPayload = {
   receivedNeftAmount: number | null;
   receivedDate: string | null;
   balanceReceivable: number | null;
+  otherCharges: number | null;
   cropCompensation: number | null;
+  notes: string | null;
   loanAmount: number | null;
 };
 
@@ -206,7 +208,10 @@ export function validateCustomerForm(
       receivedNeftAmount: floats.receivedNeftAmount ?? null,
       receivedDate: dates.receivedDate ?? null,
       balanceReceivable: floats.balanceReceivable ?? null,
-      cropCompensation: floats.cropCompensation ?? null,
+      otherCharges: floats.otherCharges ?? null,
+      cropCompensation:
+        floats.cropCompensation != null ? Math.round(floats.cropCompensation) : null,
+      notes: optionalTexts.remark ?? null,
       loanAmount: floats.loanAmount ?? null,
     },
   };

@@ -18,7 +18,7 @@ export function createDocumentModulePage({ item, groupLabel, groupHref }: Create
       <DocumentModulePage
         title={item.pageTitle}
         breadcrumbs={[
-          { label: "Customers", href: "/customers" },
+          { label: "Farmers", href: "/farmer" },
           { label: groupLabel, href: groupHref },
           { label: item.label },
         ]}

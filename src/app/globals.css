@@ -10,6 +10,31 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --animate-collapsible-down: collapsible-down 0.2s ease-out;
+  --animate-collapsible-up: collapsible-up 0.2s ease-out;
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -77,4 +102,45 @@ body {
     font-size: 10.5pt;
     line-height: 1.4;
   }
+
+  .invoice-print-area {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .invoice-preview-root,
+  .invoice-table-scroll {
+    overflow: visible !important;
+    min-width: 0 !important;
+  }
+
+  .invoice-line-table {
+    min-width: 100% !important;
+    width: 100% !important;
+    font-size: 8pt;
+    table-layout: fixed !important;
+  }
+
+  .invoice-line-table th,
+  .invoice-line-table td {
+    overflow: hidden !important;
+    word-break: break-word !important;
+  }
+
+  .invoice-summary-wrap table {
+    width: 280px !important;
+  }
+}
+
+/* Invoice preview — screen layout */
+.invoice-line-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.invoice-table-scroll {
+  -webkit-overflow-scrolling: touch;
 }

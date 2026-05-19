@@ -45,7 +45,9 @@ export type CustomerListRow = {
   receivedNeftAmount: number | null;
   receivedDate: string | null;
   balanceReceivable: number | null;
+  otherCharges: number | null;
   cropCompensation: number | null;
+  notes: string | null;
 };
 
 function hasValue(n: number | null | undefined): n is number {

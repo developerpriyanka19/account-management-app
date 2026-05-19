@@ -11,7 +11,7 @@ type PageProps = {
 
 function safeCallbackUrl(raw: string | undefined): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/customers";
+    return "/farmer";
   }
   return raw;
 }

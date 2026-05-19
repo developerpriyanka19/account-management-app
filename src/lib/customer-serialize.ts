@@ -51,7 +51,9 @@ export function customerToFormValues(customer: Customer): Record<string, string>
     receivedNeftAmount: numToInput(customer.receivedNeftAmount),
     receivedDate: customer.receivedDate ?? "",
     balanceReceivable: numToInput(customer.balanceReceivable),
+    otherCharges: numToInput(customer.otherCharges),
     cropCompensation: numToInput(customer.cropCompensation),
+    remark: customer.notes ?? "",
     loanAmount: numToInput(customer.loanAmount),
   };
 }

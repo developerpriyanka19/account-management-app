@@ -47,7 +47,9 @@ export const CUSTOMER_LIST_SELECT = {
   receivedNeftAmount: true,
   receivedDate: true,
   balanceReceivable: true,
+  otherCharges: true,
   cropCompensation: true,
+  notes: true,
 } as const;
 
 export function customerListWhere(query: string): Prisma.CustomerWhereInput | undefined {
