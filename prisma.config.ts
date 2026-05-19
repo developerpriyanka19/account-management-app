@@ -7,6 +7,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // Neon: use DIRECT_URL (non-pooler host) for migrate — pooled URLs cause P1002 advisory lock timeouts.
+    url: process.env.DIRECT_URL?.trim() || env("DATABASE_URL"),
   },
 });

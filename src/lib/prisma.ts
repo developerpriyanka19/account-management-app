@@ -1,46 +1,23 @@
-import { createRequire } from "node:module";
-import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { getDatabaseUrl } from "@/lib/database-url";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-/** Load PrismaClient from disk at runtime (Turbopack must not bundle a stale client). */
-function loadPrismaClientConstructor(): typeof PrismaClient {
-  const require = createRequire(path.join(process.cwd(), "package.json"));
-  const loaded = require("@prisma/client") as { PrismaClient: typeof PrismaClient };
-  return loaded.PrismaClient;
-}
-
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not set");
-  }
-  const PrismaClientConstructor = loadPrismaClientConstructor();
-  const adapter = new PrismaPg({ connectionString });
-  return new PrismaClientConstructor({ adapter });
+  const adapter = new PrismaPg({ connectionString: getDatabaseUrl() });
+  return new PrismaClient({ adapter });
 }
 
-/**
- * Singleton Prisma client for the server.
- * Recreates when the cached instance is missing newer model delegates.
- */
+/** Singleton Prisma client (serverless-safe on Vercel). */
 export function getPrisma(): PrismaClient {
-  const cached = globalForPrisma.prisma;
-  if (cached && cached.invoice && cached.gstCustomer) {
-    return cached;
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
   }
 
   const client = createPrismaClient();
-  if (!client.invoice || !client.gstCustomer) {
-    throw new Error(
-      "Prisma client is out of date. Run: npx prisma generate && rm -rf .next && npm run dev",
-    );
-  }
-
   globalForPrisma.prisma = client;
   return client;
 }
