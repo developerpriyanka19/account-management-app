@@ -12,6 +12,12 @@ export type GstCustomerRow = {
   email: string | null;
   gstNumber: string;
   companyName: string | null;
+  buildingNumber: string | null;
+  street: string | null;
+  locality: string | null;
+  village: string | null;
+  district: string | null;
+  pincode: string | null;
   companyAddress: string | null;
   state: string | null;
   gstStatus: string | null;
@@ -31,6 +37,12 @@ export function toGstCustomerRow(customer: GstCustomer): GstCustomerRow {
     email: customer.email,
     gstNumber: customer.gstNumber,
     companyName: customer.companyName,
+    buildingNumber: customer.buildingNumber,
+    street: customer.street,
+    locality: customer.locality,
+    village: customer.village,
+    district: customer.district,
+    pincode: customer.pincode,
     companyAddress: customer.companyAddress,
     state: customer.state,
     gstStatus: customer.gstStatus,
@@ -41,7 +53,7 @@ export function toGstCustomerRow(customer: GstCustomer): GstCustomerRow {
 }
 
 export function gstCustomerDisplayName(row: GstCustomerRow): string {
-  return `${row.firstName} ${row.lastName}`.trim();
+  return row.companyName?.trim() || `${row.firstName} ${row.lastName}`.trim();
 }
 
 export function gstCustomerListWhere(query: string) {
@@ -55,6 +67,7 @@ export function gstCustomerListWhere(query: string) {
       { companyName: { contains: q, mode: "insensitive" as const } },
       { email: { contains: q, mode: "insensitive" as const } },
       { mobile: { contains: q, mode: "insensitive" as const } },
+      { district: { contains: q, mode: "insensitive" as const } },
     ],
   };
 }

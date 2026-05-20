@@ -20,6 +20,7 @@ import {
   getSubtypesForCategory,
   type InvoiceCategory,
 } from "@/lib/invoice-config";
+import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
 import type {
   InvoiceBillingCustomerOption,
   InvoiceDocumentData,
@@ -96,17 +97,26 @@ export function InvoiceBuilder({
       subType,
       invoiceNumber: formatInvoiceNumber(category, nextSequence),
       invoiceDate,
+      district: "",
+      taluk: "",
+      village: "",
+      hobbli: "",
       status: "draft",
       ratePerAcre: rate,
       notes,
-      customer: {
+      customer: gstCustomerToInvoiceCustomer({
         id: selectedCustomer.id,
-        companyName: selectedCustomer.companyName ?? selectedCustomer.label,
-        companyAddress: selectedCustomer.companyAddress ?? "",
+        companyName: selectedCustomer.companyName,
         gstNumber: selectedCustomer.gstNumber,
-        state: selectedCustomer.state ?? "",
-        panNumber: selectedCustomer.panNumber ?? "",
-      },
+        buildingNumber: selectedCustomer.buildingNumber,
+        street: selectedCustomer.street,
+        locality: selectedCustomer.locality,
+        village: selectedCustomer.village,
+        district: selectedCustomer.district,
+        pincode: selectedCustomer.pincode,
+        state: selectedCustomer.state,
+        panNumber: selectedCustomer.panNumber,
+      }),
       lines: computedLines,
       totals,
     };
@@ -134,25 +144,23 @@ export function InvoiceBuilder({
     setLines((prev) => computeLineAmounts(prev, rate, category));
   }
 
-  function handleSave(status: "draft" | "final") {
+  function handleSave(status: "DRAFT" | "FINAL") {
     if (!documentData) {
       toast.error("Select a customer and at least one farmer.");
       return;
     }
     startTransition(async () => {
-      try {
-        const result = await saveInvoice(documentData, status);
-        if (!result.ok) {
-          toast.error(result.message);
-          return;
-        }
-        toast.success(status === "draft" ? "Draft saved." : "Invoice saved.");
-        if (status === "draft" && result.ok) {
-          router.push(`/invoice/${result.id}`);
-        }
-      } catch {
-        // redirect from saveInvoice on final
+      const result = await saveInvoice(documentData, status);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
       }
+      toast.success(status === "DRAFT" ? "Draft saved." : "Invoice saved.");
+      router.push(
+        documentData.invoiceType === "na"
+          ? `/invoice/na/${result.id}`
+          : `/invoice/${result.id}`,
+      );
     });
   }
 
@@ -223,7 +231,8 @@ export function InvoiceBuilder({
           </div>
           {selectedCustomer ? (
             <p className="mt-2 text-xs text-[#6B7280]">
-              {selectedCustomer.companyAddress ?? "—"} · GST {selectedCustomer.gstNumber}
+              {selectedCustomer.district ?? "—"}, {selectedCustomer.state ?? "—"} · PIN{" "}
+              {selectedCustomer.pincode ?? "—"} · GST {selectedCustomer.gstNumber}
             </p>
           ) : null}
         </section>
@@ -414,7 +423,7 @@ export function InvoiceBuilder({
             variant="outline"
             size="sm"
             disabled={!documentData || pending}
-            onClick={() => handleSave("draft")}
+            onClick={() => handleSave("DRAFT")}
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save draft
@@ -423,7 +432,7 @@ export function InvoiceBuilder({
             type="button"
             size="sm"
             disabled={!documentData || pending}
-            onClick={() => handleSave("final")}
+            onClick={() => handleSave("FINAL")}
           >
             Save & view
           </Button>

@@ -1,4 +1,5 @@
 import type { Invoice, InvoiceItem, GstCustomer } from "@prisma/client";
+import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
 import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types";
 import { computeInvoiceTotals } from "@/lib/invoice-calculations";
 
@@ -10,7 +11,11 @@ export type InvoiceWithRelations = Invoice & {
 export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDocumentData {
   const lines: InvoiceLineInput[] = record.items.map((item) => ({
     farmerId: item.farmerId,
+    farmerName: item.description ?? "",
+    district: (item as { district?: string | null }).district ?? "",
+    taluk: (item as { taluk?: string | null }).taluk ?? "",
     village: item.village ?? "",
+    hobbli: (item as { hobbli?: string | null }).hobbli ?? "",
     surveyNo: item.surveyNo ?? "",
     naExtent: item.naExtent ?? "",
     acres: item.acres,
@@ -18,6 +23,8 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     totalCents: item.totalCents,
     affidavitId: item.affidavitId ?? "",
     requestId: item.requestId ?? "",
+    debitNote: (item as { debitNote?: number | null }).debitNote ?? item.amount,
+    remark: (item as { remark?: string | null }).remark ?? "",
     amount: item.amount,
     description: item.description ?? "",
   }));
@@ -28,17 +35,30 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     subType: record.subType,
     invoiceNumber: record.invoiceNumber,
     invoiceDate: record.invoiceDate,
+    district: (record as { district?: string | null }).district ?? "",
+    taluk: (record as { taluk?: string | null }).taluk ?? "",
+    village: (record as { village?: string | null }).village ?? "",
+    hobbli: (record as { hobbli?: string | null }).hobbli ?? "",
     status: record.status,
     ratePerAcre: record.ratePerAcre ?? 0,
     notes: record.notes ?? "",
-    customer: {
+    totalAmountWords: (record as { totalAmountWords?: string | null }).totalAmountWords ?? undefined,
+    pdfUrl: (record as { pdfUrl?: string | null }).pdfUrl ?? undefined,
+    customer: gstCustomerToInvoiceCustomer({
       id: record.customer.id,
-      companyName: record.customer.companyName ?? `${record.customer.firstName} ${record.customer.lastName}`,
-      companyAddress: record.customer.companyAddress ?? "",
+      firstName: record.customer.firstName,
+      lastName: record.customer.lastName,
       gstNumber: record.customer.gstNumber,
-      state: record.customer.state ?? "",
-      panNumber: record.customer.panNumber ?? "",
-    },
+      companyName: record.customer.companyName,
+      buildingNumber: record.customer.buildingNumber,
+      street: record.customer.street,
+      locality: record.customer.locality,
+      village: record.customer.village,
+      district: record.customer.district,
+      pincode: record.customer.pincode,
+      state: record.customer.state,
+      panNumber: record.customer.panNumber,
+    }),
     lines,
     totals: {
       subtotal: record.subtotal,

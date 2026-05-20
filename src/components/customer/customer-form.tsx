@@ -69,8 +69,8 @@ export function CustomerForm({
   return (
     <form onSubmit={handleSubmit(onValid)} className="space-y-6">
       <p className="text-xs text-[#6B7280]">
-        Enter all customer and GST details manually.
-        {/* TODO: Add “Fetch GST details” when lib/gst-verification is wired to an API */}
+        Enter customer and GST details for invoice Bill To section. GST number, state, district, and
+        PIN code are required.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -85,7 +85,7 @@ export function CustomerForm({
           <FieldError message={fieldError("lastName")} />
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="gstNumber">GST Number</Label>
+          <Label htmlFor="gstNumber">GST Number *</Label>
           <Input
             id="gstNumber"
             {...register("gstNumber", {
@@ -100,21 +100,46 @@ export function CustomerForm({
           <FieldError message={fieldError("gstNumber")} />
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="companyName">Company Name</Label>
+          <Label htmlFor="companyName">Company Name *</Label>
           <Input id="companyName" {...register("companyName")} className="mt-1 h-9" />
-        </div>
-        <div className="sm:col-span-2">
-          <Label htmlFor="companyAddress">Company Address</Label>
-          <Textarea
-            id="companyAddress"
-            {...register("companyAddress")}
-            className="mt-1"
-            rows={2}
-          />
+          <FieldError message={fieldError("companyName")} />
         </div>
         <div>
-          <Label htmlFor="state">State</Label>
+          <Label htmlFor="buildingNumber">Building No./Flat No</Label>
+          <Input id="buildingNumber" {...register("buildingNumber")} className="mt-1 h-9" />
+        </div>
+        <div>
+          <Label htmlFor="street">Road/Street</Label>
+          <Input id="street" {...register("street")} className="mt-1 h-9" />
+        </div>
+        <div>
+          <Label htmlFor="locality">Locality/Sub Locality</Label>
+          <Input id="locality" {...register("locality")} className="mt-1 h-9" />
+        </div>
+        <div>
+          <Label htmlFor="village">City/Town/Village</Label>
+          <Input id="village" {...register("village")} className="mt-1 h-9" />
+        </div>
+        <div>
+          <Label htmlFor="district">District *</Label>
+          <Input id="district" {...register("district")} className="mt-1 h-9" />
+          <FieldError message={fieldError("district")} />
+        </div>
+        <div>
+          <Label htmlFor="state">State *</Label>
           <Input id="state" {...register("state")} className="mt-1 h-9" />
+          <FieldError message={fieldError("state")} />
+        </div>
+        <div>
+          <Label htmlFor="pincode">PIN Code *</Label>
+          <Input
+            id="pincode"
+            {...register("pincode")}
+            placeholder="6 digits"
+            maxLength={6}
+            className="mt-1 h-9 font-mono"
+          />
+          <FieldError message={fieldError("pincode")} />
         </div>
         <div>
           <Label htmlFor="gstStatus">GST Status</Label>
@@ -142,6 +167,16 @@ export function CustomerForm({
           <Label htmlFor="email">Email</Label>
           <Input id="email" type="email" {...register("email")} className="mt-1 h-9" />
           <FieldError message={fieldError("email")} />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="companyAddress">Legacy address note (optional)</Label>
+          <Textarea
+            id="companyAddress"
+            {...register("companyAddress")}
+            className="mt-1"
+            rows={2}
+            placeholder="Optional — invoice uses structured fields above"
+          />
         </div>
         <div className="sm:col-span-2">
           <Label htmlFor="notes">Notes (optional)</Label>

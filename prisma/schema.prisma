@@ -96,6 +96,12 @@ model GstCustomer {
   gstNumber      String   @unique
   companyName    String?
   companyAddress String?
+  buildingNumber String?
+  street         String?
+  locality       String?
+  village        String?
+  district       String?
+  pincode        String?
   state          String?
   gstStatus      String?
   panNumber      String?
@@ -115,14 +121,21 @@ model Invoice {
   customerId    Int
   invoiceNumber String   @unique
   invoiceDate   String // YYYY-MM-DD
+  district      String?
+  taluk         String?
+  village       String?
+  hobbli        String?
   status        String   @default("draft") // draft | final
-  ratePerAcre    Float?
+  ratePerAcre   Float?
   subtotal      Float    @default(0)
   sgst          Float    @default(0)
   cgst          Float    @default(0)
   grandTotal    Float    @default(0)
+  totalAmountWords String?
+  pdfUrl        String?
   notes         String?
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   customer GstCustomer   @relation(fields: [customerId], references: [id])
   items    InvoiceItem[]
@@ -134,7 +147,10 @@ model InvoiceItem {
   id          Int     @id @default(autoincrement())
   invoiceId   Int
   farmerId    Int?
+  district    String?
+  taluk       String?
   village     String?
+  hobbli      String?
   surveyNo    String?
   naExtent    String?
   acres       Float?
@@ -142,6 +158,8 @@ model InvoiceItem {
   totalCents  Float?
   affidavitId String?
   requestId   String?
+  debitNote   Float    @default(0)
+  remark      String?
   amount      Float   @default(0)
   description String?
 

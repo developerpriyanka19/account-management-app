@@ -112,9 +112,23 @@ body {
   }
 
   .invoice-preview-root,
+  .invoice-a4-viewport,
+  .na-invoice-table-wrap,
   .invoice-table-scroll {
-    overflow: visible !important;
+    overflow: hidden !important;
     min-width: 0 !important;
+  }
+
+  .invoice-a4-viewport {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  .na-invoice-a4 {
+    width: 100% !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
   }
 
   .invoice-line-table {
@@ -135,7 +149,33 @@ body {
   }
 }
 
-/* Invoice preview — screen layout */
+/* Invoice preview — screen layout (A4 paper simulation) */
+.invoice-preview-root {
+  overflow-x: hidden;
+}
+
+.invoice-a4-viewport {
+  overflow-x: hidden;
+}
+
+.invoice-a4-scale {
+  transform-origin: top center;
+}
+
+@media (max-width: 900px) {
+  .invoice-a4-scale {
+    transform: scale(calc((100vw - 2rem) / 793.7));
+  }
+}
+
+.na-invoice-a4 {
+  overflow-x: hidden;
+}
+
+.na-invoice-table-wrap {
+  overflow-x: hidden;
+}
+
 .invoice-line-table {
   table-layout: fixed;
   border-collapse: collapse;

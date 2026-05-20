@@ -14,10 +14,10 @@ export const InvoiceDocumentPreview = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         ref={ref}
-        className="invoice-preview-root mx-auto w-full min-w-0 max-w-[900px]"
+        className="invoice-preview-root mx-auto w-full min-w-0 overflow-x-hidden"
       >
-        <div className="overflow-x-auto overscroll-x-contain scroll-smooth rounded-sm">
-          <div className="mx-auto min-w-[850px] max-w-[900px]">
+        <div className="invoice-a4-viewport flex justify-center overflow-x-hidden bg-[#E5E7EB] p-4 print:bg-white print:p-0">
+          <div className="invoice-a4-scale w-full max-w-[210mm] print:max-w-none print:transform-none">
             {data.invoiceType === "na" ? (
               <NaInvoiceTemplate data={data} />
             ) : (

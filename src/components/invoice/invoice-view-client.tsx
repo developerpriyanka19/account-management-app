@@ -1,22 +1,29 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Download, Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
+import { generateInvoicePdf } from "@/components/invoice/invoice-pdf-generator";
 import { Button } from "@/components/ui/button";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 
 type Props = {
   document: InvoiceDocumentData;
+  autoDownload?: boolean;
 };
 
-export function InvoiceViewClient({ document }: Props) {
+export function InvoiceViewClient({ document, autoDownload = false }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: document.invoiceNumber,
   });
+  useEffect(() => {
+    if (autoDownload) {
+      generateInvoicePdf(document);
+    }
+  }, [autoDownload, document]);
 
   return (
     <div className="space-y-4">
@@ -25,7 +32,7 @@ export function InvoiceViewClient({ document }: Props) {
           <Printer className="h-4 w-4" />
           Print
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => handlePrint()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => generateInvoicePdf(document)}>
           <Download className="h-4 w-4" />
           Download PDF
         </Button>

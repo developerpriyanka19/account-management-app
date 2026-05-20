@@ -3,11 +3,33 @@
 export type InvoiceBillingCustomerOption = {
   id: number;
   label: string;
+  firstName: string;
+  lastName: string;
   gstNumber: string;
   companyName: string | null;
-  companyAddress: string | null;
+  buildingNumber: string | null;
+  street: string | null;
+  locality: string | null;
+  village: string | null;
+  district: string | null;
   state: string | null;
+  pincode: string | null;
+  companyAddress: string | null;
   panNumber: string | null;
+};
+
+export type InvoiceDocumentCustomer = {
+  id: number;
+  companyName: string;
+  gstNumber: string;
+  buildingNumber: string;
+  street: string;
+  locality: string;
+  village: string;
+  district: string;
+  state: string;
+  pincode: string;
+  panNumber: string;
 };
 
 export type InvoiceFarmerOption = {
@@ -25,7 +47,11 @@ export type InvoiceFarmerOption = {
 
 export type InvoiceLineInput = {
   farmerId: number | null;
+  farmerName: string;
+  district: string;
+  taluk: string;
   village: string;
+  hobbli: string;
   surveyNo: string;
   naExtent: string;
   acres: number | null;
@@ -33,6 +59,8 @@ export type InvoiceLineInput = {
   totalCents: number | null;
   affidavitId: string;
   requestId: string;
+  debitNote: number;
+  remark: string;
   amount: number;
   description: string;
 };
@@ -43,17 +71,16 @@ export type InvoiceDocumentData = {
   subType: string;
   invoiceNumber: string;
   invoiceDate: string;
+  district: string;
+  taluk: string;
+  village: string;
+  hobbli: string;
   status: string;
   ratePerAcre: number;
   notes: string;
-  customer: {
-    id: number;
-    companyName: string;
-    companyAddress: string;
-    gstNumber: string;
-    state: string;
-    panNumber: string;
-  };
+  totalAmountWords?: string;
+  pdfUrl?: string;
+  customer: InvoiceDocumentCustomer;
   lines: InvoiceLineInput[];
   totals: {
     subtotal: number;
@@ -75,7 +102,11 @@ export function farmerToInvoiceLine(
 
   return {
     farmerId: farmer.id,
+    farmerName: farmer.label,
+    district: "",
+    taluk: "",
     village: farmer.newSurveyNo?.trim() || "—",
+    hobbli: "",
     surveyNo: farmer.surveyNo?.trim() || "—",
     naExtent: naParts.length > 0 ? naParts.join(" · ") : "—",
     acres,
@@ -83,6 +114,8 @@ export function farmerToInvoiceLine(
     totalCents: farmer.totalCents,
     affidavitId: "",
     requestId: farmer.vendorCode?.trim() || "",
+    debitNote: 0,
+    remark: "",
     amount: acres != null ? Math.round(acres * ratePerAcre * 100) / 100 : 0,
     description: farmer.label,
   };

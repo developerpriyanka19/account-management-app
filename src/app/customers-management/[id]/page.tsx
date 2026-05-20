@@ -59,8 +59,13 @@ export default async function GstCustomerDetailPage({ params }: PageProps) {
         </h2>
         <dl>
           <DetailRow label="Company Name" value={customer.companyName} />
-          <DetailRow label="Company Address" value={customer.companyAddress} />
+          <DetailRow label="Building No./Flat No" value={customer.buildingNumber} />
+          <DetailRow label="Road/Street" value={customer.street} />
+          <DetailRow label="Locality" value={customer.locality} />
+          <DetailRow label="City/Town/Village" value={customer.village} />
+          <DetailRow label="District" value={customer.district} />
           <DetailRow label="State" value={customer.state} />
+          <DetailRow label="PIN Code" value={customer.pincode} />
           <DetailRow label="GST Status" value={customer.gstStatus} />
           <DetailRow label="PAN Number" value={customer.panNumber} />
         </dl>

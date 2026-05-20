@@ -1,7 +1,4 @@
-import {
-  formatInvoiceInteger,
-  formatInvoiceMoney,
-} from "@/lib/invoice-calculations";
+import { formatInvoiceInteger, formatInvoiceMoney } from "@/lib/invoice-calculations";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 import { cn } from "@/lib/utils";
 
@@ -26,15 +23,20 @@ function NaColGroup() {
   return (
     <colgroup>
       <col style={{ width: 60 }} />
-      <col style={{ width: 100 }} />
-      <col style={{ width: 100 }} />
       <col style={{ width: 140 }} />
-      <col style={{ width: 90 }} />
-      <col style={{ width: 90 }} />
+      <col style={{ width: 100 }} />
+      <col style={{ width: 110 }} />
+      <col style={{ width: 110 }} />
+      <col style={{ width: 100 }} />
+      <col style={{ width: 110 }} />
       <col style={{ width: 100 }} />
       <col style={{ width: 120 }} />
       <col style={{ width: 120 }} />
-      <col style={{ width: 140 }} />
+      <col style={{ width: 120 }} />
+      <col style={{ width: 120 }} />
+      <col style={{ width: 90 }} />
+      <col style={{ width: 90 }} />
+      <col style={{ width: 100 }} />
     </colgroup>
   );
 }
@@ -50,7 +52,7 @@ function ServiceColGroup() {
 }
 
 export function InvoiceTable({ data, showNaColumns = true }: Props) {
-  const minWidth = showNaColumns ? 1060 : 480;
+  const minWidth = showNaColumns ? 1580 : 480;
 
   return (
     <div className="invoice-table-scroll mt-4 -mx-1 overflow-x-auto overscroll-x-contain">
@@ -64,28 +66,33 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
             <th className={cn(thBase)}>Sl No</th>
             {showNaColumns ? (
               <>
-                <th className={cn(thBase)}>Village</th>
+                <th className={cn(thBase)}>Farmer Name</th>
                 <th className={cn(thBase)}>Survey No</th>
-                <th className={cn(thBase)}>NA Extent</th>
-                <th className={cn(thBase, "text-right")}>Acre</th>
-                <th className={cn(thBase, "text-right")}>Gunta</th>
-                <th className={cn(thBase, "text-right")}>Cents</th>
+                <th className={cn(thBase)}>District</th>
+                <th className={cn(thBase)}>Taluk</th>
+                <th className={cn(thBase)}>Village</th>
+                <th className={cn(thBase)}>Hobbli</th>
                 <th className={cn(thBase)}>Affidavit ID</th>
                 <th className={cn(thBase)}>Request ID</th>
+                <th className={cn(thBase, "text-right")}>Debit Note</th>
+                <th className={cn(thBase)}>Remark</th>
+                <th className={cn(thBase, "text-right")}>Acres</th>
+                <th className={cn(thBase, "text-right")}>Guntas</th>
+                <th className={cn(thBase, "text-right")}>Total Cents</th>
               </>
             ) : (
               <th className={cn(thBase)} colSpan={1}>
                 Description
               </th>
             )}
-            <th className={cn(thBase, "text-right")}>Amount (₹)</th>
+            {!showNaColumns ? <th className={cn(thBase, "text-right")}>Amount (₹)</th> : null}
           </tr>
         </thead>
         <tbody>
           {data.lines.length === 0 ? (
             <tr>
               <td
-                colSpan={showNaColumns ? 10 : 3}
+                colSpan={showNaColumns ? 15 : 3}
                 className="border border-[#D1D5DB] px-2 py-6 text-center text-[#6B7280]"
               >
                 No line items
@@ -101,22 +108,22 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                 {showNaColumns ? (
                   <>
                     <td className={tdBase}>
-                      <span className="block max-w-full">{line.village}</span>
+                      <span className="block max-w-full">{line.farmerName || line.description}</span>
                     </td>
                     <td className={tdBase}>
                       <span className="block max-w-full">{line.surveyNo}</span>
                     </td>
                     <td className={tdBase}>
-                      <span className="block max-w-full">{line.naExtent}</span>
+                      <span className="block max-w-full">{line.district}</span>
                     </td>
-                    <td className={cn(tdBase, tdNumeric)}>
-                      {formatInvoiceInteger(line.acres)}
+                    <td className={tdBase}>
+                      <span className="block max-w-full">{line.taluk}</span>
                     </td>
-                    <td className={cn(tdBase, tdNumeric)}>
-                      {formatInvoiceInteger(line.gunta)}
+                    <td className={tdBase}>
+                      <span className="block max-w-full">{line.village}</span>
                     </td>
-                    <td className={cn(tdBase, tdNumeric)}>
-                      {formatInvoiceInteger(line.totalCents)}
+                    <td className={tdBase}>
+                      <span className="block max-w-full">{line.hobbli}</span>
                     </td>
                     <td className={tdBase}>
                       <span className="block max-w-full break-all">
@@ -128,6 +135,11 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                         {line.requestId || "—"}
                       </span>
                     </td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceMoney(line.debitNote || 0)}</td>
+                    <td className={tdBase}>{line.remark || "—"}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceInteger(line.acres)}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceInteger(line.gunta)}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceInteger(line.totalCents)}</td>
                   </>
                 ) : (
                   <td className={tdBase}>
@@ -136,9 +148,11 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                     </span>
                   </td>
                 )}
-                <td className={cn(tdBase, tdAmount)}>
-                  <span className="block max-w-full">{formatInvoiceMoney(line.amount)}</span>
-                </td>
+                {!showNaColumns ? (
+                  <td className={cn(tdBase, tdAmount)}>
+                    <span className="block max-w-full">{formatInvoiceMoney(line.amount)}</span>
+                  </td>
+                ) : null}
               </tr>
             ))
           )}

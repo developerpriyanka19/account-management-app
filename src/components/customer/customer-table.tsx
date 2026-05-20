@@ -30,7 +30,8 @@ export function CustomerTable({ customers }: Props) {
               <th className={TH}>Last Name</th>
               <th className={TH}>GST Number</th>
               <th className={TH}>Company Name</th>
-              <th className={cn(TH, "min-w-[12rem]")}>Company Address</th>
+              <th className={TH}>District</th>
+              <th className={TH}>PIN Code</th>
               <th className={TH}>State</th>
               <th className={TH}>GST Status</th>
               <th className={cn(TH, "text-center")}>Actions</th>
@@ -40,7 +41,7 @@ export function CustomerTable({ customers }: Props) {
             {customers.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="border border-[#D1D5DB] px-3 py-12 text-center text-sm text-[#6B7280]"
                 >
                   No customers found.
@@ -62,9 +63,8 @@ export function CustomerTable({ customers }: Props) {
                     <td className={TD}>{cell(c.lastName)}</td>
                     <td className={cn(TD, "font-mono text-[#2563EB]")}>{cell(c.gstNumber)}</td>
                     <td className={TD}>{cell(c.companyName)}</td>
-                    <td className={cn(TD, "max-w-[16rem] truncate")} title={c.companyAddress ?? ""}>
-                      {cell(c.companyAddress)}
-                    </td>
+                    <td className={TD}>{cell(c.district)}</td>
+                    <td className={TD}>{cell(c.pincode)}</td>
                     <td className={TD}>{cell(c.state)}</td>
                     <td className={TD}>{cell(c.gstStatus)}</td>
                     <td className={cn(TD, "text-right")}>

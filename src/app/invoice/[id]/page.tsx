@@ -24,7 +24,7 @@ export default async function InvoiceViewPage({ params }: PageProps) {
       <div className="px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <Link
-            href={document.invoiceType === "na" ? "/invoice/na" : "/invoice/service"}
+            href={document.invoiceType === "na" ? "/invoice/na/new" : "/invoice/service"}
             className="text-sm font-medium text-[#2563EB] hover:underline"
           >
             ← Create another invoice
