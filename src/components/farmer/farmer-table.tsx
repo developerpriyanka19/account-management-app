@@ -28,16 +28,24 @@ const Z_HEADER_PINNED = 40;
 const Z_BODY_PINNED = 30;
 
 const GROUP_TH =
-  "border border-[#D1D5DB] px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-[#111827] bg-[#EEF2FF] whitespace-nowrap align-middle";
+  "border border-[#D1D5DB] px-[10px] py-[6px] text-center text-[12px] leading-[1.2] font-semibold uppercase tracking-wide text-[#111827] bg-[#EEF2FF] whitespace-nowrap align-middle";
 const LEAF_TH =
-  "border border-[#D1D5DB] px-2 py-1.5 text-center text-[12px] font-semibold text-[#111827] bg-[#F8FAFC] whitespace-nowrap align-middle";
+  "border border-[#D1D5DB] px-[10px] py-[8px] text-center text-[13px] font-semibold text-[#111827] bg-[#F8FAFC] whitespace-nowrap align-middle";
 const TD =
-  "border border-[#D1D5DB] px-2 py-2 text-[12px] text-[#111827] align-middle whitespace-nowrap h-[44px]";
+  "border border-[#D1D5DB] px-[10px] py-[8px] text-[13px] text-[#111827] align-middle whitespace-nowrap h-[44px]";
 
 const HEADER_BG = "#F8FAFC";
 const GROUP_BG = "#EEF2FF";
 const BODY_BG = "#FFFFFF";
 const ZEBRA_BG = "#FAFBFC";
+const LEFT_ALIGN_HEADER_IDS = new Set([
+  "farmerName",
+  "changedFarmerName",
+  "vendorCode",
+  "surveyNo",
+  "newSurveyNo",
+  "remark",
+]);
 function getCellBackground(isZebra: boolean): string {
   return isZebra ? ZEBRA_BG : BODY_BG;
 }
@@ -98,33 +106,33 @@ export function FarmerTable({ customers, nameFilter }: Props) {
         const deleteLabel = label === "—" ? `Customer #${c.id}` : label;
         return (
           <div
-            className="flex items-center justify-end gap-1"
+            className="flex items-center justify-center gap-1.5 px-1"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
             <Link
               href={`/farmer/${c.id}`}
-              className="inline-flex h-6 items-center rounded px-2 text-[11px] font-medium text-[#2563EB] transition hover:bg-[#EFF6FF]"
+              className="inline-flex h-7 items-center rounded px-[6px] text-[12px] font-medium text-[#2563EB] transition hover:bg-[#EFF6FF]"
             >
               View
             </Link>
             <Link
               href={`/farmer/${c.id}/edit`}
-              className="inline-flex h-6 items-center rounded px-2 text-[11px] font-medium text-[#111827] transition hover:bg-[#F3F4F6]"
+              className="inline-flex h-7 items-center rounded px-[6px] text-[12px] font-medium text-[#111827] transition hover:bg-[#F3F4F6]"
             >
               Edit
             </Link>
             <DeleteFarmerButton
               farmerId={c.id}
               label={deleteLabel}
-              className="!h-6 !rounded !border-transparent !bg-transparent !px-2 !text-[11px] !text-[#DC2626] hover:!bg-red-50"
+              className="!h-7 !rounded !border-transparent !bg-transparent !px-[6px] !text-[12px] !text-[#DC2626] hover:!bg-red-50"
             />
           </div>
         );
       },
-      size: 168,
-      minSize: 168,
-      maxSize: 168,
+      size: 160,
+      minSize: 160,
+      maxSize: 160,
       enablePinning: true,
     }),
     [],
@@ -162,8 +170,8 @@ export function FarmerTable({ customers, nameFilter }: Props) {
 
   return (
     <div className="isolate overflow-hidden rounded-lg border border-[#D1D5DB] bg-white shadow-sm">
-      <div className="max-h-[min(68vh,40rem)] overflow-auto scroll-smooth">
-        <table className="table-auto w-max min-w-full border-collapse border-[#D1D5DB] text-left text-[14px]">
+      <div className="max-h-[min(72vh,46rem)] overflow-auto scroll-smooth">
+        <table className="table-fixed w-full min-w-full border-collapse border-[#D1D5DB] text-left text-[13px]">
           <thead className="shadow-[0_2px_4px_rgba(0,0,0,0.04)]">
             {headerGroups.map((hg, depth) => (
               <tr key={hg.id} style={{ height: HEADER_ROW_H }}>
@@ -181,6 +189,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                       }
                       className={cn(
                         isGroupRow && header.colSpan > 1 ? GROUP_TH : LEAF_TH,
+                        LEFT_ALIGN_HEADER_IDS.has(header.column.id) && "text-left pl-4",
                         header.column.id === "actions" && "text-center",
                         pinned && "border-[#D1D5DB]",
                       )}
@@ -235,7 +244,9 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                         className={cn(
                           TD,
                           "group-hover:!bg-[#F9FAFB]",
-                          cell.column.id === "actions" && "text-right",
+                          cell.column.id === "farmerName" && "!whitespace-normal",
+                          LEFT_ALIGN_HEADER_IDS.has(cell.column.id) && "pl-4",
+                          cell.column.id === "actions" && "text-center",
                         )}
                         style={{
                           ...getPinningStyles(cell.column, {

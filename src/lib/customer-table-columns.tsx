@@ -7,7 +7,7 @@ import {
   formatOptionalDate,
 } from "@/lib/customer-display";
 
-export const HEADER_ROW_H = 36;
+export const HEADER_ROW_H = 44;
 
 export const PINNED_LEFT = ["farmerName", "changedFarmerName", "vendorCode"] as const;
 export const PINNED_RIGHT = ["actions"] as const;
@@ -24,7 +24,7 @@ function moneyCell(value: number | null | undefined) {
   const negative = value != null && value < 0;
   return (
     <span
-      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-medium"}`}
+      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
     >
       {text}
     </span>
@@ -37,7 +37,7 @@ function integerMoneyCell(value: number | null | undefined) {
   const negative = value != null && value < 0;
   return (
     <span
-      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-medium"}`}
+      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
     >
       {text}
     </span>
@@ -87,6 +87,7 @@ export const LEAF_COLUMN_IDS = [
   "shortageSecondDate",
   "shortageSecondChequeNo",
   "shortageSecondBankName",
+  "remark",
   "atlStampDuty",
   "atlRegCharges",
   "atlTotal",
@@ -99,7 +100,6 @@ export const LEAF_COLUMN_IDS = [
   "leaseDeedRegCharges",
   "debitNoteNo",
   "debitNoteAmount",
-  "remark",
   "balanceReceivable",
   "otherCharges",
   "cropCompensation",
@@ -176,6 +176,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
       "shortageSecondBankName",
     ],
   },
+  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
   {
     label: "ATL",
     leafLabels: ["Stamp Duty", "Reg Charges", "Total"],
@@ -201,7 +202,6 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafLabels: ["DB No", "Amount"],
     leafIds: ["debitNoteNo", "debitNoteAmount"],
   },
-  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
   {
     label: "Balance Receivable",
     leafLabels: ["Balance Receivable"],
@@ -289,11 +289,17 @@ export function buildCustomerTableColumns(
       id: "farmerName",
       accessorKey: "farmerName",
       header: "Farmer Name",
-      cell: ({ getValue }) => (
-        <span className="font-medium">{cellText(getValue() as string)}</span>
-      ),
-      size: 130,
-      minSize: 110,
+      cell: ({ getValue }) => {
+        const value = cellText(getValue() as string);
+        return (
+          <span className="block whitespace-normal break-words leading-[1.4] font-medium" title={value}>
+            {value}
+          </span>
+        );
+      },
+      size: 160,
+      minSize: 160,
+      maxSize: 160,
     },
     {
       id: "changedFarmerName",
@@ -302,8 +308,9 @@ export function buildCustomerTableColumns(
       cell: ({ getValue }) => (
         <span className="text-[#6B7280]">{cellText(getValue() as string)}</span>
       ),
-      size: 120,
-      minSize: 100,
+      size: 140,
+      minSize: 140,
+      maxSize: 140,
     },
     {
       id: "vendorCode",
@@ -312,16 +319,18 @@ export function buildCustomerTableColumns(
       cell: ({ getValue }) => (
         <span className="font-mono text-[#2563EB]">{cellText(getValue() as string)}</span>
       ),
-      size: 90,
-      minSize: 84,
+      size: 120,
+      minSize: 120,
+      maxSize: 120,
     },
     {
       id: "surveyNo",
       accessorKey: "surveyNo",
       header: "Survey No",
       cell: ({ getValue }) => textCell(getValue() as string),
-      size: 85,
-      minSize: 80,
+      size: 120,
+      minSize: 120,
+      maxSize: 120,
     },
     {
       id: "newSurveyNo",
@@ -558,9 +567,17 @@ export function buildCustomerTableColumns(
           accessorKey: "shortageSecondBankName",
           header: "Bank Name",
           cell: ({ getValue }) => textCell(getValue() as string),
-          size: 95,
+          size: 120,
         },
       ],
+    },
+    {
+      id: "remark",
+      accessorKey: "notes",
+      header: "Remark",
+      cell: ({ getValue }) => textCell(getValue() as string),
+      size: 160,
+      minSize: 140,
     },
     {
       id: "atl",
@@ -675,13 +692,6 @@ export function buildCustomerTableColumns(
           size: 85,
         },
       ],
-    },
-    {
-      id: "remark",
-      accessorKey: "notes",
-      header: "Remark",
-      cell: ({ getValue }) => textCell(getValue() as string),
-      size: 140,
     },
     {
       id: "balanceReceivable",
