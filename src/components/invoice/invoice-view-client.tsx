@@ -11,9 +11,10 @@ import type { InvoiceDocumentData } from "@/lib/invoice-types";
 type Props = {
   document: InvoiceDocumentData;
   autoDownload?: boolean;
+  autoPrint?: boolean;
 };
 
-export function InvoiceViewClient({ document, autoDownload = false }: Props) {
+export function InvoiceViewClient({ document, autoDownload = false, autoPrint = false }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -24,6 +25,13 @@ export function InvoiceViewClient({ document, autoDownload = false }: Props) {
       generateInvoicePdf(document);
     }
   }, [autoDownload, document]);
+  useEffect(() => {
+    if (autoPrint) {
+      setTimeout(() => {
+        void handlePrint();
+      }, 250);
+    }
+  }, [autoPrint, handlePrint]);
 
   return (
     <div className="space-y-4">

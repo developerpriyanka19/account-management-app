@@ -28,18 +28,16 @@ const Z_HEADER_PINNED = 40;
 const Z_BODY_PINNED = 30;
 
 const GROUP_TH =
-  "border border-[#D1D5DB] px-3.5 py-2 text-center text-[11px] font-bold uppercase tracking-wide text-[#111827] bg-[#EEF2FF] whitespace-nowrap align-middle";
+  "border border-[#D1D5DB] px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-[#111827] bg-[#EEF2FF] whitespace-nowrap align-middle";
 const LEAF_TH =
-  "border border-[#D1D5DB] px-3.5 py-2 text-center text-[13px] font-semibold text-[#111827] bg-[#F8FAFC] whitespace-nowrap align-middle";
+  "border border-[#D1D5DB] px-2 py-1.5 text-center text-[12px] font-semibold text-[#111827] bg-[#F8FAFC] whitespace-nowrap align-middle";
 const TD =
-  "border border-[#D1D5DB] px-3.5 py-3 text-[14px] text-[#111827] align-middle whitespace-nowrap h-[52px]";
+  "border border-[#D1D5DB] px-2 py-2 text-[12px] text-[#111827] align-middle whitespace-nowrap h-[44px]";
 
 const HEADER_BG = "#F8FAFC";
 const GROUP_BG = "#EEF2FF";
 const BODY_BG = "#FFFFFF";
 const ZEBRA_BG = "#FAFBFC";
-const HOVER_BG = "#F9FAFB";
-
 function getCellBackground(isZebra: boolean): string {
   return isZebra ? ZEBRA_BG : BODY_BG;
 }
@@ -222,7 +220,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                     key={row.id}
                     role="link"
                     tabIndex={0}
-                    className="group h-[52px] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]/30"
+                    className="group h-[44px] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]/30"
                     onClick={() => router.push(`/farmer/${row.original.id}`)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {

@@ -7,12 +7,12 @@ import { invoiceRecordToDocument } from "@/lib/invoice-data";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ download?: string }>;
+  searchParams: Promise<{ download?: string; print?: string }>;
 };
 
 export default async function NaInvoiceViewPage({ params, searchParams }: Props) {
   const { id: raw } = await params;
-  const { download } = await searchParams;
+  const { download, print } = await searchParams;
   const id = Number(raw);
   if (!Number.isInteger(id) || id < 1) notFound();
   const record = await getNaInvoiceById(id);
@@ -36,6 +36,7 @@ export default async function NaInvoiceViewPage({ params, searchParams }: Props)
         <InvoiceViewClient
           document={document}
           autoDownload={download === "1" && (document.status ?? "").toUpperCase() === "FINAL"}
+          autoPrint={print === "1" && (document.status ?? "").toUpperCase() === "FINAL"}
         />
       </div>
     </ToastProvider>

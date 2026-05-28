@@ -79,9 +79,14 @@ export const LEAF_COLUMN_IDS = [
   "rentAmount",
   "tdsAmount",
   "shortageChequeAmount",
+  "shortageAmountFirstTime",
+  "shortageAmountSecondTime",
   "shortageDate",
   "shortageChequeNo",
   "shortageBankName",
+  "shortageSecondDate",
+  "shortageSecondChequeNo",
+  "shortageSecondBankName",
   "atlStampDuty",
   "atlRegCharges",
   "atlTotal",
@@ -94,12 +99,10 @@ export const LEAF_COLUMN_IDS = [
   "leaseDeedRegCharges",
   "debitNoteNo",
   "debitNoteAmount",
-  "receivedNeftAmount",
-  "receivedDate",
+  "remark",
   "balanceReceivable",
   "otherCharges",
   "cropCompensation",
-  "remark",
 ] as const;
 
 export type ExportGroup = {
@@ -154,13 +157,23 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafIds: ["loanAmount", "rentAmount", "tdsAmount"],
   },
   {
-    label: "Shortage Amount Paid by AES through Cheque",
-    leafLabels: ["Cheque Amount", "Date", "Cheque No", "Bank Name"],
+    label: "Shortage Amount Through Cheque (1st Time)",
+    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
     leafIds: [
       "shortageChequeAmount",
       "shortageDate",
       "shortageChequeNo",
       "shortageBankName",
+    ],
+  },
+  {
+    label: "Shortage Amount Through Cheque (2nd Time)",
+    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
+    leafIds: [
+      "shortageAmountSecondTime",
+      "shortageSecondDate",
+      "shortageSecondChequeNo",
+      "shortageSecondBankName",
     ],
   },
   {
@@ -188,11 +201,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafLabels: ["DB No", "Amount"],
     leafIds: ["debitNoteNo", "debitNoteAmount"],
   },
-  {
-    label: "Received from Company",
-    leafLabels: ["NEFT Amount", "Date"],
-    leafIds: ["receivedNeftAmount", "receivedDate"],
-  },
+  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
   {
     label: "Balance Receivable",
     leafLabels: ["Balance Receivable"],
@@ -208,7 +217,6 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafLabels: ["Crop Compensation"],
     leafIds: ["cropCompensation"],
   },
-  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
 ];
 
 const MONEY_IDS = new Set<string>([
@@ -221,6 +229,7 @@ const MONEY_IDS = new Set<string>([
   "rentAmount",
   "tdsAmount",
   "shortageChequeAmount",
+  "shortageAmountSecondTime",
   "atlStampDuty",
   "atlRegCharges",
   "atlTotal",
@@ -232,7 +241,6 @@ const MONEY_IDS = new Set<string>([
   "leaseDeedStampDuty",
   "leaseDeedRegCharges",
   "debitNoteAmount",
-  "receivedNeftAmount",
   "balanceReceivable",
   "otherCharges",
   "cropCompensation",
@@ -246,7 +254,7 @@ const MONEY_IDS = new Set<string>([
   "leaseExtentGunta",
 ]);
 
-const DATE_IDS = new Set(["aesAdvanceDate", "shortageDate", "receivedDate"]);
+const DATE_IDS = new Set(["aesAdvanceDate", "shortageDate", "shortageSecondDate"]);
 
 export function getExportCellValue(
   row: CustomerListRow,
@@ -285,6 +293,7 @@ export function buildCustomerTableColumns(
         <span className="font-medium">{cellText(getValue() as string)}</span>
       ),
       size: 130,
+      minSize: 110,
     },
     {
       id: "changedFarmerName",
@@ -294,6 +303,7 @@ export function buildCustomerTableColumns(
         <span className="text-[#6B7280]">{cellText(getValue() as string)}</span>
       ),
       size: 120,
+      minSize: 100,
     },
     {
       id: "vendorCode",
@@ -303,6 +313,7 @@ export function buildCustomerTableColumns(
         <span className="font-mono text-[#2563EB]">{cellText(getValue() as string)}</span>
       ),
       size: 90,
+      minSize: 84,
     },
     {
       id: "surveyNo",
@@ -310,6 +321,7 @@ export function buildCustomerTableColumns(
       header: "Survey No",
       cell: ({ getValue }) => textCell(getValue() as string),
       size: 85,
+      minSize: 80,
     },
     {
       id: "newSurveyNo",
@@ -317,6 +329,7 @@ export function buildCustomerTableColumns(
       header: "New Survey No",
       cell: ({ getValue }) => textCell(getValue() as string),
       size: 95,
+      minSize: 90,
     },
     {
       id: "rtcExtent",
@@ -482,15 +495,15 @@ export function buildCustomerTableColumns(
       ],
     },
     {
-      id: "shortage",
-      header: "Shortage Amount Paid by AES through Cheque",
+      id: "shortagePart1",
+      header: "Shortage Amount Through Cheque (1st Time)",
       columns: [
         {
           id: "shortageChequeAmount",
           accessorKey: "shortageChequeAmount",
-          header: "Cheque Amount",
+          header: "Amount",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 100,
+          size: 92,
         },
         {
           id: "shortageDate",
@@ -511,7 +524,41 @@ export function buildCustomerTableColumns(
           accessorKey: "shortageBankName",
           header: "Bank Name",
           cell: ({ getValue }) => textCell(getValue() as string),
-          size: 110,
+          size: 95,
+        },
+      ],
+    },
+    {
+      id: "shortagePart2",
+      header: "Shortage Amount Through Cheque (2nd Time)",
+      columns: [
+        {
+          id: "shortageAmountSecondTime",
+          accessorKey: "shortageAmountSecondTime",
+          header: "Amount",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 92,
+        },
+        {
+          id: "shortageSecondDate",
+          accessorKey: "shortageSecondDate",
+          header: "Date",
+          cell: ({ getValue }) => dateCell(getValue() as string),
+          size: 95,
+        },
+        {
+          id: "shortageSecondChequeNo",
+          accessorKey: "shortageSecondChequeNo",
+          header: "Cheque No",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 92,
+        },
+        {
+          id: "shortageSecondBankName",
+          accessorKey: "shortageSecondBankName",
+          header: "Bank Name",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 95,
         },
       ],
     },
@@ -630,52 +677,32 @@ export function buildCustomerTableColumns(
       ],
     },
     {
-      id: "received",
-      header: "Received from Company",
-      columns: [
-        {
-          id: "receivedNeftAmount",
-          accessorKey: "receivedNeftAmount",
-          header: "NEFT Amount",
-          cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 100,
-        },
-        {
-          id: "receivedDate",
-          accessorKey: "receivedDate",
-          header: "Date",
-          cell: ({ getValue }) => dateCell(getValue() as string),
-          size: 95,
-        },
-      ],
+      id: "remark",
+      accessorKey: "notes",
+      header: "Remark",
+      cell: ({ getValue }) => textCell(getValue() as string),
+      size: 140,
     },
     {
       id: "balanceReceivable",
       accessorKey: "balanceReceivable",
       header: "Balance Receivable",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 110,
+      size: 100,
     },
     {
       id: "otherCharges",
       accessorKey: "otherCharges",
       header: "Other Charges",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 105,
+      size: 95,
     },
     {
       id: "cropCompensation",
       accessorKey: "cropCompensation",
       header: "Crop Compensation",
       cell: ({ getValue }) => integerMoneyCell(getValue() as number),
-      size: 110,
-    },
-    {
-      id: "remark",
-      accessorKey: "notes",
-      header: "Remark",
-      cell: ({ getValue }) => textCell(getValue() as string),
-      size: 140,
+      size: 105,
     },
     actionsColumn,
   ];

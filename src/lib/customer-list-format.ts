@@ -27,9 +27,14 @@ export type CustomerListRow = {
   rentAmount: number | null;
   tdsAmount: number | null;
   shortageChequeAmount: number | null;
+  shortageAmountFirstTime: number | null;
+  shortageAmountSecondTime: number | null;
   shortageDate: string | null;
   shortageChequeNo: string | null;
   shortageBankName: string | null;
+  shortageSecondDate: string | null;
+  shortageSecondChequeNo: string | null;
+  shortageSecondBankName: string | null;
   atlStampDuty: number | null;
   atlRegCharges: number | null;
   atlTotal: number | null;
@@ -42,8 +47,6 @@ export type CustomerListRow = {
   leaseDeedRegCharges: number | null;
   debitNoteNo: string | null;
   debitNoteAmount: number | null;
-  receivedNeftAmount: number | null;
-  receivedDate: string | null;
   balanceReceivable: number | null;
   otherCharges: number | null;
   cropCompensation: number | null;
@@ -121,15 +124,6 @@ export function formatDebitNote(c: CustomerListRow): string {
   if (no && amt) return `${no} · ₹${amt}`;
   if (no) return no;
   if (amt) return `₹${amt}`;
-  return "—";
-}
-
-export function formatReceived(c: CustomerListRow): string {
-  const amt = hasValue(c.receivedNeftAmount) ? `₹${fmtNum(c.receivedNeftAmount)}` : "";
-  const date = formatOptionalDate(c.receivedDate);
-  if (amt && date !== "—") return `${amt} · ${date}`;
-  if (amt) return amt;
-  if (date !== "—") return date;
   return "—";
 }
 

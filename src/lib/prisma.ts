@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { getDatabaseUrl } from "@/lib/database-url";
 
 /** Bump when Prisma schema changes so dev HMR does not keep a stale client. */
-const PRISMA_CLIENT_GENERATION = "20260521120000_gst_customer_structured_address";
+const PRISMA_CLIENT_GENERATION = "20260528133000_add_debit_note_cash_amount";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

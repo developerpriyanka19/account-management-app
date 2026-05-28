@@ -30,11 +30,12 @@ export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
           {data.notes}
         </p>
       ) : null}
-      <footer className="mt-8 border-t border-[#E5E7EB] pt-4 text-center text-[9px] text-[#6B7280]">
+      <footer className="mt-8 border-t border-[#E5E7EB] pt-3 text-center text-[9.5px] leading-relaxed text-[#4B5563]">
         {footer ?? (
           <>
-            <p>{COMPANY_INVOICE_HEADER.footerAddress}</p>
-            <p className="mt-1">{COMPANY_INVOICE_HEADER.phone}</p>
+            {COMPANY_INVOICE_HEADER.footerAddressLines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
           </>
         )}
       </footer>

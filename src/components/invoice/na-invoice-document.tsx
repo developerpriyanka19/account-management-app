@@ -73,14 +73,26 @@ export function NaInvoiceDocument({ data }: Props) {
       className="na-invoice-a4 invoice-print-area mx-auto box-border w-[210mm] max-w-full overflow-hidden bg-white px-[10mm] py-[10mm] font-serif text-black shadow-md print:shadow-none"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
-      <header className="border-b border-black pb-2 text-center">
-        <h1 className="text-[14px] font-bold uppercase leading-tight">
+      <header className="border-b border-[#9ACA66] pb-2 text-center">
+        <h1 className="text-[32px] font-bold uppercase leading-none tracking-wide text-[#F28C2A]">
           {COMPANY_INVOICE_HEADER.name}
         </h1>
-        <p className="mt-1 text-[16px] font-bold tracking-wide">INVOICE</p>
+        <p className="mt-1 text-[18px] font-bold tracking-wide text-black">INVOICE</p>
         <div className="mt-2 flex justify-between text-[8px]">
-          <p>GSTIN: {COMPANY_INVOICE_HEADER.gstin}</p>
-          <p>Date: {formatDisplayDate(prepared.invoiceDate)}</p>
+          <div className="space-y-0.5 text-left">
+            <p>
+              <span className="font-semibold">Invoice No: </span>
+              {prepared.invoiceNumber}
+            </p>
+            <p>
+              <span className="font-semibold">GST: </span>
+              {COMPANY_INVOICE_HEADER.gstin}
+            </p>
+          </div>
+          <p>
+            <span className="font-semibold">Date: </span>
+            {formatDisplayDate(prepared.invoiceDate)}
+          </p>
         </div>
       </header>
 
@@ -88,30 +100,28 @@ export function NaInvoiceDocument({ data }: Props) {
         <BillToBlock data={prepared} />
         <div className="text-right text-[7px] leading-snug">
           <p>
-            <span className="font-semibold">Invoice No: </span>
-            {prepared.invoiceNumber}
-          </p>
-          <p>
-            <span className="font-semibold">District: </span>
-            {prepared.district || "—"}
-          </p>
-          <p>
-            <span className="font-semibold">Taluk: </span>
-            {prepared.taluk || "—"}
-          </p>
-          <p>
-            <span className="font-semibold">Village: </span>
-            {prepared.village || "—"}
-          </p>
-          <p>
-            <span className="font-semibold">Hobli: </span>
-            {prepared.hobbli || "—"}
-          </p>
-          <p>
             <span className="font-semibold">Type: </span>
             {prepared.subType}
           </p>
         </div>
+      </div>
+      <div className="mt-1 grid grid-cols-4 gap-x-3 border-b border-black pb-1 text-[7px]">
+        <p className="min-w-0">
+          <span className="font-semibold">District: </span>
+          {prepared.district || "—"}
+        </p>
+        <p className="min-w-0">
+          <span className="font-semibold">Taluk: </span>
+          {prepared.taluk || "—"}
+        </p>
+        <p className="min-w-0">
+          <span className="font-semibold">Village: </span>
+          {prepared.village || "—"}
+        </p>
+        <p className="min-w-0">
+          <span className="font-semibold">Hobli: </span>
+          {prepared.hobbli || "—"}
+        </p>
       </div>
 
       <div className="na-invoice-table-wrap mt-2 w-full overflow-hidden">
@@ -237,8 +247,9 @@ export function NaInvoiceDocument({ data }: Props) {
       </div>
 
       <footer className="na-invoice-footer mt-8 border-t border-[#D1D5DB] pt-2 text-center text-[7px] text-black">
-        <p>{COMPANY_INVOICE_HEADER.footerAddress}</p>
-        <p>{COMPANY_INVOICE_HEADER.phone}</p>
+        {COMPANY_INVOICE_HEADER.footerAddressLines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
       </footer>
     </article>
   );

@@ -94,9 +94,14 @@ export type ValidatedCustomerPayload = {
   aesAdvanceChequeNo: string | null;
   aesAdvanceBankName: string | null;
   shortageChequeAmount: number | null;
+  shortageAmountFirstTime: number | null;
+  shortageAmountSecondTime: number | null;
   shortageDate: string | null;
   shortageChequeNo: string | null;
   shortageBankName: string | null;
+  shortageSecondDate: string | null;
+  shortageSecondChequeNo: string | null;
+  shortageSecondBankName: string | null;
   atlStampDuty: number | null;
   atlRegCharges: number | null;
   atlTotal: number | null;
@@ -109,8 +114,6 @@ export type ValidatedCustomerPayload = {
   leaseDeedRegCharges: number | null;
   debitNoteNo: string | null;
   debitNoteAmount: number | null;
-  receivedNeftAmount: number | null;
-  receivedDate: string | null;
   balanceReceivable: number | null;
   otherCharges: number | null;
   cropCompensation: number | null;
@@ -190,9 +193,14 @@ export function validateCustomerForm(
       aesAdvanceChequeNo: optionalTexts.aesAdvanceChequeNo ?? null,
       aesAdvanceBankName: optionalTexts.aesAdvanceBankName ?? null,
       shortageChequeAmount: floats.shortageChequeAmount ?? null,
+      shortageAmountFirstTime: floats.shortageAmountFirstTime ?? null,
+      shortageAmountSecondTime: floats.shortageAmountSecondTime ?? null,
       shortageDate: dates.shortageDate ?? null,
       shortageChequeNo: optionalTexts.shortageChequeNo ?? null,
       shortageBankName: optionalTexts.shortageBankName ?? null,
+      shortageSecondDate: dates.shortageSecondDate ?? null,
+      shortageSecondChequeNo: optionalTexts.shortageSecondChequeNo ?? null,
+      shortageSecondBankName: optionalTexts.shortageSecondBankName ?? null,
       atlStampDuty: floats.atlStampDuty ?? null,
       atlRegCharges: floats.atlRegCharges ?? null,
       atlTotal: floats.atlTotal ?? null,
@@ -205,8 +213,6 @@ export function validateCustomerForm(
       leaseDeedRegCharges: floats.leaseDeedRegCharges ?? null,
       debitNoteNo: optionalTexts.debitNoteNo ?? null,
       debitNoteAmount: floats.debitNoteAmount ?? null,
-      receivedNeftAmount: floats.receivedNeftAmount ?? null,
-      receivedDate: dates.receivedDate ?? null,
       balanceReceivable: floats.balanceReceivable ?? null,
       otherCharges: floats.otherCharges ?? null,
       cropCompensation:

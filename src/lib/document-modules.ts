@@ -29,19 +29,19 @@ export const INVOICE_MODULE_ITEMS: DocumentModuleItem[] = [
 
 export const DEBIT_NOTE_MODULE_ITEMS: DocumentModuleItem[] = [
   {
-    label: "Execution of Survey and Boundaries",
-    href: "/debit-note/execution-of-survey-and-boundaries",
-    pageTitle: "Execution of Survey and Boundaries",
+    label: "Land Conversion",
+    href: "/debit-note/land-conversion",
+    pageTitle: "Land Conversion Debit Note",
   },
   {
-    label: "Land DD Execution",
-    href: "/debit-note/land-dd-execution",
-    pageTitle: "Land DD Execution",
+    label: "ATL and POA/GPA",
+    href: "/debit-note/atl-poa-gpa",
+    pageTitle: "ATL and POA/GPA Debit Note",
   },
   {
-    label: "NA",
-    href: "/debit-note/na",
-    pageTitle: "NA Debit Note",
+    label: "All Debit Notes",
+    href: "/debit-note/all",
+    pageTitle: "All Debit Notes",
   },
 ];
 

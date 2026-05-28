@@ -40,9 +40,9 @@ export const SIDEBAR_DEBIT_NOTE_GROUP: SidebarNavGroup = {
   label: "Debit Notes",
   icon: Receipt,
   items: [
-    { label: "Add Debit Note", href: "/debit-note/execution-of-survey-and-boundaries" },
-    { label: "Debit Note List", href: "/debit-note/land-dd-execution" },
-    { label: "Export Debit Notes", href: "/debit-note/na" },
+    { label: "Land Conversion", href: "/debit-note/land-conversion" },
+    { label: "ATL and POA/GPA", href: "/debit-note/atl-poa-gpa" },
+    { label: "All Debit Notes", href: "/debit-note/all" },
   ],
 };
 
@@ -62,6 +62,14 @@ export function isSidebarPathActive(pathname: string, href: string): boolean {
   }
   if (href === "/customers-management") {
     return pathname === "/customers-management" || pathname.startsWith("/customers-management/");
+  }
+  if (href === "/debit-note/all") {
+    return (
+      pathname === "/debit-note/all" ||
+      pathname.startsWith("/debit-note/all/") ||
+      /^\/debit-note\/\d+(\/edit)?$/.test(pathname) ||
+      /^\/debit-note\/view\/\d+$/.test(pathname)
+    );
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

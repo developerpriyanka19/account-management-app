@@ -7,10 +7,12 @@ import { ToastProvider } from "@/components/customer/toast";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ download?: string; print?: string }>;
 };
 
-export default async function InvoiceViewPage({ params }: PageProps) {
+export default async function InvoiceViewPage({ params, searchParams }: PageProps) {
   const { id: idRaw } = await params;
+  const { download, print } = await searchParams;
   const id = Number(idRaw);
   if (!Number.isInteger(id) || id < 1) notFound();
 
@@ -33,7 +35,11 @@ export default async function InvoiceViewPage({ params }: PageProps) {
             {document.invoiceNumber} · <span className="capitalize">{document.status}</span>
           </p>
         </div>
-        <InvoiceViewClient document={document} />
+        <InvoiceViewClient
+          document={document}
+          autoDownload={download === "1" && (document.status ?? "").toUpperCase() === "FINAL"}
+          autoPrint={print === "1" && (document.status ?? "").toUpperCase() === "FINAL"}
+        />
       </div>
     </ToastProvider>
   );

@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Eye, Download, Pencil } from "lucide-react";
+import { Eye, Download, Pencil, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Row = {
@@ -104,7 +103,7 @@ export function NaInvoiceListTable({ rows, page, pageSize, total, query }: Props
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => router.push(`/invoice/na/${row.id}`)}
+                      onClick={() => router.push(`/invoice/na/view/${row.id}`)}
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View
@@ -118,6 +117,16 @@ export function NaInvoiceListTable({ rows, page, pageSize, total, query }: Props
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!canDownload}
+                      onClick={() => window.open(`/invoice/na/${row.id}?print=1`, "_blank")}
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      Print
                     </Button>
                     <Button
                       type="button"
