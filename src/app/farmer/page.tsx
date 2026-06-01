@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
+import { DashboardSummaryCard } from "@/components/farmer/dashboard-summary-card";
 import { formatAmount } from "@/lib/customer-display";
+import { sumAllFarmerDebitNoteAmounts } from "@/lib/farmer-debit-note-stats";
 import {
   CUSTOMERS_PAGE_SIZE,
   CUSTOMER_LIST_SELECT,
@@ -13,30 +15,6 @@ import { CustomersTableSkeleton } from "./customers-table-skeleton";
 type PageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;
 };
-
-function SummaryCard({
-  title,
-  value,
-  description,
-  accent,
-}: {
-  title: string;
-  value: string;
-  description?: string;
-  accent?: "green" | "blue";
-}) {
-  const accentClass =
-    accent === "green" ? "text-[#16A34A]" : accent === "blue" ? "text-[#2563EB]" : "text-[#111827]";
-  return (
-    <div className="rounded-lg border border-[#D1D5DB] bg-white px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">{title}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums sm:text-2xl ${accentClass}`}>{value}</p>
-      {description ? (
-        <p className="mt-1 text-[11px] text-[#6B7280]">{description}</p>
-      ) : null}
-    </div>
-  );
-}
 
 function EmptyState({ query }: { query: string }) {
   const hasQuery = query.length > 0;
@@ -125,11 +103,12 @@ async function CustomersContent({
 }
 
 export default async function CustomersPage({ searchParams }: PageProps) {
-  const [countAll, sumAgg] = await Promise.all([
+  const [countAll, sumAgg, debitNoteTotalAmount] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.aggregate({
-      _sum: { rentAmount: true },
+      _sum: { rentAmount: true, loanAmount: true },
     }),
+    sumAllFarmerDebitNoteAmounts(),
   ]);
 
   return (
@@ -140,15 +119,25 @@ export default async function CustomersPage({ searchParams }: PageProps) {
         </h1>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <SummaryCard
+      <section className="dashboard-summary-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardSummaryCard
           title="Total farmers"
           value={countAll.toLocaleString("en-IN")}
           accent="blue"
         />
-        <SummaryCard
+        <DashboardSummaryCard
           title="Total rent"
           value={formatAmount(sumAgg._sum.rentAmount ?? 0)}
+          accent="green"
+        />
+        <DashboardSummaryCard
+          title="Total debit notes amount"
+          value={formatAmount(debitNoteTotalAmount)}
+          accent="green"
+        />
+        <DashboardSummaryCard
+          title="Bank loan"
+          value={formatAmount(sumAgg._sum.loanAmount ?? 0)}
           accent="green"
         />
       </section>

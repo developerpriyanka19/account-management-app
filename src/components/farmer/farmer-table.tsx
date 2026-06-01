@@ -33,8 +33,12 @@ const GROUP_TH =
   `${HEADER_TH_BASE} text-[12px] font-semibold uppercase tracking-wide text-[#111827] bg-[#EEF2FF]`;
 const LEAF_TH =
   `${HEADER_TH_BASE} py-[8px] text-[13px] font-semibold text-[#111827] bg-[#F8FAFC]`;
+const TD_BASE =
+  "border border-[#D1D5DB] px-[10px] py-[8px] text-[13px] text-[#111827] align-middle min-h-[44px] h-auto";
 const TD =
-  "border border-[#D1D5DB] px-[10px] py-[8px] text-[13px] text-[#111827] align-middle overflow-hidden min-h-[44px] max-w-0";
+  `${TD_BASE} overflow-hidden max-w-0`;
+const TD_AMOUNT =
+  `${TD_BASE} amount-cell-td overflow-visible max-w-none whitespace-normal`;
 
 const HEADER_BG = "#F8FAFC";
 const GROUP_BG = "#EEF2FF";
@@ -53,8 +57,29 @@ function getCellBackground(isZebra: boolean): string {
   return isZebra ? ZEBRA_BG : BODY_BG;
 }
 
+/** Use columnDef sizes only — TanStack getSize() differs between SSR and client. */
+function columnWidthPx(column: Column<CustomerListRow, unknown>): number {
+  return column.columnDef.size ?? 100;
+}
+
+function getStableColumnStyle(column: Column<CustomerListRow, unknown>): CSSProperties {
+  const def = column.columnDef;
+  const width = def.size;
+  if (width == null) return {};
+
+  const style: CSSProperties = {
+    width: `${width}px`,
+    minWidth: `${def.minSize ?? width}px`,
+  };
+  if (def.maxSize != null) {
+    style.maxWidth = `${def.maxSize}px`;
+  }
+  return style;
+}
+
 function getPinningStyles(
   column: Column<CustomerListRow, unknown>,
+  leafColumns: Column<CustomerListRow, unknown>[],
   opts: { isHeader: boolean; backgroundColor: string },
 ): CSSProperties {
   const pinned = column.getIsPinned();
@@ -63,8 +88,36 @@ function getPinningStyles(
     return {};
   }
 
-  const isLastLeft = pinned === "left" && column.getIsLastColumn("left");
-  const isFirstRight = pinned === "right" && column.getIsFirstColumn("right");
+  const leftPinned = leafColumns.filter((c) => c.getIsPinned() === "left");
+  const rightPinned = leafColumns.filter((c) => c.getIsPinned() === "right");
+
+  let leftPx: number | undefined;
+  if (pinned === "left") {
+    let offset = 0;
+    for (const col of leftPinned) {
+      if (col.id === column.id) {
+        leftPx = offset;
+        break;
+      }
+      offset += columnWidthPx(col);
+    }
+  }
+
+  let rightPx: number | undefined;
+  if (pinned === "right") {
+    let offset = 0;
+    for (let i = rightPinned.length - 1; i >= 0; i--) {
+      const col = rightPinned[i]!;
+      if (col.id === column.id) {
+        rightPx = offset;
+        break;
+      }
+      offset += columnWidthPx(col);
+    }
+  }
+
+  const isLastLeft = pinned === "left" && column.id === leftPinned[leftPinned.length - 1]?.id;
+  const isFirstRight = pinned === "right" && column.id === rightPinned[0]?.id;
 
   let boxShadow: string | undefined;
   if (isLastLeft) boxShadow = "4px 0 8px -2px rgba(15,23,42,0.1)";
@@ -72,8 +125,8 @@ function getPinningStyles(
 
   return {
     position: "sticky",
-    left: pinned === "left" ? `${column.getStart("left")}px` : undefined,
-    right: pinned === "right" ? `${column.getAfter("right")}px` : undefined,
+    left: leftPx != null ? `${leftPx}px` : undefined,
+    right: rightPx != null ? `${rightPx}px` : undefined,
     top: opts.isHeader ? 0 : undefined,
     zIndex: opts.isHeader ? Z_HEADER_PINNED : Z_BODY_PINNED,
     backgroundColor: opts.backgroundColor,
@@ -159,12 +212,18 @@ export function FarmerTable({ customers, nameFilter }: Props) {
   });
 
   const headerGroups = table.getHeaderGroups();
-  const leafCount = table.getAllLeafColumns().length;
+  const leafColumns = table.getAllLeafColumns();
+  const leafCount = leafColumns.length;
 
   return (
     <div className="isolate overflow-hidden rounded-lg border border-[#D1D5DB] bg-white shadow-sm">
       <div className="max-h-[min(72vh,46rem)] overflow-auto scroll-smooth">
-        <table className="table-fixed w-full min-w-full border-collapse border-[#D1D5DB] text-left text-[13px]">
+        <table className="table-fixed w-full min-w-[3000px] border-collapse border-[#D1D5DB] text-left text-[13px]">
+          <colgroup>
+            {leafColumns.map((col) => (
+              <col key={col.id} style={{ width: `${columnWidthPx(col)}px` }} />
+            ))}
+          </colgroup>
           <thead className="sticky top-0 z-[25] shadow-[0_2px_4px_rgba(0,0,0,0.04)]">
             {headerGroups.map((hg, depth) => (
               <tr key={hg.id} className="h-auto" style={{ minHeight: HEADER_ROW_H }}>
@@ -172,6 +231,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                   const pinned = header.column.getIsPinned();
                   const isGroupRow = depth === 0 && headerGroups.length > 1;
                   const isLeafOnly = header.colSpan === 1 && !header.subHeaders.length;
+                  const isGroupedHeader = header.colSpan > 1 && header.subHeaders.length > 0;
 
                   return (
                     <th
@@ -188,13 +248,11 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                         pinned && "border-[#D1D5DB]",
                       )}
                       style={{
-                        ...getPinningStyles(header.column, {
+                        ...getPinningStyles(header.column, leafColumns, {
                           isHeader: true,
                           backgroundColor: isGroupRow && header.colSpan > 1 ? GROUP_BG : HEADER_BG,
                         }),
-                        width: header.getSize(),
-                        minWidth: header.column.columnDef.minSize,
-                        maxWidth: header.column.columnDef.maxSize,
+                        ...(isGroupedHeader ? {} : getStableColumnStyle(header.column)),
                       }}
                     >
                       {header.isPlaceholder ? null : (
@@ -242,32 +300,34 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                       }
                     }}
                   >
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getVisibleCells().map((cell) => {
+                      const isAmountCol = MONEY_COLUMN_IDS.has(cell.column.id);
+                      return (
                       <td
                         key={cell.id}
                         className={cn(
-                          TD,
+                          isAmountCol ? TD_AMOUNT : TD,
                           "group-hover:!bg-[#F9FAFB]",
-                          WRAP_TEXT_COLUMN_IDS.has(cell.column.id)
-                            ? "whitespace-normal"
-                            : "whitespace-nowrap",
-                          MONEY_COLUMN_IDS.has(cell.column.id) && "text-right",
+                          !isAmountCol &&
+                            (WRAP_TEXT_COLUMN_IDS.has(cell.column.id)
+                              ? "whitespace-normal"
+                              : "whitespace-nowrap"),
+                          isAmountCol && "text-right",
                           LEFT_ALIGN_HEADER_IDS.has(cell.column.id) && "pl-4",
                           cell.column.id === "actions" && "text-center !max-w-none",
                         )}
                         style={{
-                          ...getPinningStyles(cell.column, {
+                          ...getPinningStyles(cell.column, leafColumns, {
                             isHeader: false,
                             backgroundColor: rowBg,
                           }),
-                          width: cell.column.getSize(),
-                          minWidth: cell.column.columnDef.minSize,
-                          maxWidth: cell.column.columnDef.maxSize,
+                          ...getStableColumnStyle(cell.column),
                         }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
-                    ))}
+                    );
+                    })}
                   </tr>
                 );
               })

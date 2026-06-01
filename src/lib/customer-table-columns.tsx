@@ -12,48 +12,43 @@ export const HEADER_ROW_H = 44;
 export const PINNED_LEFT = ["farmerName", "changedFarmerName", "vendorCode"] as const;
 export const PINNED_RIGHT = ["actions"] as const;
 
-function extentCell(value: number | null | undefined) {
-  const text = formatAmount(value);
-  if (text === "—") {
-    return <span className="block min-w-0 truncate text-right font-mono text-[#6B7280]">—</span>;
+const AMOUNT_CELL_INNER =
+  "amount-cell block text-right font-mono tabular-nums whitespace-normal break-words leading-snug [overflow-wrap:anywhere]";
+
+function amountCellSpan(text: string, tone: "empty" | "extent" | "money", negative = false) {
+  if (tone === "empty") {
+    return <span className={`${AMOUNT_CELL_INNER} text-[#6B7280]`}>—</span>;
+  }
+  if (tone === "extent") {
+    return <span className={`${AMOUNT_CELL_INNER} text-[#111827]`}>{text}</span>;
   }
   return (
-    <span className="block min-w-0 truncate text-right font-mono tabular-nums text-[#111827]" title={text}>
+    <span
+      className={`${AMOUNT_CELL_INNER} ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
+    >
       {text}
     </span>
   );
+}
+
+function extentCell(value: number | null | undefined) {
+  const text = formatAmount(value);
+  if (text === "—") return amountCellSpan(text, "empty");
+  return amountCellSpan(text, "extent");
 }
 
 function moneyCell(value: number | null | undefined) {
   const text = formatAmount(value);
-  if (text === "—") {
-    return <span className="block min-w-0 truncate text-right font-mono text-[#6B7280]">—</span>;
-  }
+  if (text === "—") return amountCellSpan(text, "empty");
   const negative = value != null && value < 0;
-  return (
-    <span
-      className={`block min-w-0 truncate text-right font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
-      title={text}
-    >
-      {text}
-    </span>
-  );
+  return amountCellSpan(text, "money", negative);
 }
 
 function integerMoneyCell(value: number | null | undefined) {
   const text = formatIntegerAmount(value);
-  if (text === "—") {
-    return <span className="block min-w-0 truncate text-right font-mono text-[#6B7280]">—</span>;
-  }
+  if (text === "—") return amountCellSpan(text, "empty");
   const negative = value != null && value < 0;
-  return (
-    <span
-      className={`block min-w-0 truncate text-right font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
-      title={text}
-    >
-      {text}
-    </span>
-  );
+  return amountCellSpan(text, "money", negative);
 }
 
 function textCell(value: string | null | undefined) {
@@ -374,28 +369,32 @@ export function buildCustomerTableColumns(
           accessorKey: "rtcExtentAcre",
           header: "Acre",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 72,
+          size: 100,
+          minSize: 96,
         },
         {
           id: "rtcExtentGunta",
           accessorKey: "rtcExtentGunta",
           header: "Gunta",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 72,
+          size: 100,
+          minSize: 96,
         },
         {
           id: "rtcAKharab",
           accessorKey: "rtcAKharab",
           header: "A Kharab",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 78,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "rtcBKharab",
           accessorKey: "rtcBKharab",
           header: "B Kharab",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 78,
+          size: 104,
+          minSize: 96,
         },
       ],
     },
@@ -408,14 +407,16 @@ export function buildCustomerTableColumns(
           accessorKey: "balanceExtentAcre",
           header: "Acre",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 72,
+          size: 100,
+          minSize: 96,
         },
         {
           id: "balanceExtentGunta",
           accessorKey: "balanceExtentGunta",
           header: "Gunta",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 72,
+          size: 100,
+          minSize: 96,
         },
       ],
     },
@@ -428,14 +429,16 @@ export function buildCustomerTableColumns(
           accessorKey: "leaseExtentAcre",
           header: "Acre",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 72,
+          size: 100,
+          minSize: 96,
         },
         {
           id: "leaseExtentGunta",
           accessorKey: "leaseExtentGunta",
           header: "Gunta",
           cell: ({ getValue }) => extentCell(getValue() as number),
-          size: 72,
+          size: 100,
+          minSize: 96,
         },
       ],
     },
@@ -444,21 +447,24 @@ export function buildCustomerTableColumns(
       accessorKey: "totalGunta",
       header: "Total Gunta",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 88,
+      size: 104,
+      minSize: 96,
     },
     {
       id: "totalCents",
       accessorKey: "totalCents",
       header: "Total Cents",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 88,
+      size: 104,
+      minSize: 96,
     },
     {
       id: "rentPerAcre",
       accessorKey: "rentPerAcre",
       header: "Rent / Acre",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 88,
+      size: 104,
+      minSize: 96,
     },
     {
       id: "aesAdvance",
@@ -469,7 +475,8 @@ export function buildCustomerTableColumns(
           accessorKey: "aesAdvanceChequeAmount",
           header: "Cheque Amount",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 100,
+          size: 112,
+          minSize: 104,
         },
         {
           id: "aesAdvanceDate",
@@ -499,7 +506,8 @@ export function buildCustomerTableColumns(
       accessorKey: "balanceRentAmount",
       header: "Balance Rent",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 95,
+      size: 112,
+      minSize: 104,
     },
     {
       id: "leaseIssued",
@@ -510,22 +518,24 @@ export function buildCustomerTableColumns(
           accessorKey: "loanAmount",
           header: "Bank Loan",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 100,
-          minSize: 92,
+          size: 112,
+          minSize: 104,
         },
         {
           id: "rentAmount",
           accessorKey: "rentAmount",
           header: "Rent",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 80,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "tdsAmount",
           accessorKey: "tdsAmount",
           header: "TDS",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 72,
+          size: 104,
+          minSize: 96,
         },
       ],
     },
@@ -538,7 +548,8 @@ export function buildCustomerTableColumns(
           accessorKey: "shortageChequeAmount",
           header: "Amount",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 92,
+          size: 112,
+          minSize: 104,
         },
         {
           id: "shortageDate",
@@ -572,7 +583,8 @@ export function buildCustomerTableColumns(
           accessorKey: "shortageAmountSecondTime",
           header: "Amount",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 92,
+          size: 112,
+          minSize: 104,
         },
         {
           id: "shortageSecondDate",
@@ -606,21 +618,24 @@ export function buildCustomerTableColumns(
           accessorKey: "atlStampDuty",
           header: "Stamp Duty",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 88,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "atlRegCharges",
           accessorKey: "atlRegCharges",
           header: "Reg Charges",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 88,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "atlTotal",
           accessorKey: "atlTotal",
           header: "Total",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 80,
+          size: 104,
+          minSize: 96,
         },
       ],
     },
@@ -633,21 +648,24 @@ export function buildCustomerTableColumns(
           accessorKey: "paoStampDuty",
           header: "Stamp Duty",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 88,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "paoRegCharges",
           accessorKey: "paoRegCharges",
           header: "Reg Charges",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 88,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "paoTotal",
           accessorKey: "paoTotal",
           header: "Total",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 80,
+          size: 104,
+          minSize: 96,
         },
       ],
     },
@@ -660,14 +678,16 @@ export function buildCustomerTableColumns(
           accessorKey: "landConversion",
           header: "Land Conversion",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 105,
+          size: 112,
+          minSize: 104,
         },
         {
           id: "podiFee",
           accessorKey: "podiFee",
           header: "Podi Fee",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 85,
+          size: 104,
+          minSize: 96,
         },
       ],
     },
@@ -680,14 +700,16 @@ export function buildCustomerTableColumns(
           accessorKey: "leaseDeedStampDuty",
           header: "Stamp Duty",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 88,
+          size: 104,
+          minSize: 96,
         },
         {
           id: "leaseDeedRegCharges",
           accessorKey: "leaseDeedRegCharges",
           header: "Reg Charges",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 88,
+          size: 104,
+          minSize: 96,
         },
       ],
     },
@@ -707,7 +729,8 @@ export function buildCustomerTableColumns(
           accessorKey: "debitNoteAmount",
           header: "Amount",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 85,
+          size: 112,
+          minSize: 104,
         },
       ],
     },
@@ -725,14 +748,16 @@ export function buildCustomerTableColumns(
       accessorKey: "otherCharges",
       header: "Other Charges",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 95,
+      size: 112,
+      minSize: 104,
     },
     {
       id: "cropCompensation",
       accessorKey: "cropCompensation",
       header: "Crop Compensation",
       cell: ({ getValue }) => integerMoneyCell(getValue() as number),
-      size: 105,
+      size: 120,
+      minSize: 104,
     },
     actionsColumn,
   ];

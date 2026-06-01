@@ -184,3 +184,85 @@ body {
 .invoice-table-scroll {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Farmers dashboard summary cards — never truncate monetary values */
+@layer components {
+  .customers-layout-shell .dashboard-summary-grid {
+    overflow: visible !important;
+    grid-auto-rows: auto !important;
+    align-items: stretch;
+  }
+
+  .customers-layout-shell .dashboard-summary-grid > .dashboard-card {
+    min-height: 140px;
+    height: auto;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .customers-layout-shell .dashboard-card {
+    min-height: 140px;
+    height: auto;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .customers-layout-shell .dashboard-card .dashboard-card-label,
+  .customers-layout-shell .dashboard-card .dashboard-card-value {
+    display: block;
+    max-width: 100%;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+  }
+
+  .customers-layout-shell .dashboard-card .dashboard-card-value {
+    line-height: 1.2;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+    flex: 1 1 auto;
+    flex-shrink: 0;
+    min-height: auto;
+  }
+
+  /* Override Tailwind truncate/line-clamp if ever applied to dashboard cards */
+  .customers-layout-shell .dashboard-card .truncate,
+  .customers-layout-shell .dashboard-card [class*="truncate"],
+  .customers-layout-shell .dashboard-card [class*="line-clamp"] {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    display: block !important;
+  }
+
+  /* Farmers table — full amount visibility (no ellipsis) */
+  .customers-layout-shell td.amount-cell-td,
+  .customers-layout-shell td.amount-cell-td .amount-cell {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+  }
+
+  .customers-layout-shell td.amount-cell-td {
+    height: auto;
+    vertical-align: middle;
+  }
+
+  .customers-layout-shell td.amount-cell-td .truncate,
+  .customers-layout-shell td.amount-cell-td [class*="truncate"] {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+  }
+}
