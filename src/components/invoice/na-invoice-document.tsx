@@ -8,6 +8,11 @@ import {
   prepareNaInvoiceDocument,
   resolveNaRatePerAcre,
 } from "@/lib/na-invoice-layout";
+import {
+  hasInvoiceLocation,
+  invoiceLocationEntries,
+  type InvoiceLocationFields,
+} from "@/lib/invoice-location";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 
 type Props = {
@@ -67,6 +72,13 @@ export function NaInvoiceDocument({ data }: Props) {
   const rows = prepared.lines;
   const amountWords = naInvoiceAmountInWords(prepared);
   const { totals } = prepared;
+  const location: InvoiceLocationFields = {
+    district: prepared.district?.trim() ?? "",
+    taluk: prepared.taluk?.trim() ?? "",
+    village: prepared.village?.trim() ?? "",
+    hobbli: prepared.hobbli?.trim() ?? "",
+  };
+  const locationItems = invoiceLocationEntries(location);
 
   return (
     <article
@@ -105,24 +117,26 @@ export function NaInvoiceDocument({ data }: Props) {
           </p>
         </div>
       </div>
-      <div className="mt-1 grid grid-cols-4 gap-x-3 border-b border-black pb-1 text-[7px]">
-        <p className="min-w-0">
-          <span className="font-semibold">District: </span>
-          {prepared.district || "—"}
-        </p>
-        <p className="min-w-0">
-          <span className="font-semibold">Taluk: </span>
-          {prepared.taluk || "—"}
-        </p>
-        <p className="min-w-0">
-          <span className="font-semibold">Village: </span>
-          {prepared.village || "—"}
-        </p>
-        <p className="min-w-0">
-          <span className="font-semibold">Hobli: </span>
-          {prepared.hobbli || "—"}
-        </p>
-      </div>
+      {hasInvoiceLocation(location) ? (
+        <div
+          className={`mt-1 grid gap-x-3 border-b border-black pb-1 text-[7px] ${
+            locationItems.length >= 4
+              ? "grid-cols-4"
+              : locationItems.length === 3
+                ? "grid-cols-3"
+                : locationItems.length === 2
+                  ? "grid-cols-2"
+                  : "grid-cols-1"
+          }`}
+        >
+          {locationItems.map(({ label, value }) => (
+            <p key={label} className="min-w-0">
+              <span className="font-semibold">{label}: </span>
+              {value}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       <div className="na-invoice-table-wrap mt-2 w-full overflow-hidden">
         <table className="w-full table-fixed border-collapse border border-black text-[7px]">

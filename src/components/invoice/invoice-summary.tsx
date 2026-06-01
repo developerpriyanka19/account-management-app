@@ -3,12 +3,17 @@ import type { InvoiceDocumentData } from "@/lib/invoice-types";
 
 type Props = {
   data: InvoiceDocumentData;
+  compact?: boolean;
 };
 
-export function InvoiceSummary({ data }: Props) {
+export function InvoiceSummary({ data, compact = false }: Props) {
   const { totals, ratePerAcre } = data;
   return (
-    <div className="invoice-summary-wrap mt-6 flex justify-end">
+    <div
+      className={
+        compact ? "invoice-summary-wrap mt-3 flex justify-end" : "invoice-summary-wrap mt-6 flex justify-end"
+      }
+    >
       <table
         className="w-[320px] shrink-0 border-collapse text-[11px]"
         style={{ tableLayout: "fixed" }}

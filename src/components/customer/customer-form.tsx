@@ -126,6 +126,14 @@ export function CustomerForm({
           <FieldError message={fieldError("district")} />
         </div>
         <div>
+          <Label htmlFor="taluk">Taluk</Label>
+          <Input id="taluk" {...register("taluk")} className="mt-1 h-9" />
+        </div>
+        <div>
+          <Label htmlFor="hobbli">Hobli</Label>
+          <Input id="hobbli" {...register("hobbli")} className="mt-1 h-9" />
+        </div>
+        <div>
           <Label htmlFor="state">State *</Label>
           <Input id="state" {...register("state")} className="mt-1 h-9" />
           <FieldError message={fieldError("state")} />

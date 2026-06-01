@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { getDatabaseUrl } from "@/lib/database-url";
 
 /** Bump when Prisma schema changes so dev HMR does not keep a stale client. */
-const PRISMA_CLIENT_GENERATION = "20260528133000_add_debit_note_cash_amount";
+const PRISMA_CLIENT_GENERATION = "20260601160000_farmer_debit_notes_v2";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -15,10 +15,22 @@ function createPrismaClient(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
+/** True when generated client includes FarmerDebitNote (avoids stale dev singleton). */
+function clientSupportsFarmerDebitNotes(client: PrismaClient): boolean {
+  const delegate = Reflect.get(client, "farmerDebitNote", client) as
+    | { aggregate?: unknown }
+    | undefined;
+  return delegate != null && typeof delegate.aggregate === "function";
+}
+
 /** Singleton Prisma client (serverless-safe on Vercel). */
 export function getPrisma(): PrismaClient {
   const cached = globalForPrisma.prisma;
-  if (cached && globalForPrisma.prismaGeneration === PRISMA_CLIENT_GENERATION) {
+  if (
+    cached &&
+    globalForPrisma.prismaGeneration === PRISMA_CLIENT_GENERATION &&
+    clientSupportsFarmerDebitNotes(cached)
+  ) {
     return cached;
   }
 

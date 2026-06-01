@@ -27,6 +27,7 @@ import type {
   InvoiceFarmerOption,
   InvoiceLineInput,
 } from "@/lib/invoice-types";
+import { locationFromCustomer } from "@/lib/invoice-location";
 import { farmerToInvoiceLine } from "@/lib/invoice-types";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ type Props = {
   customers: InvoiceBillingCustomerOption[];
   farmers: InvoiceFarmerOption[];
   nextSequence: number;
+  existing?: InvoiceDocumentData | null;
 };
 
 export function InvoiceBuilder({
@@ -44,6 +46,7 @@ export function InvoiceBuilder({
   customers,
   farmers,
   nextSequence,
+  existing = null,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -51,15 +54,25 @@ export function InvoiceBuilder({
   const [pending, startTransition] = useTransition();
   const [showPreview, setShowPreview] = useState(false);
 
-  const [customerId, setCustomerId] = useState<number | "">("");
-  const [subType, setSubType] = useState(defaultSubtypeForCategory(category));
-  const [invoiceDate, setInvoiceDate] = useState(
-    () => new Date().toISOString().slice(0, 10),
+  const [customerId, setCustomerId] = useState<number | "">(
+    () => existing?.customer.id ?? "",
   );
-  const [ratePerAcre, setRatePerAcre] = useState("500");
-  const [notes, setNotes] = useState("");
-  const [selectedFarmerIds, setSelectedFarmerIds] = useState<number[]>([]);
-  const [lines, setLines] = useState<InvoiceLineInput[]>([]);
+  const [subType, setSubType] = useState(
+    () => existing?.subType ?? defaultSubtypeForCategory(category),
+  );
+  const [invoiceDate, setInvoiceDate] = useState(
+    () => existing?.invoiceDate ?? new Date().toISOString().slice(0, 10),
+  );
+  const [ratePerAcre, setRatePerAcre] = useState(
+    () => String(existing?.ratePerAcre ?? 500),
+  );
+  const [notes, setNotes] = useState(() => existing?.notes ?? "");
+  const [selectedFarmerIds, setSelectedFarmerIds] = useState<number[]>(() =>
+    (existing?.lines ?? [])
+      .map((l) => l.farmerId)
+      .filter((id): id is number => id != null),
+  );
+  const [lines, setLines] = useState<InvoiceLineInput[]>(() => existing?.lines ?? []);
 
   const subtypes = getSubtypesForCategory(category);
   const rate = Number(ratePerAcre) || 0;
@@ -88,19 +101,34 @@ export function InvoiceBuilder({
     });
   }
 
+  const locationFields = useMemo(() => {
+    if (selectedCustomer) return locationFromCustomer(selectedCustomer);
+    if (existing) {
+      return {
+        district: existing.district ?? "",
+        taluk: existing.taluk ?? "",
+        village: existing.village ?? "",
+        hobbli: existing.hobbli ?? "",
+      };
+    }
+    return { district: "", taluk: "", village: "", hobbli: "" };
+  }, [selectedCustomer, existing]);
+
   const documentData: InvoiceDocumentData | null = useMemo(() => {
     if (!selectedCustomer) return null;
     const computedLines = computeLineAmounts(lines, rate, category);
     const totals = computeInvoiceTotals(computedLines);
     return {
+      id: existing?.id,
       invoiceType: category,
       subType,
-      invoiceNumber: formatInvoiceNumber(category, nextSequence),
+      invoiceNumber:
+        existing?.invoiceNumber ?? formatInvoiceNumber(category, nextSequence),
       invoiceDate,
-      district: "",
-      taluk: "",
-      village: "",
-      hobbli: "",
+      district: locationFields.district,
+      taluk: locationFields.taluk,
+      village: locationFields.village,
+      hobbli: locationFields.hobbli,
       status: "draft",
       ratePerAcre: rate,
       notes,
@@ -129,6 +157,9 @@ export function InvoiceBuilder({
     invoiceDate,
     notes,
     nextSequence,
+    existing?.id,
+    existing?.invoiceNumber,
+    locationFields,
   ]);
 
   const handlePrint = useReactToPrint({
@@ -161,6 +192,7 @@ export function InvoiceBuilder({
           ? `/invoice/na/${result.id}`
           : `/invoice/${result.id}`,
       );
+      router.refresh();
     });
   }
 
@@ -362,9 +394,10 @@ export function InvoiceBuilder({
                         <Input
                           type="number"
                           value={line.amount}
-                          onChange={(e) =>
-                            updateLine(i, { amount: Number(e.target.value) || 0 })
-                          }
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            updateLine(i, { amount: Number.isFinite(n) ? n : 0 });
+                          }}
                           className="h-8 w-full min-w-0 text-right text-xs tabular-nums"
                         />
                       </td>

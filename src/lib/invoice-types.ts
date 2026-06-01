@@ -11,7 +11,9 @@ export type InvoiceBillingCustomerOption = {
   street: string | null;
   locality: string | null;
   village: string | null;
+  taluk: string | null;
   district: string | null;
+  hobbli: string | null;
   state: string | null;
   pincode: string | null;
   companyAddress: string | null;
@@ -94,8 +96,8 @@ export function farmerToInvoiceLine(
   farmer: InvoiceFarmerOption,
   ratePerAcre: number,
 ): InvoiceLineInput {
-  const acres = farmer.balanceExtentAcre ?? farmer.rtcExtentAcre ?? null;
-  const gunta = farmer.balanceExtentGunta ?? farmer.rtcExtentGunta ?? null;
+  const acres = farmer.rtcExtentAcre ?? farmer.balanceExtentAcre ?? null;
+  const gunta = farmer.rtcExtentGunta ?? farmer.balanceExtentGunta ?? null;
   const naParts: string[] = [];
   if (acres != null) naParts.push(`${acres} A`);
   if (gunta != null) naParts.push(`${gunta} G`);
@@ -116,7 +118,10 @@ export function farmerToInvoiceLine(
     requestId: farmer.vendorCode?.trim() || "",
     debitNote: 0,
     remark: "",
-    amount: acres != null ? Math.round(acres * ratePerAcre * 100) / 100 : 0,
+    amount:
+      acres != null && ratePerAcre > 0
+        ? Math.round(Number(acres) * Number(ratePerAcre) * 100) / 100
+        : 0,
     description: farmer.label,
   };
 }

@@ -1,5 +1,6 @@
 import type { CustomerFormFieldErrors } from "@/lib/customer-form-validation";
 import { CustomerAlignedRows } from "@/app/farmer/customer-aligned-rows";
+import { FarmerDebitNotesEditor } from "@/components/farmer/farmer-debit-notes-editor";
 
 type Props = {
   fieldErrors?: CustomerFormFieldErrors;
@@ -14,6 +15,7 @@ export function FarmerFormFields({ fieldErrors, defaultValues }: Props) {
         defaultValues={defaultValues}
         fieldErrors={fieldErrors}
       />
+      <FarmerDebitNotesEditor />
       <p className="text-xs text-[#6B7280]">
         <span className="text-red-500">*</span> Required: Farmers Name, Vendor Code, Survey No.
         Numbers can include decimals; leave blank when not applicable.

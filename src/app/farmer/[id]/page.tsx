@@ -4,6 +4,8 @@ import type { Customer } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cellText, formatDateTime } from "@/lib/customer-display";
 import { getCompanyPrintTitle } from "@/lib/company-print";
+import { FarmerDebitNotesDisplay } from "@/components/farmer/farmer-debit-notes-display";
+import { fetchFarmerDebitNotesForCustomer } from "@/lib/farmer-debit-note-queries";
 import { CustomerAlignedRows } from "../customer-aligned-rows";
 import { CustomerDetailToolbar } from "./customer-detail-toolbar";
 import { CustomersContentCard, CustomersPageShell } from "../customers-page-shell";
@@ -36,9 +38,10 @@ export default async function CustomerDetailPage({ params }: PageProps) {
   const id = Number(idRaw);
   if (!Number.isInteger(id) || id < 1) notFound();
 
-  const customer = await prisma.customer.findUnique({
-    where: { id },
-  });
+  const [customer, farmerDebitNotes] = await Promise.all([
+    prisma.customer.findUnique({ where: { id } }),
+    fetchFarmerDebitNotesForCustomer(id),
+  ]);
 
   if (!customer) notFound();
 
@@ -68,9 +71,12 @@ export default async function CustomerDetailPage({ params }: PageProps) {
           <p className="mt-2 text-xs text-[#6B7280] print:text-[9pt]">Printed {printedAt}</p>
         </header>
 
-        <CustomersContentCard>
-          <CustomerAlignedRows mode="display" customer={customer} />
-        </CustomersContentCard>
+        <div className="flex flex-col gap-4">
+          <CustomersContentCard>
+            <CustomerAlignedRows mode="display" customer={customer} />
+          </CustomersContentCard>
+          <FarmerDebitNotesDisplay notes={farmerDebitNotes} />
+        </div>
       </article>
     </CustomersPageShell>
   );

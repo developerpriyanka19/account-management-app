@@ -112,9 +112,6 @@ export type ValidatedCustomerPayload = {
   podiFee: number | null;
   leaseDeedStampDuty: number | null;
   leaseDeedRegCharges: number | null;
-  debitNoteNo: string | null;
-  debitNoteAmount: number | null;
-  balanceReceivable: number | null;
   otherCharges: number | null;
   cropCompensation: number | null;
   notes: string | null;
@@ -211,9 +208,6 @@ export function validateCustomerForm(
       podiFee: floats.podiFee ?? null,
       leaseDeedStampDuty: floats.leaseDeedStampDuty ?? null,
       leaseDeedRegCharges: floats.leaseDeedRegCharges ?? null,
-      debitNoteNo: optionalTexts.debitNoteNo ?? null,
-      debitNoteAmount: floats.debitNoteAmount ?? null,
-      balanceReceivable: floats.balanceReceivable ?? null,
       otherCharges: floats.otherCharges ?? null,
       cropCompensation:
         floats.cropCompensation != null ? Math.round(floats.cropCompensation) : null,

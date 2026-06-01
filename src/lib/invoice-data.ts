@@ -1,7 +1,11 @@
 import type { Invoice, InvoiceItem, GstCustomer } from "@prisma/client";
 import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
 import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types";
-import { computeInvoiceTotals } from "@/lib/invoice-calculations";
+import {
+  computeInvoiceTotals,
+  invoiceLineTaxableAmount,
+  toFiniteNumber,
+} from "@/lib/invoice-calculations";
 
 export type InvoiceWithRelations = Invoice & {
   customer: GstCustomer;
@@ -23,11 +27,27 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     totalCents: item.totalCents,
     affidavitId: item.affidavitId ?? "",
     requestId: item.requestId ?? "",
-    debitNote: (item as { debitNote?: number | null }).debitNote ?? item.amount,
+    debitNote: toFiniteNumber((item as { debitNote?: number | null }).debitNote ?? item.amount),
     remark: (item as { remark?: string | null }).remark ?? "",
-    amount: item.amount,
+    amount: toFiniteNumber(item.amount),
     description: item.description ?? "",
   }));
+
+  const ratePerAcre = toFiniteNumber(record.ratePerAcre);
+  const category = record.invoiceType as "na" | "service";
+  const normalizedLines =
+    category === "service"
+      ? lines.map((line) => {
+          const acres = toFiniteNumber(line.acres);
+          const amount =
+            acres > 0 && ratePerAcre > 0
+              ? Math.round(acres * ratePerAcre * 100) / 100
+              : invoiceLineTaxableAmount(line);
+          return { ...line, amount };
+        })
+      : lines;
+
+  const totals = computeInvoiceTotals(normalizedLines);
 
   return {
     id: record.id,
@@ -59,13 +79,8 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
       state: record.customer.state,
       panNumber: record.customer.panNumber,
     }),
-    lines,
-    totals: {
-      subtotal: record.subtotal,
-      sgst: record.sgst,
-      cgst: record.cgst,
-      grandTotal: record.grandTotal,
-    },
+    lines: normalizedLines,
+    totals,
   };
 }
 

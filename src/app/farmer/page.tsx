@@ -83,7 +83,7 @@ async function CustomersContent({
   const [countAll, sumAgg, totalFiltered] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.aggregate({
-      _sum: { balanceReceivable: true, rentAmount: true },
+      _sum: { rentAmount: true },
     }),
     prisma.customer.count({ where }),
   ]);
@@ -128,7 +128,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
   const [countAll, sumAgg] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.aggregate({
-      _sum: { balanceReceivable: true, rentAmount: true },
+      _sum: { rentAmount: true },
     }),
   ]);
 
@@ -140,7 +140,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
         </h1>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2">
         <SummaryCard
           title="Total farmers"
           value={countAll.toLocaleString("en-IN")}
@@ -149,11 +149,6 @@ export default async function CustomersPage({ searchParams }: PageProps) {
         <SummaryCard
           title="Total rent"
           value={formatAmount(sumAgg._sum.rentAmount ?? 0)}
-          accent="green"
-        />
-        <SummaryCard
-          title="Balance receivable"
-          value={formatAmount(sumAgg._sum.balanceReceivable ?? 0)}
           accent="green"
         />
       </section>

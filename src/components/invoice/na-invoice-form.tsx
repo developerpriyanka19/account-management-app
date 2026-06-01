@@ -192,9 +192,9 @@ export function NaInvoiceForm({ customers, farmers, existing }: Props) {
     }
     form.setValue("customerId", customer.id, { shouldValidate: true });
     form.setValue("district", customer.district ?? "");
-    form.setValue("taluk", customer.locality ?? "");
+    form.setValue("taluk", customer.taluk ?? "");
     form.setValue("village", customer.village ?? "");
-    form.setValue("hobbli", customer.street ?? "");
+    form.setValue("hobbli", customer.hobbli ?? "");
     if (selectedFarmerIds.length > 0) {
       syncLines(selectedFarmerIds);
     }

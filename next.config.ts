@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
       { source: "/customers", destination: "/farmer", permanent: false },
       { source: "/customers/:path*", destination: "/farmer/:path*", permanent: false },
       { source: "/invoice/na-charges", destination: "/invoice/na", permanent: false },
+      { source: "/invoice/na/new", destination: "/invoice/na/create", permanent: false },
       { source: "/invoice/atl", destination: "/invoice/service", permanent: false },
       { source: "/invoice/gpa", destination: "/invoice/service", permanent: false },
     ];

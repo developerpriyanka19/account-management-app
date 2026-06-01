@@ -14,17 +14,26 @@ export const PINNED_RIGHT = ["actions"] as const;
 
 function extentCell(value: number | null | undefined) {
   const text = formatAmount(value);
-  if (text === "—") return "—";
-  return <span className="font-mono tabular-nums text-[#111827]">{text}</span>;
+  if (text === "—") {
+    return <span className="block min-w-0 truncate text-right font-mono text-[#6B7280]">—</span>;
+  }
+  return (
+    <span className="block min-w-0 truncate text-right font-mono tabular-nums text-[#111827]" title={text}>
+      {text}
+    </span>
+  );
 }
 
 function moneyCell(value: number | null | undefined) {
   const text = formatAmount(value);
-  if (text === "—") return <span className="font-mono text-[#6B7280]">—</span>;
+  if (text === "—") {
+    return <span className="block min-w-0 truncate text-right font-mono text-[#6B7280]">—</span>;
+  }
   const negative = value != null && value < 0;
   return (
     <span
-      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
+      className={`block min-w-0 truncate text-right font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
+      title={text}
     >
       {text}
     </span>
@@ -33,11 +42,14 @@ function moneyCell(value: number | null | undefined) {
 
 function integerMoneyCell(value: number | null | undefined) {
   const text = formatIntegerAmount(value);
-  if (text === "—") return <span className="font-mono text-[#6B7280]">—</span>;
+  if (text === "—") {
+    return <span className="block min-w-0 truncate text-right font-mono text-[#6B7280]">—</span>;
+  }
   const negative = value != null && value < 0;
   return (
     <span
-      className={`font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
+      className={`block min-w-0 truncate text-right font-mono tabular-nums ${negative ? "text-[#DC2626]" : "text-[#16A34A] font-semibold"}`}
+      title={text}
     >
       {text}
     </span>
@@ -45,7 +57,24 @@ function integerMoneyCell(value: number | null | undefined) {
 }
 
 function textCell(value: string | null | undefined) {
-  return <span className="text-[#111827]">{cellText(value)}</span>;
+  const text = cellText(value);
+  return (
+    <span className="block min-w-0 truncate text-[#111827]" title={text !== "—" ? text : undefined}>
+      {text}
+    </span>
+  );
+}
+
+function remarkCell(value: string | null | undefined) {
+  const text = cellText(value);
+  return (
+    <span
+      className="block min-w-0 whitespace-normal break-words leading-snug text-[#111827]"
+      title={text !== "—" ? text : undefined}
+    >
+      {text}
+    </span>
+  );
 }
 
 function dateCell(value: string | null | undefined) {
@@ -87,7 +116,6 @@ export const LEAF_COLUMN_IDS = [
   "shortageSecondDate",
   "shortageSecondChequeNo",
   "shortageSecondBankName",
-  "remark",
   "atlStampDuty",
   "atlRegCharges",
   "atlTotal",
@@ -100,7 +128,7 @@ export const LEAF_COLUMN_IDS = [
   "leaseDeedRegCharges",
   "debitNoteNo",
   "debitNoteAmount",
-  "balanceReceivable",
+  "remark",
   "otherCharges",
   "cropCompensation",
 ] as const;
@@ -152,8 +180,8 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafIds: ["balanceRentAmount"],
   },
   {
-    label: "Lease Amount Issued",
-    leafLabels: ["Loan", "Rent", "TDS"],
+    label: "Bank Loan",
+    leafLabels: ["Bank Loan", "Rent", "TDS"],
     leafIds: ["loanAmount", "rentAmount", "tdsAmount"],
   },
   {
@@ -176,7 +204,6 @@ export const EXPORT_GROUPS: ExportGroup[] = [
       "shortageSecondBankName",
     ],
   },
-  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
   {
     label: "ATL",
     leafLabels: ["Stamp Duty", "Reg Charges", "Total"],
@@ -202,11 +229,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
     leafLabels: ["DB No", "Amount"],
     leafIds: ["debitNoteNo", "debitNoteAmount"],
   },
-  {
-    label: "Balance Receivable",
-    leafLabels: ["Balance Receivable"],
-    leafIds: ["balanceReceivable"],
-  },
+  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
   {
     label: "Other Charges",
     leafLabels: ["Other Charges"],
@@ -241,7 +264,6 @@ const MONEY_IDS = new Set<string>([
   "leaseDeedStampDuty",
   "leaseDeedRegCharges",
   "debitNoteAmount",
-  "balanceReceivable",
   "otherCharges",
   "cropCompensation",
   "rtcExtentAcre",
@@ -255,6 +277,9 @@ const MONEY_IDS = new Set<string>([
 ]);
 
 const DATE_IDS = new Set(["aesAdvanceDate", "shortageDate", "shortageSecondDate"]);
+
+/** Leaf column ids rendered as right-aligned currency / numeric amounts in the table. */
+export const MONEY_COLUMN_IDS = MONEY_IDS;
 
 export function getExportCellValue(
   row: CustomerListRow,
@@ -478,14 +503,15 @@ export function buildCustomerTableColumns(
     },
     {
       id: "leaseIssued",
-      header: "Lease Amount Issued",
+      header: "Bank Loan",
       columns: [
         {
           id: "loanAmount",
           accessorKey: "loanAmount",
-          header: "Loan",
+          header: "Bank Loan",
           cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 80,
+          size: 100,
+          minSize: 92,
         },
         {
           id: "rentAmount",
@@ -570,14 +596,6 @@ export function buildCustomerTableColumns(
           size: 120,
         },
       ],
-    },
-    {
-      id: "remark",
-      accessorKey: "notes",
-      header: "Remark",
-      cell: ({ getValue }) => textCell(getValue() as string),
-      size: 160,
-      minSize: 140,
     },
     {
       id: "atl",
@@ -694,11 +712,13 @@ export function buildCustomerTableColumns(
       ],
     },
     {
-      id: "balanceReceivable",
-      accessorKey: "balanceReceivable",
-      header: "Balance Receivable",
-      cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 100,
+      id: "remark",
+      accessorKey: "notes",
+      header: "Remark",
+      cell: ({ getValue }) => remarkCell(getValue() as string),
+      size: 140,
+      minSize: 120,
+      maxSize: 200,
     },
     {
       id: "otherCharges",

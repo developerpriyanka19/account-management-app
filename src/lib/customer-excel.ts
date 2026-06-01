@@ -29,7 +29,6 @@ const MONEY_LEAF_IDS = new Set([
   "leaseDeedStampDuty",
   "leaseDeedRegCharges",
   "debitNoteAmount",
-  "balanceReceivable",
   "cropCompensation",
   "rtcExtentAcre",
   "rtcExtentGunta",

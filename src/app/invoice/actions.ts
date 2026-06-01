@@ -5,10 +5,108 @@ import {
   amountToIndianWords,
   computeInvoiceTotals,
 } from "@/lib/invoice-calculations";
+import {
+  invoiceCategoryFromType,
+  invoiceTypeFromCategory,
+  type InvoiceCategoryCode,
+} from "@/lib/invoice-category";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 import { prisma } from "@/lib/prisma";
 import { gstCustomerDb } from "@/lib/prisma-gst-customer";
 import { countInvoices, invoiceDb } from "@/lib/prisma-invoice";
+
+export type InvoiceListSortField = "date" | "amount";
+
+export type InvoiceListInput = {
+  category: InvoiceCategoryCode;
+  query?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: InvoiceListSortField;
+  sortDir?: "asc" | "desc";
+};
+
+function invoiceListWhere(category: InvoiceCategoryCode, query: string) {
+  return {
+    invoiceCategory: category,
+    ...(query
+      ? {
+          OR: [
+            { invoiceNumber: { contains: query, mode: "insensitive" as const } },
+            {
+              customer: {
+                companyName: { contains: query, mode: "insensitive" as const },
+              },
+            },
+            {
+              customer: {
+                firstName: { contains: query, mode: "insensitive" as const },
+              },
+            },
+            {
+              customer: {
+                lastName: { contains: query, mode: "insensitive" as const },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
+function invoiceListOrderBy(
+  sort: InvoiceListSortField,
+  sortDir: "asc" | "desc",
+): { invoiceDate?: "asc" | "desc"; grandTotal?: "asc" | "desc"; createdAt?: "asc" | "desc" }[] {
+  if (sort === "amount") {
+    return [{ grandTotal: sortDir }, { createdAt: "desc" }];
+  }
+  return [{ invoiceDate: sortDir }, { createdAt: "desc" }];
+}
+
+export async function getInvoiceList(input: InvoiceListInput) {
+  const query = (input.query ?? "").trim();
+  const pageSize = Math.max(1, Math.min(input.pageSize ?? 10, 50));
+  const page = Math.max(1, input.page ?? 1);
+  const sort = input.sort === "amount" ? "amount" : "date";
+  const sortDir = input.sortDir === "asc" ? "asc" : "desc";
+  const where = invoiceListWhere(input.category, query);
+
+  const [total, rows] = await Promise.all([
+    invoiceDb().count({ where }),
+    invoiceDb().findMany({
+      where,
+      orderBy: invoiceListOrderBy(sort, sortDir),
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: { customer: true },
+    }),
+  ]);
+
+  return { total, page, pageSize, rows };
+}
+
+/** @deprecated Use getInvoiceList({ category: "NA", ... }) */
+export async function getNaInvoiceList(input: {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: InvoiceListSortField;
+  sortDir?: "asc" | "desc";
+}) {
+  return getInvoiceList({ category: "NA", ...input });
+}
+
+export async function getServiceInvoiceList(input: {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: InvoiceListSortField;
+  sortDir?: "asc" | "desc";
+}) {
+  return getInvoiceList({ category: "SERVICE", ...input });
+}
+
 export async function getInvoiceBuilderData() {
   const [customers, farmers, invoiceCount] = await Promise.all([
     gstCustomerDb().findMany({
@@ -23,7 +121,9 @@ export async function getInvoiceBuilderData() {
         street: true,
         locality: true,
         village: true,
+        taluk: true,
         district: true,
+        hobbli: true,
         pincode: true,
         companyAddress: true,
         state: true,
@@ -63,7 +163,9 @@ export async function getInvoiceBuilderData() {
       street: c.street,
       locality: c.locality,
       village: c.village,
+      taluk: c.taluk,
       district: c.district,
+      hobbli: c.hobbli,
       pincode: c.pincode,
       companyAddress: c.companyAddress,
       state: c.state,
@@ -87,51 +189,8 @@ export async function getInvoiceBuilderData() {
   };
 }
 
-export async function getNaInvoiceList(input: {
-  query?: string;
-  page?: number;
-  pageSize?: number;
-}) {
-  const query = (input.query ?? "").trim();
-  const pageSize = Math.max(1, Math.min(input.pageSize ?? 10, 50));
-  const page = Math.max(1, input.page ?? 1);
-  const where = {
-    invoiceType: "na",
-    ...(query
-      ? {
-          OR: [
-            { invoiceNumber: { contains: query, mode: "insensitive" as const } },
-            {
-              customer: {
-                companyName: { contains: query, mode: "insensitive" as const },
-              },
-            },
-            {
-              customer: {
-                firstName: { contains: query, mode: "insensitive" as const },
-              },
-            },
-            {
-              customer: {
-                lastName: { contains: query, mode: "insensitive" as const },
-              },
-            },
-          ],
-        }
-      : {}),
-  };
-  const [total, rows] = await Promise.all([
-    invoiceDb().count({ where }),
-    invoiceDb().findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: { customer: true, items: { take: 1, orderBy: { id: "asc" } } },
-    }),
-  ]);
-
-  return { total, page, pageSize, rows };
+function invoiceViewPath(category: InvoiceCategoryCode, id: number): string {
+  return category === "NA" ? `/invoice/na/${id}` : `/invoice/${id}`;
 }
 
 export async function saveInvoice(
@@ -151,10 +210,13 @@ export async function saveInvoice(
     return { ok: false, message: "Invoice number is required." };
   }
 
+  const invoiceCategory = invoiceCategoryFromType(payload.invoiceType);
+
   try {
     const baseData = {
       invoiceType: payload.invoiceType,
-      subType: payload.subType || "NA Invoice",
+      invoiceCategory,
+      subType: payload.subType || (invoiceCategory === "NA" ? "NA Invoice" : "Service Invoice"),
       customerId: payload.customer.id,
       invoiceNumber,
       invoiceDate: payload.invoiceDate,
@@ -184,11 +246,18 @@ export async function saveInvoice(
       totalCents: line.totalCents,
       affidavitId: line.affidavitId || null,
       requestId: line.requestId || null,
-      debitNote: line.debitNote || 0,
+      debitNote: Number(line.debitNote) || 0,
       remark: line.remark || null,
-      amount: line.debitNote || line.amount,
+      amount: Number(line.debitNote) > 0 ? Number(line.debitNote) : Number(line.amount) || 0,
       description: line.farmerName || line.description || null,
     }));
+
+    const pdfUrl =
+      status === "FINAL"
+        ? payload.id
+          ? invoiceViewPath(invoiceCategory, payload.id)
+          : "/pending"
+        : null;
 
     const created = payload.id
       ? await invoiceDb().update({
@@ -199,25 +268,26 @@ export async function saveInvoice(
               deleteMany: {},
               create: items,
             },
-            pdfUrl: status === "FINAL" ? `/invoice/na/${payload.id}` : null,
+            pdfUrl,
           },
         })
       : await invoiceDb().create({
           data: {
             ...baseData,
             items: { create: items },
-            pdfUrl: status === "FINAL" ? "/pending" : null,
+            pdfUrl,
           },
         });
 
     if (status === "FINAL") {
       await invoiceDb().update({
         where: { id: created.id },
-        data: { pdfUrl: `/invoice/na/${created.id}` },
+        data: { pdfUrl: invoiceViewPath(invoiceCategory, created.id) },
       });
     }
 
     revalidatePath("/invoice/na");
+    revalidatePath("/invoice/service");
     revalidatePath(`/invoice/na/${created.id}`);
     revalidatePath(`/invoice/${created.id}`);
 
@@ -235,6 +305,31 @@ export async function saveInvoice(
   }
 }
 
+export async function deleteInvoice(
+  id: number,
+  category: InvoiceCategoryCode,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!Number.isInteger(id) || id < 1) {
+    return { ok: false, message: "Invalid invoice." };
+  }
+  try {
+    const existing = await invoiceDb().findFirst({
+      where: { id, invoiceCategory: category },
+      select: { id: true },
+    });
+    if (!existing) {
+      return { ok: false, message: "Invoice not found." };
+    }
+    await invoiceDb().delete({ where: { id } });
+    revalidatePath("/invoice/na");
+    revalidatePath("/invoice/service");
+    return { ok: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to delete invoice.";
+    return { ok: false, message };
+  }
+}
+
 export async function getInvoiceById(id: number) {
   if (!Number.isInteger(id) || id < 1) return null;
   return invoiceDb().findUnique({
@@ -246,14 +341,27 @@ export async function getInvoiceById(id: number) {
 export async function getNaInvoiceById(id: number) {
   if (!Number.isInteger(id) || id < 1) return null;
   return invoiceDb().findFirst({
-    where: { id, invoiceType: "na" },
+    where: { id, invoiceCategory: "NA" },
     include: { customer: true, items: { orderBy: { id: "asc" } } },
   });
 }
 
-export async function listRecentInvoices(category?: "na" | "service") {
+export async function getServiceInvoiceById(id: number) {
+  if (!Number.isInteger(id) || id < 1) return null;
+  return invoiceDb().findFirst({
+    where: { id, invoiceCategory: "SERVICE" },
+    include: { customer: true, items: { orderBy: { id: "asc" } } },
+  });
+}
+
+export async function listRecentInvoices(category?: InvoiceCategoryCode) {
+  const invoiceType = category ? invoiceTypeFromCategory(category) : undefined;
   return invoiceDb().findMany({
-    where: category ? { invoiceType: category } : undefined,
+    where: category
+      ? { invoiceCategory: category }
+      : invoiceType
+        ? { invoiceType }
+        : undefined,
     orderBy: { createdAt: "desc" },
     take: 20,
     include: { customer: true },

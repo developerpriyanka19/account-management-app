@@ -13,11 +13,18 @@ type Props = {
 
 /** A4 print-friendly invoice document shell. */
 export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
+  const isService = !showNaColumns;
   return (
-    <article className="invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-6 py-8 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none">
-      <InvoiceHeader data={data} />
+    <article
+      className={
+        isService
+          ? "invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-4 py-4 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+          : "invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-6 py-8 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+      }
+    >
+      <InvoiceHeader data={data} compact={isService} />
       <InvoiceTable data={data} showNaColumns={showNaColumns} />
-      <InvoiceSummary data={data} />
+      <InvoiceSummary data={data} compact={isService} />
       {data.totalAmountWords ? (
         <p className="mt-3 text-[11px] text-[#111827]">
           <span className="font-semibold">Total Amount in Words: </span>

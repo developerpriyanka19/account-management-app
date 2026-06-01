@@ -2,8 +2,16 @@
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { formatInvoiceMoney } from "@/lib/invoice-calculations";
+import {
+  formatInvoiceMoney,
+  invoiceLineTaxableAmount,
+} from "@/lib/invoice-calculations";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
+import {
+  hasInvoiceLocation,
+  invoiceLocationEntries,
+  type InvoiceLocationFields,
+} from "@/lib/invoice-location";
 import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
 import {
   buildNaInvoiceTableBody,
@@ -103,31 +111,37 @@ function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: nu
     }
   }
 
-  const metaLines = [
-    ["Type:", document.subType],
-  ] as const;
-
-  for (const [label, value] of metaLines) {
+  if (document.invoiceType === "na") {
     pdf.setFont(PDF_FONT, "bold");
-    pdf.text(label, colMid, rightY);
+    pdf.text("Type:", colMid, rightY);
     pdf.setFont(PDF_FONT, "normal");
-    pdf.text(value, colMid + 22, rightY, { maxWidth: rightX - colMid - 22 });
+    pdf.text(document.subType, colMid + 22, rightY, { maxWidth: rightX - colMid - 22 });
     rightY += lineHeight;
   }
-  const metaY = Math.max(leftY, rightY) + 2.5;
-  const quarter = CONTENT_W / 4;
-  const blocks = [
-    `District: ${document.district || "—"}`,
-    `Taluk: ${document.taluk || "—"}`,
-    `Village: ${document.village || "—"}`,
-    `Hobli: ${document.hobbli || "—"}`,
-  ];
-  blocks.forEach((text, index) => {
-    pdf.text(text, MARGIN.left + quarter * index, metaY, { maxWidth: quarter - 2 });
-  });
-  rightY += lineHeight + 1;
 
-  const y = Math.max(leftY, rightY);
+  const location: InvoiceLocationFields = {
+    district: document.district?.trim() ?? "",
+    taluk: document.taluk?.trim() ?? "",
+    village: document.village?.trim() ?? "",
+    hobbli: document.hobbli?.trim() ?? "",
+  };
+
+  let y = Math.max(leftY, rightY);
+  if (hasInvoiceLocation(location)) {
+    const metaY = y + 2.5;
+    const entries = invoiceLocationEntries(location);
+    const quarter = CONTENT_W / Math.max(entries.length, 1);
+    entries.forEach(({ label, value }, index) => {
+      pdf.text(`${label}: ${value}`, MARGIN.left + quarter * index, metaY, {
+        maxWidth: quarter - 2,
+      });
+    });
+    y = metaY + lineHeight + 1;
+  } else {
+    y += 2;
+  }
+
+  y = Math.max(y, rightY);
   pdf.setLineWidth(0.2);
   pdf.line(MARGIN.left, y + 1, PAGE_W - MARGIN.right, y + 1);
   return y + 5;
@@ -241,40 +255,84 @@ function generateNaInvoicePdf(document: InvoiceDocumentData) {
   pdf.save(`${prepared.invoiceNumber}.pdf`);
 }
 
-/** Minimal service invoice PDF (NA uses full A4 tax layout). */
+/** Service invoice PDF — aligned with on-screen print layout (no type/status). */
 function generateServiceInvoicePdf(document: InvoiceDocumentData) {
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setTextColor(242, 140, 42);
-  pdf.setFontSize(24);
-  pdf.text(COMPANY_INVOICE_HEADER.name, PAGE_W / 2, 14, { align: "center" });
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(14);
-  pdf.text(`SERVICE INVOICE`, PAGE_W / 2, 20, { align: "center" });
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.setFontSize(10);
-  pdf.text(`Invoice No: ${document.invoiceNumber}`, 10, 26);
-  pdf.text(`Date: ${document.invoiceDate}`, PAGE_W - 10, 26, { align: "right" });
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as JsPdfWithAutoTable;
+
+  let y = drawCompanyHeader(pdf, document.invoiceDate, document.invoiceNumber, MARGIN.top);
+  y = drawBillToSection(pdf, document, y);
+
+  const tableBody = document.lines.map((line, index) => [
+    String(index + 1),
+    line.description || line.farmerName || "",
+    formatInvoiceMoney(invoiceLineTaxableAmount(line)),
+  ]);
+
   autoTable(pdf, {
-    startY: 32,
-    head: [["Description", "Amount"]],
-    body: document.lines.map((line) => [
-      line.description || line.farmerName || "",
-      formatInvoiceMoney(line.amount ?? 0),
-    ]),
-    margin: { left: 10, right: 10 },
-    tableWidth: 190,
-    styles: { fontSize: 8, cellPadding: 2 },
+    startY: y,
+    margin: { left: MARGIN.left, right: MARGIN.right, top: MARGIN.top, bottom: 22 },
+    tableWidth: CONTENT_W,
+    head: [["Sl No", "Description", "Amount"]],
+    body: tableBody,
+    foot: [
+      [
+        { content: "", colSpan: 1 },
+        { content: "Subtotal", styles: { halign: "right", fontStyle: "bold" } },
+        { content: formatInvoiceMoney(document.totals.subtotal), styles: { halign: "right" } },
+      ],
+      [
+        { content: "", colSpan: 1 },
+        { content: "SGST (9%)", styles: { halign: "right" } },
+        { content: formatInvoiceMoney(document.totals.sgst), styles: { halign: "right" } },
+      ],
+      [
+        { content: "", colSpan: 1 },
+        { content: "CGST (9%)", styles: { halign: "right" } },
+        { content: formatInvoiceMoney(document.totals.cgst), styles: { halign: "right" } },
+      ],
+      [
+        { content: "", colSpan: 1 },
+        { content: "Grand Total", styles: { halign: "right", fontStyle: "bold" } },
+        {
+          content: formatInvoiceMoney(document.totals.grandTotal),
+          styles: { halign: "right", fontStyle: "bold" },
+        },
+      ],
+    ],
+    styles: {
+      font: PDF_FONT,
+      fontSize: 8,
+      cellPadding: 1.5,
+      overflow: "linebreak",
+    },
+    headStyles: { fillColor: [243, 244, 246], textColor: [0, 0, 0], fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 14, halign: "center" },
+      1: { cellWidth: 130 },
+      2: { cellWidth: 36, halign: "right" },
+    },
     theme: "grid",
   });
+
+  let endY = (pdf.lastAutoTable?.finalY ?? y) + 4;
+  if (document.totalAmountWords) {
+    pdf.setFontSize(7.5);
+    pdf.text(`Total Amount in Words: ${document.totalAmountWords}`, MARGIN.left, endY, {
+      maxWidth: CONTENT_W,
+    });
+    endY += 6;
+  }
+
+  const signY = Math.min(endY + 12, PAGE_H - MARGIN.bottom - 28);
+  pdf.setFont(PDF_FONT, "bold");
   pdf.setFontSize(8);
-  pdf.text(`For ${COMPANY_INVOICE_HEADER.signatureName}`, PAGE_W - 10, PAGE_H - 26, {
+  pdf.text(`For ${COMPANY_INVOICE_HEADER.signatureName}`, PAGE_W - MARGIN.right, signY, {
     align: "right",
   });
-  pdf.text("Authorized Signatory", PAGE_W - 10, PAGE_H - 21, { align: "right" });
-  COMPANY_INVOICE_HEADER.footerAddressLines.forEach((line, i) => {
-    pdf.text(line, PAGE_W / 2, PAGE_H - 10 + i * 3, { align: "center" });
-  });
+  pdf.setFont(PDF_FONT, "normal");
+  pdf.text("Authorized Signatory", PAGE_W - MARGIN.right, signY + 5, { align: "right" });
+
+  drawPageFooter(pdf, 1, 1);
   pdf.save(`${document.invoiceNumber}.pdf`);
 }
 

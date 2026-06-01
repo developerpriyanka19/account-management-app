@@ -9,3 +9,4 @@ type Props = {
 export function ServiceInvoiceTemplate({ data }: Props) {
   return <InvoiceLayout data={data} showNaColumns={false} />;
 }
+

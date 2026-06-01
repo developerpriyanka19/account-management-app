@@ -10,10 +10,25 @@ export type InvoiceTotals = {
   grandTotal: number;
 };
 
+/** Coerce form/DB values to a finite number (avoids string concatenation in totals). */
+export function toFiniteNumber(value: unknown): number {
+  if (value == null || value === "") return 0;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function lineAmountFromAcreage(acres: number | null | undefined, ratePerAcre: number): number {
-  const a = acres ?? 0;
-  if (!Number.isFinite(a) || !Number.isFinite(ratePerAcre)) return 0;
-  return Math.round(a * ratePerAcre * 100) / 100;
+  const a = toFiniteNumber(acres);
+  const rate = toFiniteNumber(ratePerAcre);
+  if (a <= 0 || rate <= 0) return 0;
+  return Math.round(a * rate * 100) / 100;
+}
+
+/** Line taxable amount: debit note override, else line amount. */
+export function invoiceLineTaxableAmount(line: InvoiceLineInput): number {
+  const debitNote = toFiniteNumber(line.debitNote);
+  if (debitNote > 0) return debitNote;
+  return toFiniteNumber(line.amount);
 }
 
 export function computeLineAmounts(
@@ -21,20 +36,24 @@ export function computeLineAmounts(
   ratePerAcre: number,
   category: "na" | "service",
 ): InvoiceLineInput[] {
+  const rate = toFiniteNumber(ratePerAcre);
   return lines.map((line) => {
-    if (line.amount != null && line.amount > 0 && category === "service") {
-      return line;
+    const acres = toFiniteNumber(line.acres);
+    const computed = lineAmountFromAcreage(acres, rate);
+    if (category === "service") {
+      const manual = toFiniteNumber(line.amount);
+      const amount = acres > 0 ? computed : manual > 0 ? manual : computed;
+      return { ...line, acres: acres > 0 ? acres : line.acres, amount };
     }
-    const computed = lineAmountFromAcreage(line.acres, ratePerAcre);
-    return { ...line, amount: line.amount && line.amount > 0 ? line.amount : computed };
+    const debitNote = toFiniteNumber(line.debitNote);
+    const amount =
+      debitNote > 0 ? debitNote : computed > 0 ? computed : toFiniteNumber(line.amount);
+    return { ...line, amount };
   });
 }
 
 export function computeInvoiceTotals(lines: InvoiceLineInput[]): InvoiceTotals {
-  const subtotal = lines.reduce(
-    (sum, l) => sum + (l.debitNote > 0 ? l.debitNote : (l.amount ?? 0)),
-    0,
-  );
+  const subtotal = lines.reduce((sum, l) => sum + invoiceLineTaxableAmount(l), 0);
   const roundedSubtotal = Math.round(subtotal * 100) / 100;
   const sgst = Math.round(roundedSubtotal * SGST_RATE * 100) / 100;
   const cgst = Math.round(roundedSubtotal * CGST_RATE * 100) / 100;

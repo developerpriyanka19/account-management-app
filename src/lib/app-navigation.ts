@@ -29,8 +29,8 @@ export const SIDEBAR_INVOICE_GROUP: SidebarNavGroup = {
   label: "Invoice",
   icon: FileText,
   items: [
-    { label: "NA Invoice", href: "/invoice/na" },
-    { label: "Service Invoice", href: "/invoice/service" },
+    { label: "NA Invoices", href: "/invoice/na" },
+    { label: "Service Invoices", href: "/invoice/service" },
     { label: "Customers", href: "/customers-management" },
   ],
 };

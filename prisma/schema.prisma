@@ -77,7 +77,7 @@ model Customer {
   otherCharges     Float?
   cropCompensation Float?
 
-  // --- Debit note ---
+  // --- Debit note (legacy; migrated to farmerDebitNotes) ---
   debitNoteNo     String?
   debitNoteAmount Float?
 
@@ -89,6 +89,24 @@ model Customer {
   // --- Other ---
   loanAmount Float?
   notes      String? // Remark
+
+  farmerDebitNotes FarmerDebitNote[]
+}
+
+/// Per-farmer debit note entries by category (ATL & GPA, Land Conversion, etc.).
+model FarmerDebitNote {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  category   String
+  dbNo       String?
+  amount     Float?
+  remark     String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("farmer_debit_notes")
 }
 
 /// GST / invoice customer (separate from farmer Customer records).
@@ -105,7 +123,9 @@ model GstCustomer {
   street         String?
   locality       String?
   village        String?
+  taluk          String?
   district       String?
+  hobbli         String?
   pincode        String?
   state          String?
   gstStatus      String?
@@ -122,8 +142,9 @@ model GstCustomer {
 /// Generated invoice (NA or Service).
 model Invoice {
   id            Int      @id @default(autoincrement())
-  invoiceType   String // "na" | "service"
-  subType       String
+  invoiceType     String // "na" | "service" (legacy, kept in sync with invoiceCategory)
+  invoiceCategory String @default("NA") // "NA" | "SERVICE"
+  subType         String
   customerId    Int
   invoiceNumber String   @unique
   invoiceDate   String // YYYY-MM-DD

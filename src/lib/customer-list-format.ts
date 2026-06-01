@@ -98,7 +98,7 @@ export function formatLeaseExtent(c: CustomerListRow): string {
 
 export function formatLeaseIssued(c: CustomerListRow): string {
   const parts: string[] = [];
-  if (hasValue(c.loanAmount)) parts.push(`L ${fmtNum(c.loanAmount)}`);
+  if (hasValue(c.loanAmount)) parts.push(`Bank Loan ${fmtNum(c.loanAmount)}`);
   if (hasValue(c.rentAmount)) parts.push(`R ${fmtNum(c.rentAmount)}`);
   if (hasValue(c.tdsAmount)) parts.push(`T ${fmtNum(c.tdsAmount)}`);
   return parts.length > 0 ? parts.join(" · ") : "—";

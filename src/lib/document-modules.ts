@@ -16,14 +16,14 @@ export type DocumentModuleGroup = {
 
 export const INVOICE_MODULE_ITEMS: DocumentModuleItem[] = [
   {
-    label: "NA Invoice",
+    label: "NA Invoices",
     href: "/invoice/na",
-    pageTitle: "NA Invoice",
+    pageTitle: "NA Invoices",
   },
   {
-    label: "Service Invoice",
+    label: "Service Invoices",
     href: "/invoice/service",
-    pageTitle: "Service Invoice",
+    pageTitle: "Service Invoices",
   },
 ];
 

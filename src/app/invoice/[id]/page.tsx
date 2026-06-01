@@ -26,14 +26,20 @@ export default async function InvoiceViewPage({ params, searchParams }: PageProp
       <div className="px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <Link
-            href={document.invoiceType === "na" ? "/invoice/na/new" : "/invoice/service"}
+            href={
+              document.invoiceType === "na" ? "/invoice/na" : "/invoice/service"
+            }
             className="text-sm font-medium text-[#2563EB] hover:underline"
           >
-            ← Create another invoice
+            ← Back to {document.invoiceType === "na" ? "NA Invoices" : "Service Invoices"}
           </Link>
-          <p className="text-sm text-[#6B7280]">
-            {document.invoiceNumber} · <span className="capitalize">{document.status}</span>
-          </p>
+          {document.invoiceType !== "service" ? (
+            <p className="text-sm text-[#6B7280]">
+              {document.invoiceNumber} · <span className="capitalize">{document.status}</span>
+            </p>
+          ) : (
+            <p className="text-sm text-[#6B7280]">{document.invoiceNumber}</p>
+          )}
         </div>
         <InvoiceViewClient
           document={document}

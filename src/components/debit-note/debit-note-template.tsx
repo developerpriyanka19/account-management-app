@@ -74,6 +74,17 @@ function HeaderBlock({
   );
 }
 
+function RemarkBlock({ remarks }: { remarks?: string | null }) {
+  const text = remarks?.trim();
+  if (!text) return null;
+  return (
+    <div className="mt-3 text-[10.5px] leading-snug text-[#111827]">
+      <p className="font-semibold">Remark:</p>
+      <p className="mt-0.5 whitespace-pre-wrap">{text}</p>
+    </div>
+  );
+}
+
 function FooterAndSignature() {
   return (
     <>
@@ -120,6 +131,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
               </tbody>
             </table>
           </div>
+          <RemarkBlock remarks={data.remarks} />
           <FooterAndSignature />
         </section>
 
@@ -181,6 +193,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
             {pageIndex === detailPages.length - 1 ? (
               <div className="mt-3 text-right text-[10.5px] font-bold">Grand Total: {money(data.total)}</div>
             ) : null}
+            {pageIndex === detailPages.length - 1 ? <RemarkBlock remarks={data.remarks} /> : null}
             <FooterAndSignature />
           </section>
         ))}
@@ -215,6 +228,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
             </tbody>
           </table>
         </div>
+        <RemarkBlock remarks={data.remarks} />
         <FooterAndSignature />
       </section>
 
@@ -286,6 +300,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
           </table>
         </div>
         <div className="mt-3 text-right text-[10.5px] font-bold">TOTAL AMOUNT: {money(data.total)}</div>
+        <RemarkBlock remarks={data.remarks} />
         <FooterAndSignature />
       </section>
     </article>

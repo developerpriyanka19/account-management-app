@@ -16,7 +16,9 @@ export type GstCustomerRow = {
   street: string | null;
   locality: string | null;
   village: string | null;
+  taluk: string | null;
   district: string | null;
+  hobbli: string | null;
   pincode: string | null;
   companyAddress: string | null;
   state: string | null;
@@ -41,7 +43,9 @@ export function toGstCustomerRow(customer: GstCustomer): GstCustomerRow {
     street: customer.street,
     locality: customer.locality,
     village: customer.village,
+    taluk: customer.taluk,
     district: customer.district,
+    hobbli: customer.hobbli,
     pincode: customer.pincode,
     companyAddress: customer.companyAddress,
     state: customer.state,

@@ -1,4 +1,8 @@
-import { formatInvoiceInteger, formatInvoiceMoney } from "@/lib/invoice-calculations";
+import {
+  formatInvoiceInteger,
+  formatInvoiceMoney,
+  invoiceLineTaxableAmount,
+} from "@/lib/invoice-calculations";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +59,13 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
   const minWidth = showNaColumns ? 1580 : 480;
 
   return (
-    <div className="invoice-table-scroll mt-4 -mx-1 overflow-x-auto overscroll-x-contain">
+    <div
+      className={
+        showNaColumns
+          ? "invoice-table-scroll mt-4 -mx-1 overflow-x-auto overscroll-x-contain"
+          : "invoice-table-scroll mt-2 -mx-1 overflow-x-auto overscroll-x-contain"
+      }
+    >
       <table
         className="invoice-line-table w-full border-collapse text-[10px]"
         style={{ minWidth, tableLayout: "fixed" }}
@@ -150,7 +160,9 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                 )}
                 {!showNaColumns ? (
                   <td className={cn(tdBase, tdAmount)}>
-                    <span className="block max-w-full">{formatInvoiceMoney(line.amount)}</span>
+                    <span className="block max-w-full">
+                      {formatInvoiceMoney(invoiceLineTaxableAmount(line))}
+                    </span>
                   </td>
                 ) : null}
               </tr>

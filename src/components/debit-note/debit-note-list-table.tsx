@@ -12,6 +12,7 @@ type Row = {
   debitNoteNo: string;
   type: string;
   date: string;
+  remarks: string | null;
   total: number;
   status: string;
   customer: {
@@ -85,6 +86,7 @@ export function DebitNoteListTable({ rows, page, pageSize, total, query }: Props
               <th className="px-3 py-2 text-left font-semibold">Type</th>
               <th className="px-3 py-2 text-left font-semibold">Customer Name</th>
               <th className="px-3 py-2 text-left font-semibold">Date</th>
+              <th className="px-3 py-2 text-left font-semibold">Remark</th>
               <th className="px-3 py-2 text-left font-semibold">Total Amount</th>
               <th className="px-3 py-2 text-left font-semibold">Status</th>
               <th className="px-3 py-2 text-left font-semibold">Actions</th>
@@ -101,6 +103,9 @@ export function DebitNoteListTable({ rows, page, pageSize, total, query }: Props
                   <td className="px-3 py-2">{formatType(row.type)}</td>
                   <td className="px-3 py-2">{customerName}</td>
                   <td className="px-3 py-2">{row.date}</td>
+                  <td className="max-w-[200px] truncate px-3 py-2" title={row.remarks ?? ""}>
+                    {row.remarks?.trim() || "—"}
+                  </td>
                   <td className="px-3 py-2">{row.total.toFixed(2)}</td>
                   <td className="px-3 py-2">
                     <span

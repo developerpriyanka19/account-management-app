@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { saveDebitNote } from "@/actions/debit-note-actions";
 import { DebitNoteTemplate } from "@/components/debit-note/debit-note-template";
 import type {
@@ -343,8 +344,14 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
           <div><Label>Village</Label><Input value={village} onChange={(e) => setVillage(e.target.value)} className="mt-1" /></div>
           <div><Label>Hobli</Label><Input value={hobbli} onChange={(e) => setHobbli(e.target.value)} className="mt-1" /></div>
           <div className="md:col-span-2 lg:col-span-4">
-            <Label>Remarks</Label>
-            <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} className="mt-1" />
+            <Label>Remark</Label>
+            <Textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              className="mt-1 min-h-[72px]"
+              rows={3}
+              placeholder="Optional notes for this debit note"
+            />
           </div>
         </div>
       </section>
