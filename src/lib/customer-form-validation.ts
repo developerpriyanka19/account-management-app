@@ -86,36 +86,39 @@ export type ValidatedCustomerPayload = {
   totalGunta: number | null;
   totalCents: number | null;
   rentPerAcre: number | null;
-  balanceRentAmount: number | null;
   rentAmount: number | null;
-  tdsAmount: number | null;
-  aesAdvanceChequeAmount: number | null;
   aesAdvanceDate: string | null;
   aesAdvanceChequeNo: string | null;
+  aesAdvanceChequeAmount: number | null;
   aesAdvanceBankName: string | null;
+  balanceRentAmount: number | null;
+  tdsAmount: number | null;
+  bankLoanDdDate: string | null;
+  loanAmount: number | null;
+  bankLoanDdNo: string | null;
+  bankLoanBankName: string | null;
+  rentalDdDate: string | null;
+  leaseAmount: number | null;
+  rentalDdChequeNo: string | null;
+  rentalDdBankName: string | null;
+  receivedDate: string | null;
+  balanceRentChequeNo: string | null;
+  receivedNeftAmount: number | null;
   shortageChequeAmount: number | null;
-  shortageAmountFirstTime: number | null;
-  shortageAmountSecondTime: number | null;
   shortageDate: string | null;
   shortageChequeNo: string | null;
   shortageBankName: string | null;
-  shortageSecondDate: string | null;
-  shortageSecondChequeNo: string | null;
-  shortageSecondBankName: string | null;
-  atlStampDuty: number | null;
-  atlRegCharges: number | null;
   atlTotal: number | null;
-  paoStampDuty: number | null;
-  paoRegCharges: number | null;
   paoTotal: number | null;
   landConversion: number | null;
   podiFee: number | null;
   leaseDeedStampDuty: number | null;
   leaseDeedRegCharges: number | null;
+  debitNoteNo: string | null;
+  debitNoteAmount: number | null;
   otherCharges: number | null;
   cropCompensation: number | null;
   notes: string | null;
-  loanAmount: number | null;
 };
 
 function collectStringValues(formData: FormData): CustomerFormValues {
@@ -182,37 +185,40 @@ export function validateCustomerForm(
       totalGunta: floats.totalGunta ?? null,
       totalCents: floats.totalCents ?? null,
       rentPerAcre: floats.rentPerAcre ?? null,
-      balanceRentAmount: floats.balanceRentAmount ?? null,
       rentAmount: floats.rentAmount ?? null,
-      tdsAmount: floats.tdsAmount ?? null,
-      aesAdvanceChequeAmount: floats.aesAdvanceChequeAmount ?? null,
       aesAdvanceDate: dates.aesAdvanceDate ?? null,
       aesAdvanceChequeNo: optionalTexts.aesAdvanceChequeNo ?? null,
+      aesAdvanceChequeAmount: floats.aesAdvanceChequeAmount ?? null,
       aesAdvanceBankName: optionalTexts.aesAdvanceBankName ?? null,
+      balanceRentAmount: floats.balanceRentAmount ?? null,
+      tdsAmount: floats.tdsAmount ?? null,
+      bankLoanDdDate: dates.bankLoanDdDate ?? null,
+      loanAmount: floats.loanAmount ?? null,
+      bankLoanDdNo: optionalTexts.bankLoanDdNo ?? null,
+      bankLoanBankName: optionalTexts.bankLoanBankName ?? null,
+      rentalDdDate: dates.rentalDdDate ?? null,
+      leaseAmount: floats.leaseAmount ?? null,
+      rentalDdChequeNo: optionalTexts.rentalDdChequeNo ?? null,
+      rentalDdBankName: optionalTexts.rentalDdBankName ?? null,
+      receivedDate: dates.receivedDate ?? null,
+      balanceRentChequeNo: optionalTexts.balanceRentChequeNo ?? null,
+      receivedNeftAmount: floats.receivedNeftAmount ?? null,
       shortageChequeAmount: floats.shortageChequeAmount ?? null,
-      shortageAmountFirstTime: floats.shortageAmountFirstTime ?? null,
-      shortageAmountSecondTime: floats.shortageAmountSecondTime ?? null,
       shortageDate: dates.shortageDate ?? null,
       shortageChequeNo: optionalTexts.shortageChequeNo ?? null,
       shortageBankName: optionalTexts.shortageBankName ?? null,
-      shortageSecondDate: dates.shortageSecondDate ?? null,
-      shortageSecondChequeNo: optionalTexts.shortageSecondChequeNo ?? null,
-      shortageSecondBankName: optionalTexts.shortageSecondBankName ?? null,
-      atlStampDuty: floats.atlStampDuty ?? null,
-      atlRegCharges: floats.atlRegCharges ?? null,
       atlTotal: floats.atlTotal ?? null,
-      paoStampDuty: floats.paoStampDuty ?? null,
-      paoRegCharges: floats.paoRegCharges ?? null,
       paoTotal: floats.paoTotal ?? null,
       landConversion: floats.landConversion ?? null,
       podiFee: floats.podiFee ?? null,
       leaseDeedStampDuty: floats.leaseDeedStampDuty ?? null,
       leaseDeedRegCharges: floats.leaseDeedRegCharges ?? null,
+      debitNoteNo: optionalTexts.debitNoteNo ?? null,
+      debitNoteAmount: floats.debitNoteAmount ?? null,
       otherCharges: floats.otherCharges ?? null,
       cropCompensation:
         floats.cropCompensation != null ? Math.round(floats.cropCompensation) : null,
       notes: optionalTexts.remark ?? null,
-      loanAmount: floats.loanAmount ?? null,
     },
   };
 }

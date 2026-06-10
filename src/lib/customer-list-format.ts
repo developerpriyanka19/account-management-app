@@ -18,28 +18,29 @@ export type CustomerListRow = {
   totalGunta: number | null;
   totalCents: number | null;
   rentPerAcre: number | null;
-  aesAdvanceChequeAmount: number | null;
+  rentAmount: number | null;
   aesAdvanceDate: string | null;
   aesAdvanceChequeNo: string | null;
+  aesAdvanceChequeAmount: number | null;
   aesAdvanceBankName: string | null;
   balanceRentAmount: number | null;
-  loanAmount: number | null;
-  rentAmount: number | null;
   tdsAmount: number | null;
+  bankLoanDdDate: string | null;
+  loanAmount: number | null;
+  bankLoanDdNo: string | null;
+  bankLoanBankName: string | null;
+  rentalDdDate: string | null;
+  leaseAmount: number | null;
+  rentalDdChequeNo: string | null;
+  rentalDdBankName: string | null;
+  receivedDate: string | null;
+  balanceRentChequeNo: string | null;
+  receivedNeftAmount: number | null;
   shortageChequeAmount: number | null;
-  shortageAmountFirstTime: number | null;
-  shortageAmountSecondTime: number | null;
   shortageDate: string | null;
   shortageChequeNo: string | null;
   shortageBankName: string | null;
-  shortageSecondDate: string | null;
-  shortageSecondChequeNo: string | null;
-  shortageSecondBankName: string | null;
-  atlStampDuty: number | null;
-  atlRegCharges: number | null;
   atlTotal: number | null;
-  paoStampDuty: number | null;
-  paoRegCharges: number | null;
   paoTotal: number | null;
   landConversion: number | null;
   podiFee: number | null;
@@ -99,7 +100,7 @@ export function formatLeaseExtent(c: CustomerListRow): string {
 export function formatLeaseIssued(c: CustomerListRow): string {
   const parts: string[] = [];
   if (hasValue(c.loanAmount)) parts.push(`Bank Loan ${fmtNum(c.loanAmount)}`);
-  if (hasValue(c.rentAmount)) parts.push(`R ${fmtNum(c.rentAmount)}`);
+  if (hasValue(c.leaseAmount)) parts.push(`Rental DD ${fmtNum(c.leaseAmount)}`);
   if (hasValue(c.tdsAmount)) parts.push(`T ${fmtNum(c.tdsAmount)}`);
   return parts.length > 0 ? parts.join(" · ") : "—";
 }
@@ -112,10 +113,11 @@ export function formatNa(c: CustomerListRow): string {
 }
 
 export function formatLeaseDeed(c: CustomerListRow): string {
-  const parts: string[] = [];
-  if (hasValue(c.leaseDeedStampDuty)) parts.push(`S ${fmtNum(c.leaseDeedStampDuty)}`);
-  if (hasValue(c.leaseDeedRegCharges)) parts.push(`R ${fmtNum(c.leaseDeedRegCharges)}`);
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  const stamp = c.leaseDeedStampDuty;
+  const reg = c.leaseDeedRegCharges;
+  if (stamp == null && reg == null) return "—";
+  const total = (stamp ?? 0) + (reg ?? 0);
+  return `₹${fmtNum(total)}`;
 }
 
 export function formatDebitNote(c: CustomerListRow): string {

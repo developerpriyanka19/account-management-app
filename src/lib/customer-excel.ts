@@ -10,25 +10,20 @@ const MONEY_LEAF_IDS = new Set([
   "totalGunta",
   "totalCents",
   "rentPerAcre",
+  "rentAmount",
   "aesAdvanceChequeAmount",
   "balanceRentAmount",
   "loanAmount",
-  "rentAmount",
+  "leaseAmount",
   "tdsAmount",
   "shortageChequeAmount",
-  "shortageAmountFirstTime",
-  "shortageAmountSecondTime",
-  "atlStampDuty",
-  "atlRegCharges",
   "atlTotal",
-  "paoStampDuty",
-  "paoRegCharges",
   "paoTotal",
   "landConversion",
   "podiFee",
-  "leaseDeedStampDuty",
-  "leaseDeedRegCharges",
+  "leaseDeedGovtFee",
   "debitNoteAmount",
+  "otherCharges",
   "cropCompensation",
   "rtcExtentAcre",
   "rtcExtentGunta",
@@ -52,7 +47,8 @@ export function exportCustomersToExcel(rows: CustomerListRow[], filename?: strin
   for (const g of EXPORT_GROUPS) {
     groupRow.push(g.label);
     for (let i = 1; i < g.leafLabels.length; i++) groupRow.push("");
-    leafRow.push(...g.leafLabels);
+    const standalone = g.leafLabels.length === 1 && g.label === g.leafLabels[0];
+    leafRow.push(...(standalone ? [""] : g.leafLabels));
   }
 
   const body = rows.map((row) =>
@@ -66,10 +62,16 @@ export function exportCustomersToExcel(rows: CustomerListRow[], filename?: strin
   let col = 0;
   for (const g of EXPORT_GROUPS) {
     const span = g.leafLabels.length;
+    const standalone = span === 1 && g.label === g.leafLabels[0];
     if (span > 1) {
       merges.push({
         s: { r: 0, c: col },
         e: { r: 0, c: col + span - 1 },
+      });
+    } else if (standalone) {
+      merges.push({
+        s: { r: 0, c: col },
+        e: { r: 1, c: col },
       });
     }
     col += span;
@@ -116,7 +118,7 @@ export function exportCustomersToExcel(rows: CustomerListRow[], filename?: strin
   }
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Customers");
+  XLSX.utils.book_append_sheet(wb, ws, "Farmers");
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, filename ?? `customers-${stamp}.xlsx`);
+  XLSX.writeFile(wb, filename ?? `farmers-${stamp}.xlsx`);
 }

@@ -26,7 +26,7 @@ function EmptyState({ query }: { query: string }) {
       <p className="mx-auto mt-2 max-w-md text-sm text-[#6B7280]">
         {hasQuery
           ? "Try a different search term or clear filters."
-          : "Add your first customer record."}
+          : "Add your first farmer record."}
       </p>
       <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row">
         <Link

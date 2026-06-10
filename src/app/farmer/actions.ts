@@ -72,6 +72,13 @@ export async function fetchCustomersForExport(
   });
 }
 
+export async function fetchAllFarmersForExport(): Promise<CustomerListRow[]> {
+  return prisma.customer.findMany({
+    orderBy: { id: "asc" },
+    select: CUSTOMER_LIST_SELECT,
+  });
+}
+
 export async function deleteCustomer(id: number) {
   if (!Number.isInteger(id) || id < 1) {
     redirect("/farmer");

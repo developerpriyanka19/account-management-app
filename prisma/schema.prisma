@@ -81,10 +81,21 @@ model Customer {
   debitNoteNo     String?
   debitNoteAmount Float?
 
-  // --- Received ---
-  receivedNeftAmount Float?
-  receivedDate       String? // YYYY-MM-DD
-  balanceReceivable  Float?
+  // --- Bank loan DD from company ---
+  bankLoanDdDate   String? // YYYY-MM-DD
+  bankLoanDdNo     String?
+  bankLoanBankName String?
+
+  // --- Rental DD from company ---
+  rentalDdDate     String? // YYYY-MM-DD
+  rentalDdChequeNo String?
+  rentalDdBankName String?
+
+  // --- Received / balance rent cheque ---
+  receivedNeftAmount    Float?
+  receivedDate          String? // YYYY-MM-DD
+  balanceRentChequeNo   String?
+  balanceReceivable     Float?
 
   // --- Other ---
   loanAmount Float?

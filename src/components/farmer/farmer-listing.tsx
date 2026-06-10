@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, Plus, Search } from "lucide-react";
-import type { CustomerListRow } from "@/lib/customer-list-format";
 import { exportCustomersToExcel } from "@/lib/customer-excel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { fetchCustomersForExport } from "@/app/farmer/actions";
+import { fetchAllFarmersForExport } from "@/app/farmer/actions";
 import { FarmerTable } from "@/components/farmer/farmer-table";
+import type { CustomerListRow } from "@/lib/customer-list-format";
 
 type Props = {
   customers: CustomerListRow[];
@@ -31,15 +31,6 @@ function customersListHref(q: string, page: number): string {
   return s ? `/farmer?${s}` : "/farmer";
 }
 
-function filterByName(rows: CustomerListRow[], nameSearch: string): CustomerListRow[] {
-  const q = nameSearch.trim().toLowerCase();
-  if (!q) return rows;
-  return rows.filter((c) => {
-    const name = c.farmerName?.trim().toLowerCase() ?? "";
-    return name.includes(q);
-  });
-}
-
 export function FarmerListing({
   customers,
   totalFiltered,
@@ -59,30 +50,16 @@ export function FarmerListing({
     setNameSearch(query);
   }, [query]);
 
-  const pageRowsForExport = useMemo(
-    () => filterByName(customers, nameSearch),
-    [customers, nameSearch],
-  );
-
   function runSearch(e?: React.FormEvent) {
     e?.preventDefault();
     router.push(customersListHref(nameSearch.trim(), 1));
   }
 
-  function exportThisPage() {
-    exportCustomersToExcel(
-      pageRowsForExport,
-      `customers-page-${page}${query ? `-search` : ""}.xlsx`,
-    );
-  }
-
-  function exportAllMatching() {
+  function exportAllFarmers() {
     startExport(async () => {
-      const rows = await fetchCustomersForExport(query);
-      const filename = query
-        ? `customers-all-matching-${query.slice(0, 40)}.xlsx`
-        : "customers-all.xlsx";
-      exportCustomersToExcel(rows, filename);
+      const rows = await fetchAllFarmersForExport();
+      const stamp = new Date().toISOString().slice(0, 10);
+      exportCustomersToExcel(rows, `farmers-all-${stamp}.xlsx`);
     });
   }
 
@@ -95,25 +72,11 @@ export function FarmerListing({
               type="button"
               variant="outline"
               size="sm"
-              disabled={exportPending || pageRowsForExport.length === 0}
-              onClick={exportThisPage}
+              disabled={exportPending || totalAll === 0}
+              onClick={exportAllFarmers}
             >
               <Download className="h-3.5 w-3.5" />
-              Export this page
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={exportPending || totalFiltered === 0}
-              onClick={exportAllMatching}
-            >
-              <Download className="h-3.5 w-3.5" />
-              {exportPending
-                ? "Exporting…"
-                : query
-                  ? "Export all matching"
-                  : "Export all customers"}
+              {exportPending ? "Exporting…" : "Export All Farmers"}
             </Button>
             <Link href="/farmer/new">
               <Button type="button" size="sm">

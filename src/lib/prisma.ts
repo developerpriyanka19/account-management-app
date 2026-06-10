@@ -1,9 +1,20 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { getDatabaseUrl } from "@/lib/database-url";
 
 /** Bump when Prisma schema changes so dev HMR does not keep a stale client. */
-const PRISMA_CLIENT_GENERATION = "20260601160000_farmer_debit_notes_v2";
+const PRISMA_CLIENT_GENERATION = "20260610120000_farmer_dd_and_balance_rent_fields";
+
+/** Customer columns added in 20260610120000_farmer_dd_and_balance_rent_fields. */
+const REQUIRED_CUSTOMER_FIELDS = [
+  "bankLoanDdDate",
+  "bankLoanDdNo",
+  "bankLoanBankName",
+  "rentalDdDate",
+  "rentalDdChequeNo",
+  "rentalDdBankName",
+  "balanceRentChequeNo",
+] as const;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -15,12 +26,20 @@ function createPrismaClient(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-/** True when generated client includes FarmerDebitNote (avoids stale dev singleton). */
-function clientSupportsFarmerDebitNotes(client: PrismaClient): boolean {
+function customerModelHasField(fieldName: string): boolean {
+  const customer = Prisma.dmmf.datamodel.models.find((m) => m.name === "Customer");
+  return customer?.fields.some((f) => f.name === fieldName) ?? false;
+}
+
+/** True when generated client matches the current schema (avoids stale dev singleton). */
+function clientMatchesCurrentSchema(client: PrismaClient): boolean {
   const delegate = Reflect.get(client, "farmerDebitNote", client) as
     | { aggregate?: unknown }
     | undefined;
-  return delegate != null && typeof delegate.aggregate === "function";
+  const hasDebitNotes =
+    delegate != null && typeof delegate.aggregate === "function";
+  const hasFarmerDdFields = REQUIRED_CUSTOMER_FIELDS.every(customerModelHasField);
+  return hasDebitNotes && hasFarmerDdFields;
 }
 
 /** Singleton Prisma client (serverless-safe on Vercel). */
@@ -29,7 +48,7 @@ export function getPrisma(): PrismaClient {
   if (
     cached &&
     globalForPrisma.prismaGeneration === PRISMA_CLIENT_GENERATION &&
-    clientSupportsFarmerDebitNotes(cached)
+    clientMatchesCurrentSchema(cached)
   ) {
     return cached;
   }
