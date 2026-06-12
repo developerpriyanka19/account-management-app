@@ -2,92 +2,158 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import type { DebitNoteListSortField } from "@/actions/debit-note-actions";
+import type { DebitNoteCustomerOption } from "@/lib/debit-note-types";
 
 type Props = {
   initialQuery: string;
-  initialType: string;
   initialStatus: string;
-  initialDate: string;
+  initialCustomerId: string;
+  initialDateFrom: string;
+  initialDateTo: string;
+  createHref: string;
+  createLabel: string;
+  sort: DebitNoteListSortField;
+  sortDir: "asc" | "desc";
+  customers: DebitNoteCustomerOption[];
 };
 
 export function DebitNoteListControls({
   initialQuery,
-  initialType,
   initialStatus,
-  initialDate,
+  initialCustomerId,
+  initialDateFrom,
+  initialDateTo,
+  createHref,
+  createLabel,
+  sort,
+  sortDir,
+  customers,
 }: Props) {
   const [query, setQuery] = useState(initialQuery);
-  const [type, setType] = useState(initialType);
   const [status, setStatus] = useState(initialStatus);
-  const [date, setDate] = useState(initialDate);
+  const [customerId, setCustomerId] = useState(initialCustomerId);
+  const [dateFrom, setDateFrom] = useState(initialDateFrom);
+  const [dateTo, setDateTo] = useState(initialDateTo);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const landActive = pathname === "/debit-note/land-conversion";
-  const atlActive = pathname === "/debit-note/atl-poa-gpa";
 
   useEffect(() => {
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       if (query.trim()) params.set("q", query.trim());
       else params.delete("q");
-      if (type && type !== "all") params.set("type", type);
-      else params.delete("type");
       if (status && status !== "all") params.set("status", status);
       else params.delete("status");
-      if (date) params.set("date", date);
-      else params.delete("date");
+      if (customerId) params.set("customerId", customerId);
+      else params.delete("customerId");
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      else params.delete("dateFrom");
+      if (dateTo) params.set("dateTo", dateTo);
+      else params.delete("dateTo");
       params.delete("page");
       router.replace(`${pathname}?${params.toString()}`);
     }, 350);
     return () => clearTimeout(timer);
-  }, [query, type, status, date, pathname, router, searchParams]);
+  }, [query, status, customerId, dateFrom, dateTo, pathname, router, searchParams]);
+
+  function toggleSort(field: DebitNoteListSortField) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (sort === field) {
+      params.set("sortDir", sortDir === "asc" ? "desc" : "asc");
+    } else {
+      params.set("sort", field);
+      params.set("sortDir", "desc");
+    }
+    params.delete("page");
+    router.replace(`${pathname}?${params.toString()}`);
+  }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[#D1D5DB] bg-white p-3">
-      <div className="flex flex-col gap-3 md:flex-row">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by debit note no or customer name"
-          className="w-full md:max-w-md"
+          placeholder="Search by debit note number, customer, village, or farmer name"
+          className="w-full sm:max-w-md"
+        />
+        <Button
+          type="button"
+          onClick={() => router.push(createHref)}
+          className="inline-flex h-9 items-center justify-center bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#1D4ED8]"
+        >
+          {createLabel}
+        </Button>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="w-full sm:max-w-[160px]"
+          aria-label="Date from"
+        />
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="w-full sm:max-w-[160px]"
+          aria-label="Date to"
         />
         <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="h-9 rounded-md border border-[#D1D5DB] bg-white px-3 text-sm text-[#111827]"
+          value={customerId}
+          onChange={(e) => setCustomerId(e.target.value)}
+          className="h-9 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-sm text-[#111827] sm:max-w-[220px]"
         >
-          <option value="all">All Types</option>
-          <option value="land-conversion">Land Conversion</option>
-          <option value="atl-poa-gpa">ATL and POA/GPA</option>
+          <option value="">All Customers</option>
+          {customers.map((c) => (
+            <option key={c.id} value={String(c.id)}>
+              {c.label}
+            </option>
+          ))}
         </select>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="h-9 rounded-md border border-[#D1D5DB] bg-white px-3 text-sm text-[#111827]"
+          className="h-9 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-sm text-[#111827] sm:max-w-[160px]"
         >
           <option value="all">All Status</option>
           <option value="DRAFT">Draft</option>
-          <option value="FINAL">Generated</option>
+          <option value="FINAL">Final</option>
         </select>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="md:max-w-[180px]" />
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-[#6B7280]">
+        <span className="font-medium text-[#374151]">Sort:</span>
         <Button
           type="button"
-          variant={landActive ? "default" : "outline"}
-          onClick={() => router.push("/debit-note/land-conversion")}
+          variant="outline"
+          size="sm"
+          onClick={() => toggleSort("date")}
+          className={sort === "date" ? "border-[#2563EB] text-[#2563EB]" : ""}
         >
-          New Land Conversion
+          Date {sort === "date" ? (sortDir === "asc" ? "↑" : "↓") : ""}
         </Button>
         <Button
           type="button"
-          variant={atlActive ? "default" : "outline"}
-          onClick={() => router.push("/debit-note/atl-poa-gpa")}
+          variant="outline"
+          size="sm"
+          onClick={() => toggleSort("amount")}
+          className={sort === "amount" ? "border-[#2563EB] text-[#2563EB]" : ""}
         >
-          New ATL and POA/GPA
+          Amount {sort === "amount" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => toggleSort("customer")}
+          className={sort === "customer" ? "border-[#2563EB] text-[#2563EB]" : ""}
+        >
+          Customer {sort === "customer" ? (sortDir === "asc" ? "↑" : "↓") : ""}
         </Button>
       </div>
     </div>

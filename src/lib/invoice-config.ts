@@ -87,18 +87,33 @@ export const COMPANY_INVOICE_HEADER = {
   phone: "Mobile: +91-9160 37152",
 } as const;
 
+/** Brand header colors and typography (screen + PDF). */
+export const COMPANY_BRAND_STYLE = {
+  companyNameColor: "#f5821f",
+  titleColor: "#111827",
+  dividerColor: "#6ab04c",
+} as const;
+
 /** Logo + flex header spacing (screen). */
 export const INVOICE_LOGO = {
   src: "/company-logo.png",
-  sizePx: 80,
-  gapPx: 16,
-  /** Space before invoice no / GST / date row */
+  /** Logo height 45–55px */
+  heightPx: 50,
+  gapPx: 12,
+  companyNameFontPx: 26,
+  titleFontPx: 15,
+  /** Space after centered document title before metadata */
   metadataMarginPx: 18,
 } as const;
 
-/** Same layout in mm for jsPDF (80px and 16px at 96dpi). */
+/** Same layout in mm for jsPDF (~50px logo at 96dpi). */
 export const INVOICE_LOGO_PDF_MM = {
-  size: 21.2,
-  gap: 4.2,
+  logoHeight: 13.2,
+  gap: 3.2,
+  companyFontSize: 20,
+  titleFontSize: 11,
+  lineWidth: 0.35,
   metadataMargin: 4.8,
+  /** Reserved top margin on continuation pages (logo row + line + title). */
+  repeatHeaderHeight: 30,
 } as const;

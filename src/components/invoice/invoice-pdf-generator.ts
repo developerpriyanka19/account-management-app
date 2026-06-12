@@ -12,6 +12,7 @@ import {
   invoiceLocationEntries,
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
+import { drawCompanyBrandHeaderPdf } from "@/lib/company-brand-header-pdf";
 import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
 import {
   buildNaInvoiceTableBody,
@@ -61,33 +62,32 @@ function loadInvoiceLogoDataUrl(): Promise<string> {
   return logoDataUrlPromise;
 }
 
+function drawBrandHeader(
+  pdf: jsPDF,
+  logoDataUrl: string,
+  startY: number = MARGIN.top,
+): number {
+  return drawCompanyBrandHeaderPdf({
+    pdf,
+    logoDataUrl,
+    documentTitle: "INVOICE",
+    pageWidth: PAGE_W,
+    leftMargin: MARGIN.left,
+    rightMargin: MARGIN.right,
+    startY,
+  });
+}
+
 async function drawCompanyHeader(
   pdf: jsPDF,
   invoiceDate: string,
   invoiceNumber: string,
-  startY: number,
+  logoDataUrl: string,
+  startY: number = MARGIN.top,
 ): Promise<number> {
   const rightX = PAGE_W - MARGIN.right;
   const leftX = MARGIN.left;
-  const { size: logoMm, gap: gapMm, metadataMargin: metaMarginMm } = INVOICE_LOGO_PDF_MM;
-
-  const logoDataUrl = await loadInvoiceLogoDataUrl();
-  pdf.addImage(logoDataUrl, "PNG", leftX, startY, logoMm, logoMm);
-
-  const textX = leftX + logoMm + gapMm;
-  let textY = startY + 6;
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setTextColor(242, 140, 42);
-  pdf.setFontSize(20);
-  pdf.text(COMPANY_INVOICE_HEADER.name, textX, textY);
-  textY += 7;
-
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(14);
-  pdf.text("INVOICE", textX, textY);
-
-  const brandBlockH = Math.max(logoMm, textY - startY + 2);
-  let y = startY + brandBlockH + metaMarginMm;
+  let y = drawBrandHeader(pdf, logoDataUrl, startY);
 
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(8);
@@ -97,8 +97,9 @@ async function drawCompanyHeader(
   pdf.text(`Date: ${formatInvoiceDateDisplay(invoiceDate)}`, rightX, y, { align: "right" });
   y += 4;
 
+  pdf.setDrawColor(0, 0, 0);
   pdf.setLineWidth(0.3);
-  pdf.line(leftX, y, PAGE_W - MARGIN.right, y);
+  pdf.line(leftX, y, rightX, y);
   return y + 4;
 }
 
@@ -203,12 +204,31 @@ async function generateNaInvoicePdf(document: InvoiceDocumentData) {
     format: "a4",
   }) as JsPdfWithAutoTable;
 
-  let y = await drawCompanyHeader(pdf, prepared.invoiceDate, prepared.invoiceNumber, MARGIN.top);
+  const logoDataUrl = await loadInvoiceLogoDataUrl();
+  let y = await drawCompanyHeader(
+    pdf,
+    prepared.invoiceDate,
+    prepared.invoiceNumber,
+    logoDataUrl,
+    MARGIN.top,
+  );
   y = drawBillToSection(pdf, prepared, y);
+
+  const repeatHeaderTop = INVOICE_LOGO_PDF_MM.repeatHeaderHeight;
 
   autoTable(pdf, {
     startY: y,
-    margin: { left: MARGIN.left, right: MARGIN.right, top: MARGIN.top, bottom: 22 },
+    margin: {
+      left: MARGIN.left,
+      right: MARGIN.right,
+      top: repeatHeaderTop,
+      bottom: 22,
+    },
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) {
+        drawBrandHeader(pdf, logoDataUrl, MARGIN.top);
+      }
+    },
     tableWidth: CONTENT_W,
     head: buildNaInvoiceTableHead(prepared),
     body: buildNaInvoiceTableBody(prepared),
@@ -285,8 +305,17 @@ async function generateNaInvoicePdf(document: InvoiceDocumentData) {
 async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as JsPdfWithAutoTable;
 
-  let y = await drawCompanyHeader(pdf, document.invoiceDate, document.invoiceNumber, MARGIN.top);
+  const logoDataUrl = await loadInvoiceLogoDataUrl();
+  let y = await drawCompanyHeader(
+    pdf,
+    document.invoiceDate,
+    document.invoiceNumber,
+    logoDataUrl,
+    MARGIN.top,
+  );
   y = drawBillToSection(pdf, document, y);
+
+  const repeatHeaderTop = INVOICE_LOGO_PDF_MM.repeatHeaderHeight;
 
   const tableBody = document.lines.map((line, index) => [
     String(index + 1),
@@ -296,7 +325,17 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
 
   autoTable(pdf, {
     startY: y,
-    margin: { left: MARGIN.left, right: MARGIN.right, top: MARGIN.top, bottom: 22 },
+    margin: {
+      left: MARGIN.left,
+      right: MARGIN.right,
+      top: repeatHeaderTop,
+      bottom: 22,
+    },
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) {
+        drawBrandHeader(pdf, logoDataUrl, MARGIN.top);
+      }
+    },
     tableWidth: CONTENT_W,
     head: [["Sl No", "Description", "Amount"]],
     body: tableBody,
@@ -358,7 +397,12 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
   pdf.setFont(PDF_FONT, "normal");
   pdf.text("Authorized Signatory", PAGE_W - MARGIN.right, signY + 5, { align: "right" });
 
-  drawPageFooter(pdf, 1, 1);
+  const pageCount = pdf.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p += 1) {
+    pdf.setPage(p);
+    drawPageFooter(pdf, p, pageCount);
+  }
+
   pdf.save(`${document.invoiceNumber}.pdf`);
 }
 

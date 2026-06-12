@@ -31,17 +31,12 @@ export const DEBIT_NOTE_MODULE_ITEMS: DocumentModuleItem[] = [
   {
     label: "Land Conversion",
     href: "/debit-note/land-conversion",
-    pageTitle: "Land Conversion Debit Note",
+    pageTitle: "Land Conversion Debit Notes",
   },
   {
     label: "ATL and POA/GPA",
     href: "/debit-note/atl-poa-gpa",
-    pageTitle: "ATL and POA/GPA Debit Note",
-  },
-  {
-    label: "All Debit Notes",
-    href: "/debit-note/all",
-    pageTitle: "All Debit Notes",
+    pageTitle: "ATL and POA/GPA Debit Notes",
   },
 ];
 

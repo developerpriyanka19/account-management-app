@@ -1,4 +1,6 @@
+import { CompanyBrandHeader } from "@/components/company-brand-header";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
+import { DebitNoteType } from "@/lib/debit-note-types";
 
 type Props = {
   data: DebitNotePayload;
@@ -34,31 +36,33 @@ function HeaderBlock({
 }) {
   return (
     <>
-      <header className="border-b border-[#9ACA66] pb-1">
-        <h1 className="text-center text-[34px] font-bold uppercase leading-none tracking-wide text-[#F28C2A]">
-          APOORVA ENERGY SOLUTIONS
-        </h1>
-      </header>
-      <div className="mt-2 flex items-center justify-between text-[11px] italic text-[#374151]">
-        <p>Ref. No.</p>
-        <p>Date :</p>
-      </div>
-      <header className="mt-1 border-b border-[#111827] pb-2">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
-          <div className="text-[10.5px] leading-snug">
-            <p><span className="font-semibold">Debit Note No:</span> {data.debitNoteNo}</p>
-            <p><span className="font-semibold">Customer Name:</span> {customerName || "—"}</p>
-            <p><span className="font-semibold">GST:</span> {gstNumber || "—"}</p>
-            <p><span className="font-semibold">Address:</span> {address || "—"}</p>
-          </div>
-          <div className="px-2 text-center">
-            <h1 className="text-[30px] font-bold uppercase leading-none tracking-wide">DEBIT NOTE</h1>
-            <p className="text-[11px] font-semibold">
-              {data.type === "land-conversion" ? "Land Conversion" : "ATL and POA/GPA"}
-            </p>
-          </div>
-          <div className="text-right text-[10.5px]">
-            <p><span className="font-semibold">Date:</span> {data.date}</p>
+      <header className="pb-1">
+        <CompanyBrandHeader documentTitle="DEBIT NOTE" />
+        <div className="flex items-center justify-between text-[11px] italic text-[#374151]">
+          <p>Ref. No.</p>
+          <p>Date :</p>
+        </div>
+        <div className="mt-1 border-b border-[#111827] pb-2">
+          <div className="grid grid-cols-2 items-start gap-4">
+            <div className="text-[10.5px] leading-snug">
+              <p>
+                <span className="font-semibold">Debit Note No:</span> {data.debitNoteNo}
+              </p>
+              <p>
+                <span className="font-semibold">Customer Name:</span> {customerName || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">GST:</span> {gstNumber || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">Address:</span> {address || "—"}
+              </p>
+            </div>
+            <div className="text-right text-[10.5px]">
+              <p>
+                <span className="font-semibold">Date:</span> {data.date}
+              </p>
+            </div>
           </div>
         </div>
       </header>
@@ -108,7 +112,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
   const totalAcre = rows.reduce((s, r) => s + (r.acres || 0), 0);
   const totalGunta = rows.reduce((s, r) => s + (r.guntas || 0), 0);
 
-  if (data.type === "land-conversion") {
+  if (data.type === DebitNoteType.LAND_CONVERSION) {
     const detailPages = chunkRows(rows, 14);
     return (
       <article className="mx-auto w-full max-w-[210mm] bg-white font-serif text-[11px] text-[#111827]">

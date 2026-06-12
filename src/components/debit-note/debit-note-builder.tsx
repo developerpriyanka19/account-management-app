@@ -2,11 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Eye, Loader2, Printer, Save } from "lucide-react";
+import { Download, Eye, Loader2, Printer, Save, X } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,14 +23,28 @@ import type {
   DebitNoteCustomerOption,
   DebitNoteFarmerOption,
   DebitNotePayload,
-  DebitNoteType,
   LandConversionRow,
 } from "@/lib/debit-note-types";
+import { DebitNoteType } from "@/lib/debit-note-types";
+import {
+  DN_ACTION_COL_W,
+  DN_ATL_HEADER_H,
+  DN_SL_COL_W,
+  dnBodyActionStyle,
+  dnBodyFarmerStyle,
+  dnBodySurveyStyle,
+  dnHeaderActionStyle,
+  dnHeaderFarmerStyle,
+  dnHeaderScrollStyle,
+  dnHeaderSurveyStyle,
+  dnRowBackground,
+} from "@/lib/debit-note-table-sticky";
 
 type Props = {
   type: DebitNoteType;
   title: string;
   nextNumber: string;
+  listHref: string;
   customers: DebitNoteCustomerOption[];
   farmers: DebitNoteFarmerOption[];
   existing?: DebitNotePayload;
@@ -51,7 +71,15 @@ function buildCustomerAddress(customer: DebitNoteCustomerOption | undefined) {
     .join(", ");
 }
 
-export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, existing }: Props) {
+export function DebitNoteBuilder({
+  type,
+  title,
+  nextNumber,
+  listHref,
+  customers,
+  farmers,
+  existing,
+}: Props) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -72,10 +100,15 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
   const [rows, setRows] = useState<(LandConversionRow | AtlPoaRow)[]>(existing?.rows ?? []);
   const [farmerSearch, setFarmerSearch] = useState("");
   const [showFarmerList, setShowFarmerList] = useState(false);
-  const [farmerHighlight, setFarmerHighlight] = useState(0);
   const [pendingFocusRow, setPendingFocusRow] = useState<number | null>(null);
+  const [removeRowIndex, setRemoveRowIndex] = useState<number | null>(null);
   const customerBoxRef = useRef<HTMLDivElement>(null);
   const farmerBoxRef = useRef<HTMLDivElement>(null);
+
+  const selectedFarmerIds = useMemo(
+    () => new Set(rows.map((r) => r.farmerId).filter((id): id is number => id != null)),
+    [rows],
+  );
 
   const customer = useMemo(
     () => customers.find((c) => c.id === customerId),
@@ -90,11 +123,12 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
 
   const filteredFarmers = useMemo(() => {
     const q = farmerSearch.trim().toLowerCase();
-    if (!q) return farmers.slice(0, 25);
-    return farmers
+    const available = farmers.filter((f) => !selectedFarmerIds.has(f.id));
+    if (!q) return available.slice(0, 25);
+    return available
       .filter((f) => f.farmerName.toLowerCase().includes(q))
       .slice(0, 25);
-  }, [farmers, farmerSearch]);
+  }, [farmers, farmerSearch, selectedFarmerIds]);
 
   const filteredCustomers = useMemo(() => {
     const q = customerSearch.trim().toLowerCase();
@@ -107,10 +141,6 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
   useEffect(() => {
     setCustomerHighlight(0);
   }, [customerSearch, showCustomerList]);
-
-  useEffect(() => {
-    setFarmerHighlight(0);
-  }, [farmerSearch, showFarmerList]);
 
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
@@ -165,7 +195,7 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
   function addRowFromFarmer(farmerId: number) {
     const f = farmers.find((row) => row.id === farmerId);
     if (!f) return;
-    if (type === "land-conversion") {
+    if (type === DebitNoteType.LAND_CONVERSION) {
       const row: LandConversionRow = {
         farmerId: f.id,
         farmerName: f.farmerName,
@@ -182,6 +212,8 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
         remarks: "",
       };
       setRows((prev) => [...prev, row]);
+      setFarmerSearch("");
+      setShowFarmerList(false);
       return;
     }
     const row: AtlPoaRow = {
@@ -216,12 +248,46 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
     const selected = customers.find((c) => c.id === nextId);
     if (selected) {
       setDistrict(selected.district ?? "");
-      setTaluk(selected.locality ?? "");
+      setTaluk(selected.taluk ?? selected.locality ?? "");
       setVillage(selected.village ?? "");
-      setHobbli(selected.street ?? "");
+      setHobbli(selected.hobbli ?? selected.street ?? "");
       setCustomerSearch("");
     }
     setShowCustomerList(false);
+  }
+
+  function toggleFarmerSelection(farmerId: number, checked: boolean) {
+    if (!checked) return;
+    if (selectedFarmerIds.has(farmerId)) return;
+    addRowFromFarmer(farmerId);
+  }
+
+  function confirmRemoveFarmer() {
+    if (removeRowIndex == null) return;
+    setRows((prev) => prev.filter((_, i) => i !== removeRowIndex));
+    setRemoveRowIndex(null);
+  }
+
+  function farmerNameDisplay(name: string) {
+    return <span className="block truncate">{name}</span>;
+  }
+
+  function actionCell(rowIndex: number, name: string, rowBg: string) {
+    return (
+      <td
+        className="border border-[#E5E7EB] px-1 py-1.5 text-center"
+        style={dnBodyActionStyle(rowBg)}
+      >
+        <button
+          type="button"
+          aria-label={`Remove ${name}`}
+          onClick={() => setRemoveRowIndex(rowIndex)}
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-[#DC2626] hover:bg-[#FEE2E2]"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </td>
+    );
   }
 
   function updateLandRow(i: number, patch: Partial<LandConversionRow>) {
@@ -262,7 +328,7 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
         return;
       }
       toast.success(status === "DRAFT" ? "Draft saved." : "Debit note saved.");
-      router.push(status === "FINAL" ? `/debit-note/${result.id}` : "/debit-note/all");
+      router.push(listHref);
       router.refresh();
     });
   }
@@ -313,7 +379,7 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
                     setShowCustomerList(false);
                   }
                 }}
-                placeholder="Search customer..."
+                placeholder="Search Customer"
               />
               {showCustomerList ? (
                 <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-[#D1D5DB] bg-white shadow-lg">
@@ -357,9 +423,9 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
       </section>
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4">
-        <div className="mb-3">
+        <div className="relative z-[50] mb-3">
           <Label>Add Farmer Row</Label>
-          <div ref={farmerBoxRef} className="relative mt-1 max-w-xl">
+          <div ref={farmerBoxRef} className="relative mt-1 w-full max-w-[620px]">
             <Input
               value={farmerSearch}
               onChange={(e) => {
@@ -368,191 +434,295 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
               }}
               onFocus={() => setShowFarmerList(true)}
               onKeyDown={(e) => {
-                if (!showFarmerList && (e.key === "ArrowDown" || e.key === "Enter")) {
-                  setShowFarmerList(true);
-                  e.preventDefault();
-                  return;
-                }
-                if (!showFarmerList) return;
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setFarmerHighlight((i) => Math.min(i + 1, Math.max(0, filteredFarmers.length - 1)));
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setFarmerHighlight((i) => Math.max(i - 1, 0));
-                } else if (e.key === "Enter" && filteredFarmers[farmerHighlight]) {
-                  e.preventDefault();
-                  addRowFromFarmer(filteredFarmers[farmerHighlight]!.id);
-                } else if (e.key === "Escape") {
+                if (e.key === "Escape") {
                   setShowFarmerList(false);
                 }
               }}
               placeholder="Search farmer name..."
             />
             {showFarmerList ? (
-              <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-[#D1D5DB] bg-white shadow-lg">
-                {filteredFarmers.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-[#6B7280]">No farmers found.</p>
-                ) : (
-                  filteredFarmers.map((f, idx) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => addRowFromFarmer(f.id)}
-                      onMouseEnter={() => setFarmerHighlight(idx)}
-                      className={`block w-full border-b border-[#F3F4F6] px-3 py-2 text-left text-xs ${
-                        idx === farmerHighlight ? "bg-[#EFF6FF]" : "hover:bg-[#F9FAFB]"
-                      }`}
-                    >
-                      <span className="font-medium">{f.farmerName}</span>
-                      <span className="ml-1 text-[#6B7280]">· {f.surveyNo || "—"}</span>
-                    </button>
-                  ))
-                )}
+              <div
+                className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 flex max-h-[260px] flex-col overflow-hidden rounded-lg border border-[#D1D5DB] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                role="listbox"
+                aria-label="Farmer search results"
+              >
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {filteredFarmers.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-[#6B7280]">No farmers found.</p>
+                  ) : (
+                    filteredFarmers.map((f) => (
+                      <label
+                        key={f.id}
+                        className="flex cursor-pointer items-center gap-2 border-b border-[#F3F4F6] px-3 py-2 text-xs hover:bg-[#F9FAFB]"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-[#D1D5DB]"
+                          checked={false}
+                          onChange={(e) => toggleFarmerSelection(f.id, e.target.checked)}
+                        />
+                        <span>
+                          <span className="font-medium">{f.farmerName}</span>
+                          <span className="ml-1 text-[#6B7280]">- {f.surveyNo || "—"}</span>
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                <div className="sticky bottom-0 shrink-0 border-t border-[#E5E7EB] bg-white px-2.5 py-2.5 text-right">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowFarmerList(false)}
+                  >
+                    Done
+                  </Button>
+                </div>
               </div>
             ) : null}
           </div>
         </div>
 
-        <div className="max-h-[65vh] overflow-auto rounded border border-[#E5E7EB]">
-          {type === "land-conversion" ? (
-            <table className="min-w-[1700px] w-full text-xs">
-              <thead className="bg-[#F9FAFB]">
+        <div className="relative z-0 max-h-[65vh] overflow-auto rounded border border-[#E5E7EB]">
+          {type === DebitNoteType.LAND_CONVERSION ? (
+            <table
+              className="border-separate border-spacing-0 text-xs"
+              style={{ minWidth: `${1700 + DN_ACTION_COL_W}px` }}
+            >
+              <thead>
                 <tr>
-                  <th className="px-2 py-2">Sl No</th><th className="px-2 py-2 text-left">Farmer Name</th><th className="px-2 py-2 text-left">Survey No</th>
-                  <th className="px-2 py-2 text-right">NA Extent Acre</th><th className="px-2 py-2 text-right">Gunta</th>
-                  <th className="px-2 py-2 text-left">Land Conversion Fee Challan Ref No</th><th className="px-2 py-2 text-right">Land Conversion Fee</th>
-                  <th className="px-2 py-2 text-left">Podi Fee Challan Ref No</th><th className="px-2 py-2 text-right">Podi Fee</th>
-                  <th className="px-2 py-2 text-left">Other Recoveries Challan Ref No</th><th className="px-2 py-2 text-right">Other Recoveries Fee</th>
-                  <th className="px-2 py-2 text-right">Total</th>
+                  <th
+                    className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]"
+                    style={{
+                      ...dnHeaderScrollStyle(0, "#F9FAFB"),
+                      width: DN_SL_COL_W,
+                      minWidth: DN_SL_COL_W,
+                    }}
+                  >
+                    Sl No
+                  </th>
+                  <th
+                    className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]"
+                    style={dnHeaderFarmerStyle(0, "#F9FAFB")}
+                  >
+                    Farmer Name
+                  </th>
+                  <th
+                    className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]"
+                    style={dnHeaderSurveyStyle(0, "#F9FAFB")}
+                  >
+                    Survey No
+                  </th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>NA Extent Acre</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Gunta</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee Challan Ref No</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee Challan Ref No</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Challan Ref No</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Fee</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Total</th>
+                  <th
+                    className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]"
+                    style={dnHeaderActionStyle(0, "#F9FAFB")}
+                  >
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => {
                   const r = row as LandConversionRow;
+                  const rowBg = dnRowBackground(i);
                   return (
-                    <tr key={i} className={i % 2 === 1 ? "bg-[#FAFBFC]" : ""}>
-                      <td className="px-2 py-1.5 text-center">{i + 1}</td>
-                      <td className="px-2 py-1.5">{r.farmerName}</td>
-                      <td className="px-2 py-1.5">{r.surveyNo}</td>
-                      <td className="px-2 py-1.5 text-right">{r.acres ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right">{r.guntas ?? "—"}</td>
-                      <td className="px-2 py-1.5"><Input value={r.landConversionChallanRefNo} onChange={(e) => updateLandRow(i, { landConversionChallanRefNo: e.target.value })} className="h-8" /></td>
-                      <td className="px-2 py-1.5"><Input type="number" value={r.landConversionFee} onChange={(e) => updateLandRow(i, { landConversionFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="px-2 py-1.5"><Input value={r.podiChallanRefNo} onChange={(e) => updateLandRow(i, { podiChallanRefNo: e.target.value })} className="h-8" /></td>
-                      <td className="px-2 py-1.5"><Input type="number" value={r.podiFee} onChange={(e) => updateLandRow(i, { podiFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="px-2 py-1.5"><Input value={r.recoveryChallanRefNo} onChange={(e) => updateLandRow(i, { recoveryChallanRefNo: e.target.value })} className="h-8" /></td>
-                      <td className="px-2 py-1.5"><Input type="number" value={r.recoveryFee} onChange={(e) => updateLandRow(i, { recoveryFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="px-2 py-1.5 text-right font-semibold">{r.total.toFixed(2)}</td>
+                    <tr key={i}>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-center" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }}>{i + 1}</td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}>{farmerNameDisplay(r.farmerName)}</td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}>{r.surveyNo}</td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right" style={{ backgroundColor: rowBg }}>{r.acres ?? "—"}</td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right" style={{ backgroundColor: rowBg }}>{r.guntas ?? "—"}</td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.landConversionChallanRefNo} onChange={(e) => updateLandRow(i, { landConversionChallanRefNo: e.target.value })} className="h-8" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.landConversionFee} onChange={(e) => updateLandRow(i, { landConversionFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.podiChallanRefNo} onChange={(e) => updateLandRow(i, { podiChallanRefNo: e.target.value })} className="h-8" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.podiFee} onChange={(e) => updateLandRow(i, { podiFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.recoveryChallanRefNo} onChange={(e) => updateLandRow(i, { recoveryChallanRefNo: e.target.value })} className="h-8" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.recoveryFee} onChange={(e) => updateLandRow(i, { recoveryFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right font-semibold" style={{ backgroundColor: rowBg }}>{r.total.toFixed(2)}</td>
+                      {actionCell(i, r.farmerName, rowBg)}
                     </tr>
                   );
                 })}
-                <tr className="bg-[#F9FAFB] font-semibold">
-                  <td colSpan={3} className="px-2 py-2 text-right">Totals</td>
-                  <td className="px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as LandConversionRow).acres || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as LandConversionRow).guntas || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2" />
-                  <td className="px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as LandConversionRow).landConversionFee || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2" />
-                  <td className="px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as LandConversionRow).podiFee || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2" />
-                  <td className="px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as LandConversionRow).recoveryFee || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2 text-right">{totals.total.toFixed(2)}</td>
+                <tr className="font-semibold">
+                  {(() => {
+                    const rowBg = dnRowBackground(0, "totals");
+                    return (
+                      <>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={dnBodyFarmerStyle(rowBg)}>Totals</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={dnBodySurveyStyle(rowBg)} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as LandConversionRow).acres || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as LandConversionRow).guntas || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as LandConversionRow).landConversionFee || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as LandConversionRow).podiFee || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as LandConversionRow).recoveryFee || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
+                      </>
+                    );
+                  })()}
                 </tr>
               </tbody>
             </table>
           ) : (
-            <table className="min-w-[1800px] w-full border-collapse text-xs">
-              <thead className="bg-[#F9FAFB]">
+            <table
+              className="border-separate border-spacing-0 text-xs"
+              style={{ minWidth: `${1800 + DN_ACTION_COL_W}px` }}
+            >
+              <thead>
                 <tr>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center">Sl No</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-left">Farmer Name</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-left">Survey No</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center" colSpan={2}>RTC Extent</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center" colSpan={2}>Lease Extent</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-right">ATL Charges</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-right">POA Charges</th>
-                  <th className="sticky top-0 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center" colSpan={5}>AES Pay To Farmers Cheque And Cash</th>
+                  <th
+                    rowSpan={2}
+                    className="border border-[#D1D5DB] px-2 py-2 text-center font-semibold text-[#374151]"
+                    style={{
+                      ...dnHeaderScrollStyle(0, "#F9FAFB"),
+                      width: DN_SL_COL_W,
+                      minWidth: DN_SL_COL_W,
+                    }}
+                  >
+                    Sl No
+                  </th>
+                  <th
+                    rowSpan={2}
+                    className="border border-[#D1D5DB] px-2 py-2 text-left font-semibold text-[#374151]"
+                    style={dnHeaderFarmerStyle(0, "#F9FAFB")}
+                  >
+                    Farmer Name
+                  </th>
+                  <th
+                    rowSpan={2}
+                    className="border border-[#D1D5DB] px-2 py-2 text-left font-semibold text-[#374151]"
+                    style={dnHeaderSurveyStyle(0, "#F9FAFB")}
+                  >
+                    Survey No
+                  </th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={2}>RTC Extent</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={2}>Lease Extent</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>ATL Charges</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>POA Charges</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={5}>AES Pay To Farmers Cheque And Cash</th>
+                  <th
+                    rowSpan={2}
+                    className="border border-[#D1D5DB] px-2 py-2 text-center font-semibold text-[#374151]"
+                    style={dnHeaderActionStyle(0, "#F9FAFB")}
+                  >
+                    Action
+                  </th>
                 </tr>
                 <tr>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1" colSpan={3} />
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right">Acre</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right">Gunta</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right">Acre</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right">Gunta</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1" colSpan={2} />
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1">Cheque No</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1">Date</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right">Amount</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1">Bank Name</th>
-                  <th className="sticky top-8 border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right">Cash</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Acre</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Gunta</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Acre</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Gunta</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")} colSpan={2} />
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Cheque No</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Date</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Amount</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Bank Name</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Cash</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => {
                   const r = row as AtlPoaRow;
+                  const rowBg = dnRowBackground(i);
                   return (
-                    <tr key={i} className={i % 2 === 1 ? "bg-[#FAFBFC]" : ""}>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5 text-center">{i + 1}</td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input value={r.farmerName} onChange={(e) => updateAtlRow(i, { farmerName: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input value={r.surveyNo} onChange={(e) => updateAtlRow(i, { surveyNo: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.rtcAcre ?? ""} onChange={(e) => updateAtlRow(i, { rtcAcre: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.rtcGunta ?? ""} onChange={(e) => updateAtlRow(i, { rtcGunta: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.leaseAcre ?? ""} onChange={(e) => updateAtlRow(i, { leaseAcre: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.leaseGunta ?? ""} onChange={(e) => updateAtlRow(i, { leaseGunta: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input data-focus-field="atl" data-row-index={i} type="number" value={r.atlCharges} onChange={(e) => updateAtlRow(i, { atlCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.poaCharges} onChange={(e) => updateAtlRow(i, { poaCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input value={r.chequeNo} onChange={(e) => updateAtlRow(i, { chequeNo: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="date" value={r.chequeDate} onChange={(e) => updateAtlRow(i, { chequeDate: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.chequeAmount} onChange={(e) => updateAtlRow(i, { chequeAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input value={r.bankName} onChange={(e) => updateAtlRow(i, { bankName: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5"><Input type="number" value={r.cashAmount} onChange={(e) => updateAtlRow(i, { cashAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                    <tr key={i}>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5 text-center" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }}>{i + 1}</td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}>{farmerNameDisplay(r.farmerName)}</td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}><Input value={r.surveyNo} onChange={(e) => updateAtlRow(i, { surveyNo: e.target.value })} className="h-8" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.rtcAcre ?? ""} onChange={(e) => updateAtlRow(i, { rtcAcre: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.rtcGunta ?? ""} onChange={(e) => updateAtlRow(i, { rtcGunta: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.leaseAcre ?? ""} onChange={(e) => updateAtlRow(i, { leaseAcre: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.leaseGunta ?? ""} onChange={(e) => updateAtlRow(i, { leaseGunta: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input data-focus-field="atl" data-row-index={i} type="number" value={r.atlCharges} onChange={(e) => updateAtlRow(i, { atlCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.poaCharges} onChange={(e) => updateAtlRow(i, { poaCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.chequeNo} onChange={(e) => updateAtlRow(i, { chequeNo: e.target.value })} className="h-8" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="date" value={r.chequeDate} onChange={(e) => updateAtlRow(i, { chequeDate: e.target.value })} className="h-8" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.chequeAmount} onChange={(e) => updateAtlRow(i, { chequeAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.bankName} onChange={(e) => updateAtlRow(i, { bankName: e.target.value })} className="h-8" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.cashAmount} onChange={(e) => updateAtlRow(i, { cashAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      {actionCell(i, r.farmerName, rowBg)}
                     </tr>
                   );
                 })}
-                <tr className="bg-[#F9FAFB] font-semibold">
-                  <td colSpan={3} className="border border-[#D1D5DB] px-2 py-2 text-right">Totals</td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).rtcAcre || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).rtcGunta || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).leaseAcre || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).leaseGunta || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).atlCharges || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).poaCharges || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2" />
-                  <td className="border border-[#D1D5DB] px-2 py-2" />
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).chequeAmount || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="border border-[#D1D5DB] px-2 py-2" />
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">
-                    {rows.reduce((s, r) => s + ((r as AtlPoaRow).cashAmount || 0), 0).toFixed(2)}
-                  </td>
+                <tr className="font-semibold">
+                  {(() => {
+                    const rowBg = dnRowBackground(0, "totals");
+                    return (
+                      <>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }} />
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={dnBodyFarmerStyle(rowBg)}>Totals</td>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodySurveyStyle(rowBg)} />
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).rtcAcre || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).rtcGunta || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).leaseAcre || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).leaseGunta || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).atlCharges || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).poaCharges || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).chequeAmount || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).cashAmount || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
+                      </>
+                    );
+                  })()}
                 </tr>
-                <tr className="bg-white font-semibold">
-                  <td colSpan={13} className="border border-[#D1D5DB] px-2 py-2 text-right">Total Amount</td>
-                  <td className="border border-[#D1D5DB] px-2 py-2 text-right">{totals.total.toFixed(2)}</td>
+                <tr className="font-semibold">
+                  {(() => {
+                    const rowBg = "#FFFFFF";
+                    return (
+                      <>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }} />
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={dnBodyFarmerStyle(rowBg)}>Total Amount</td>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodySurveyStyle(rowBg)} />
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} colSpan={10} />
+                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
+                      </>
+                    );
+                  })()}
                 </tr>
               </tbody>
             </table>
@@ -575,6 +745,27 @@ export function DebitNoteBuilder({ type, title, nextNumber, customers, farmers, 
         </Button>
         <Button type="button" onClick={() => onSave("FINAL")} disabled={pending || !payload}>Save</Button>
       </div>
+
+      <Dialog open={removeRowIndex != null} onOpenChange={(open) => !open && setRemoveRowIndex(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove this farmer from debit note?</DialogTitle>
+            <DialogDescription>The farmer will be available to add again from search.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setRemoveRowIndex(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#DC2626] text-white hover:bg-[#B91C1C]"
+              onClick={confirmRemoveFarmer}
+            >
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent

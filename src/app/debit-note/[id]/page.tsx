@@ -4,6 +4,7 @@ import { getDebitNoteById } from "@/actions/debit-note-actions";
 import { ToastProvider } from "@/components/customer/toast";
 import { DebitNoteViewClient } from "@/components/debit-note/debit-note-view-client";
 import { debitNoteRecordToPayload } from "@/lib/debit-note-data";
+import { debitNoteListPath } from "@/lib/debit-note-routes";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -19,6 +20,7 @@ export default async function DebitNoteViewPage({ params, searchParams }: Props)
   if (!record) notFound();
 
   const document = debitNoteRecordToPayload(record);
+  const listHref = debitNoteListPath(document.type);
   const customerName =
     record.customer.companyName?.trim() ||
     `${record.customer.firstName} ${record.customer.lastName}`.trim() ||
@@ -40,8 +42,8 @@ export default async function DebitNoteViewPage({ params, searchParams }: Props)
     <ToastProvider>
       <div className="px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <Link href="/debit-note/all" className="text-sm font-medium text-[#2563EB] hover:underline">
-            ← Back to All Debit Notes
+          <Link href={listHref} className="text-sm font-medium text-[#2563EB] hover:underline">
+            ← Back to Debit Notes
           </Link>
           <p className="text-sm text-[#6B7280]">{document.debitNoteNo}</p>
         </div>

@@ -42,7 +42,6 @@ export const SIDEBAR_DEBIT_NOTE_GROUP: SidebarNavGroup = {
   items: [
     { label: "Land Conversion", href: "/debit-note/land-conversion" },
     { label: "ATL and POA/GPA", href: "/debit-note/atl-poa-gpa" },
-    { label: "All Debit Notes", href: "/debit-note/all" },
   ],
 };
 
@@ -63,19 +62,17 @@ export function isSidebarPathActive(pathname: string, href: string): boolean {
   if (href === "/customers-management") {
     return pathname === "/customers-management" || pathname.startsWith("/customers-management/");
   }
-  if (href === "/debit-note/all") {
-    return (
-      pathname === "/debit-note/all" ||
-      pathname.startsWith("/debit-note/all/") ||
-      /^\/debit-note\/\d+(\/edit)?$/.test(pathname) ||
-      /^\/debit-note\/view\/\d+$/.test(pathname)
-    );
-  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function isSidebarGroupActive(pathname: string, group: SidebarNavGroup): boolean {
   if (group.id === "invoice" && /^\/invoice\/\d+/.test(pathname)) {
+    return true;
+  }
+  if (
+    group.id === "debit-note" &&
+    (/^\/debit-note\/\d+/.test(pathname) || /^\/debit-note\/view\/\d+$/.test(pathname))
+  ) {
     return true;
   }
   return group.items.some((item) => isSidebarPathActive(pathname, item.href));

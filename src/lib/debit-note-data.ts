@@ -1,4 +1,5 @@
 import type { DebitNotePayload } from "@/lib/debit-note-types";
+import { normalizeDebitNoteType, DebitNoteType } from "@/lib/debit-note-types";
 
 type DebitNoteRecord = {
   id: number;
@@ -44,9 +45,9 @@ type DebitNoteRecord = {
 };
 
 export function debitNoteRecordToPayload(record: DebitNoteRecord): DebitNotePayload {
-  const type = record.type === "atl-poa-gpa" ? "atl-poa-gpa" : "land-conversion";
+  const type = normalizeDebitNoteType(record.type);
   const rows =
-    type === "land-conversion"
+    type === DebitNoteType.LAND_CONVERSION
       ? record.items.map((item) => ({
           farmerId: item.farmerId,
           farmerName: item.farmerName ?? "",

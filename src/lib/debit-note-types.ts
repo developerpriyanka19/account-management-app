@@ -1,9 +1,22 @@
-export type DebitNoteType = "land-conversion" | "atl-poa-gpa";
+export const DebitNoteType = {
+  LAND_CONVERSION: "LAND_CONVERSION",
+  ATL_POA: "ATL_POA",
+} as const;
+
+export type DebitNoteType = (typeof DebitNoteType)[keyof typeof DebitNoteType];
 
 export const DEBIT_NOTE_TYPE_OPTIONS: { value: DebitNoteType; label: string }[] = [
-  { value: "land-conversion", label: "Land Conversion" },
-  { value: "atl-poa-gpa", label: "ATL and POA/GPA" },
+  { value: DebitNoteType.LAND_CONVERSION, label: "Land Conversion" },
+  { value: DebitNoteType.ATL_POA, label: "ATL and POA/GPA" },
 ];
+
+/** Normalize legacy stored values to current enum. */
+export function normalizeDebitNoteType(type: string): DebitNoteType {
+  if (type === DebitNoteType.ATL_POA || type === "atl-poa-gpa") {
+    return DebitNoteType.ATL_POA;
+  }
+  return DebitNoteType.LAND_CONVERSION;
+}
 
 export type DebitNoteCustomerOption = {
   id: number;
@@ -15,6 +28,8 @@ export type DebitNoteCustomerOption = {
   street: string | null;
   locality: string | null;
   village: string | null;
+  taluk: string | null;
+  hobbli: string | null;
   district: string | null;
   state: string | null;
   pincode: string | null;

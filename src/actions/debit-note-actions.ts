@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { debitNoteListPath } from "@/lib/debit-note-routes";
 import type { DebitNotePayload, DebitNoteType } from "@/lib/debit-note-types";
+import { DebitNoteType as DNType, normalizeDebitNoteType } from "@/lib/debit-note-types";
+
+export type DebitNoteListSortField = "date" | "amount" | "customer";
 
 export async function getDebitNoteBuilderData() {
   const [customers, farmers] = await Promise.all([
@@ -19,6 +23,8 @@ export async function getDebitNoteBuilderData() {
         street: true,
         locality: true,
         village: true,
+        taluk: true,
+        hobbli: true,
         district: true,
         state: true,
         pincode: true,
@@ -49,6 +55,8 @@ export async function getDebitNoteBuilderData() {
       street: c.street,
       locality: c.locality,
       village: c.village,
+      taluk: c.taluk,
+      hobbli: c.hobbli,
       district: c.district,
       state: c.state,
       pincode: c.pincode,
@@ -67,10 +75,24 @@ export async function getDebitNoteBuilderData() {
   };
 }
 
+export async function getDebitNoteCustomerOptions() {
+  const { customers } = await getDebitNoteBuilderData();
+  return customers;
+}
+
 export async function getNextDebitNoteNumber(type: DebitNoteType): Promise<string> {
-  const prefix = type === "land-conversion" ? "DNL" : "DNA";
+  const prefix = type === DNType.LAND_CONVERSION ? "DNL" : "DAP";
   const count = await prisma.debitNote.count({ where: { type } });
   return `${prefix}-${String(count + 1).padStart(4, "0")}`;
+}
+
+function debitNoteListOrderBy(sort: DebitNoteListSortField, sortDir: "asc" | "desc") {
+  const dir = sortDir;
+  if (sort === "amount") return { total: dir };
+  if (sort === "customer") {
+    return [{ customer: { companyName: dir } }, { customer: { firstName: dir } }];
+  }
+  return { date: dir };
 }
 
 export async function saveDebitNote(
@@ -105,7 +127,7 @@ export async function saveDebitNote(
         remarks: row.remarks || null,
         total: row.total || 0,
       };
-      if (payload.type === "land-conversion") {
+      if (payload.type === DNType.LAND_CONVERSION) {
         const r = row as {
           acres: number | null;
           guntas: number | null;
@@ -177,9 +199,9 @@ export async function saveDebitNote(
           },
         });
 
-    revalidatePath("/debit-note/land-conversion");
-    revalidatePath("/debit-note/atl-poa-gpa");
-    revalidatePath("/debit-note/all");
+    const listPath = debitNoteListPath(normalizeDebitNoteType(payload.type));
+    revalidatePath(listPath);
+    revalidatePath(`${listPath}/create`);
     revalidatePath(`/debit-note/${result.id}`);
 
     return { ok: true, id: result.id };
@@ -201,31 +223,47 @@ export async function saveDebitNote(
 }
 
 export async function getDebitNoteList(input: {
+  type: DebitNoteType;
   query?: string;
-  type?: DebitNoteType | "all";
   status?: "DRAFT" | "FINAL" | "all";
-  date?: string;
+  customerId?: number;
+  dateFrom?: string;
+  dateTo?: string;
   page?: number;
   pageSize?: number;
+  sort?: DebitNoteListSortField;
+  sortDir?: "asc" | "desc";
 }) {
   const query = (input.query ?? "").trim();
-  const type = input.type ?? "all";
   const status = input.status ?? "all";
-  const date = (input.date ?? "").trim();
+  const dateFrom = (input.dateFrom ?? "").trim();
+  const dateTo = (input.dateTo ?? "").trim();
   const pageSize = Math.max(1, Math.min(input.pageSize ?? 10, 50));
   const page = Math.max(1, input.page ?? 1);
+  const sort = input.sort === "amount" || input.sort === "customer" ? input.sort : "date";
+  const sortDir = input.sortDir === "asc" ? "asc" : "desc";
 
   const where = {
-    ...(type !== "all" ? { type } : {}),
+    type: input.type,
     ...(status !== "all" ? { status } : {}),
-    ...(date ? { date } : {}),
+    ...(input.customerId ? { customerId: input.customerId } : {}),
+    ...(dateFrom || dateTo
+      ? {
+          date: {
+            ...(dateFrom ? { gte: dateFrom } : {}),
+            ...(dateTo ? { lte: dateTo } : {}),
+          },
+        }
+      : {}),
     ...(query
       ? {
           OR: [
             { debitNoteNo: { contains: query, mode: "insensitive" as const } },
+            { village: { contains: query, mode: "insensitive" as const } },
             { customer: { companyName: { contains: query, mode: "insensitive" as const } } },
             { customer: { firstName: { contains: query, mode: "insensitive" as const } } },
             { customer: { lastName: { contains: query, mode: "insensitive" as const } } },
+            { items: { some: { farmerName: { contains: query, mode: "insensitive" as const } } } },
           ],
         }
       : {}),
@@ -235,7 +273,7 @@ export async function getDebitNoteList(input: {
     prisma.debitNote.count({ where }),
     prisma.debitNote.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: debitNoteListOrderBy(sort, sortDir),
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
@@ -245,12 +283,6 @@ export async function getDebitNoteList(input: {
             firstName: true,
             lastName: true,
             gstNumber: true,
-            companyAddress: true,
-            buildingNumber: true,
-            street: true,
-            locality: true,
-            district: true,
-            pincode: true,
           },
         },
       },
@@ -294,8 +326,15 @@ export async function deleteDebitNote(
     return { ok: false, message: "Invalid debit note id." };
   }
   try {
+    const record = await prisma.debitNote.findUnique({
+      where: { id },
+      select: { type: true },
+    });
     await prisma.debitNote.delete({ where: { id } });
-    revalidatePath("/debit-note/all");
+    if (record) {
+      const listPath = debitNoteListPath(normalizeDebitNoteType(record.type));
+      revalidatePath(listPath);
+    }
     revalidatePath("/debit-note/land-conversion");
     revalidatePath("/debit-note/atl-poa-gpa");
     return { ok: true };

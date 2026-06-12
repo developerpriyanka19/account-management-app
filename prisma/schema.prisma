@@ -208,7 +208,7 @@ model InvoiceItem {
 
 model DebitNote {
   id            Int      @id @default(autoincrement())
-  type          String   // "land-conversion" | "atl-poa-gpa"
+  type          String   // "LAND_CONVERSION" | "ATL_POA"
   customerId    Int
   debitNoteNo   String   @unique
   date          String // YYYY-MM-DD
