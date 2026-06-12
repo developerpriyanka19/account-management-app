@@ -78,7 +78,7 @@ export function defaultSubtypeForCategory(category: InvoiceCategory): string {
 /** Issuing company — static on all NA invoice PDFs. */
 export const COMPANY_INVOICE_HEADER = {
   name: "APOORVA ENERGY SOLUTIONS",
-  gstin: "29AUPJ5095P1ZC",
+  gstin: "29AIJPJ5095P1ZC",
   signatureName: "Apoorva Energy Solutions",
   footerAddress:
     "No 15 & 18 Riddi Siddi Complex, 2nd Floor Opp Giants School, Chaitanya Colony, R N Shetty Road, Hubli - 580030",
