@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveDebitNote } from "@/actions/debit-note-actions";
 import { DebitNoteTemplate } from "@/components/debit-note/debit-note-template";
+import { PreviewDialog } from "@/components/preview/preview-dialog";
 import type {
   AtlPoaRow,
   DebitNoteCustomerOption,
@@ -767,25 +768,23 @@ export function DebitNoteBuilder({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent
-          className="w-[min(100%,220mm)] max-h-[92vh] overflow-y-auto bg-[#F3F4F6]"
-          onEscapeKeyDown={() => setShowPreview(false)}
-          onPointerDownOutside={() => setShowPreview(false)}
-        >
-          <DialogHeader><DialogTitle>Debit Note Preview</DialogTitle></DialogHeader>
-          {payload ? (
-            <div ref={printRef} className="mx-auto w-full overflow-x-auto">
-              <DebitNoteTemplate
-                data={payload}
-                customerName={customer?.label || ""}
-                gstNumber={customer?.gstNumber || ""}
-                address={buildCustomerAddress(customer)}
-              />
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <PreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        title="Debit Note Preview"
+        className="bg-[#F3F4F6]"
+      >
+        {payload ? (
+          <div ref={printRef} className="mx-auto w-full overflow-x-auto">
+            <DebitNoteTemplate
+              data={payload}
+              customerName={customer?.label || ""}
+              gstNumber={customer?.gstNumber || ""}
+              address={buildCustomerAddress(customer)}
+            />
+          </div>
+        ) : null}
+      </PreviewDialog>
       {!showPreview ? (
         <div className="hidden">
           {payload ? (

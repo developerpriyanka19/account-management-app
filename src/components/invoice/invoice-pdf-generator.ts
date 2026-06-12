@@ -13,6 +13,7 @@ import {
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
 import { drawCompanyBrandHeaderPdf } from "@/lib/company-brand-header-pdf";
+import { drawCompanyDocumentFooterPdf } from "@/lib/company-document-footer-pdf";
 import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
 import {
   buildNaInvoiceTableBody,
@@ -175,25 +176,15 @@ function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: nu
 }
 
 function drawPageFooter(pdf: jsPDF, pageNumber: number, pageCount: number) {
-  const footerY = PAGE_H - MARGIN.bottom;
-  pdf.setFontSize(7);
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.setTextColor(0, 0, 0);
-  const footerStartY = footerY - 6.5;
-  COMPANY_INVOICE_HEADER.footerAddressLines.forEach((line, index) => {
-    pdf.text(line, PAGE_W / 2, footerStartY + index * 2.6, {
-      align: "center",
-      maxWidth: CONTENT_W,
-    });
+  drawCompanyDocumentFooterPdf({
+    pdf,
+    pageWidth: PAGE_W,
+    pageHeight: PAGE_H,
+    bottomMargin: MARGIN.bottom,
+    contentWidth: CONTENT_W,
+    pageNumber,
+    pageCount,
   });
-  if (pageCount > 1) {
-    pdf.setFontSize(6);
-    pdf.setTextColor(100, 100, 100);
-    pdf.text(`Page ${pageNumber} of ${pageCount}`, PAGE_W - MARGIN.right, footerY, {
-      align: "right",
-    });
-    pdf.setTextColor(0, 0, 0);
-  }
 }
 
 async function generateNaInvoicePdf(document: InvoiceDocumentData) {

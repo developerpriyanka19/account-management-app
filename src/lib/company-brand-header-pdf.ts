@@ -21,8 +21,7 @@ type DrawBrandHeaderOptions = {
 };
 
 /**
- * Draw shared brand header: logo + company name, green rule, centered document title.
- * Returns Y position after header (including bottom margin).
+ * Logo left; company name centered across full header width; green rule; centered document title.
  */
 export function drawCompanyBrandHeaderPdf({
   pdf,
@@ -34,18 +33,18 @@ export function drawCompanyBrandHeaderPdf({
   startY,
 }: DrawBrandHeaderOptions): number {
   const rightX = pageWidth - rightMargin;
-  const contentW = rightX - leftMargin;
-  const { logoHeight, gap, companyFontSize, titleFontSize, lineWidth, metadataMargin } =
+  const { logoHeight, companyFontSize, titleFontSize, lineWidth, metadataMargin } =
     INVOICE_LOGO_PDF_MM;
 
   pdf.addImage(logoDataUrl, "PNG", leftMargin, startY, logoHeight, logoHeight);
 
-  const textX = leftMargin + logoHeight + gap;
+  const nameBaselineY = startY + logoHeight * 0.62;
   pdf.setFont(PDF_FONT, "bold");
   pdf.setTextColor(...COMPANY_ORANGE);
   pdf.setFontSize(companyFontSize);
-  pdf.text(COMPANY_INVOICE_HEADER.name, textX, startY + logoHeight * 0.62, {
-    maxWidth: contentW - logoHeight - gap,
+  pdf.text(COMPANY_INVOICE_HEADER.name, pageWidth / 2, nameBaselineY, {
+    align: "center",
+    maxWidth: rightX - leftMargin,
   });
 
   let y = startY + logoHeight + 2;

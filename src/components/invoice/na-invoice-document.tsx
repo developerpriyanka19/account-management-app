@@ -1,5 +1,6 @@
 import { formatInvoiceInteger, formatInvoiceMoney } from "@/lib/invoice-calculations";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
+import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { COMPANY_INVOICE_HEADER, getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
 import { InvoiceBrandHeader } from "./invoice-brand-header";
 import { InvoiceMetadataRow } from "./invoice-metadata-row";
@@ -84,7 +85,7 @@ export function NaInvoiceDocument({ data }: Props) {
 
   return (
     <article
-      className="na-invoice-a4 invoice-print-area mx-auto box-border w-[210mm] max-w-full overflow-hidden bg-white px-[10mm] py-[10mm] font-serif text-black shadow-md print:shadow-none"
+      className="na-invoice-a4 invoice-print-area mx-auto flex min-h-[277mm] flex-col box-border w-[210mm] max-w-full overflow-hidden bg-white px-[10mm] py-[10mm] font-serif text-black shadow-md print:shadow-none"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
       <header className="border-b border-[#9ACA66] pb-2">
@@ -248,11 +249,7 @@ export function NaInvoiceDocument({ data }: Props) {
         <p className="mt-6">Authorized Signatory</p>
       </div>
 
-      <footer className="na-invoice-footer mt-8 border-t border-[#D1D5DB] pt-2 text-center text-[7px] text-black">
-        {COMPANY_INVOICE_HEADER.footerAddressLines.map((line) => (
-          <p key={line}>{line}</p>
-        ))}
-      </footer>
+      <CompanyDocumentFooter className="na-invoice-footer mt-auto pt-2" />
     </article>
   );
 }

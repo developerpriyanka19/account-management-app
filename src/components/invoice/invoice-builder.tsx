@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Printer, Save } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import { saveInvoice } from "@/app/invoice/actions";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
+import { PreviewPanel } from "@/components/preview/preview-panel";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,10 @@ export function InvoiceBuilder({
     () => String(existing?.ratePerAcre ?? 500),
   );
   const [notes, setNotes] = useState(() => existing?.notes ?? "");
+  const [district, setDistrict] = useState(() => existing?.district ?? "");
+  const [taluk, setTaluk] = useState(() => existing?.taluk ?? "");
+  const [village, setVillage] = useState(() => existing?.village ?? "");
+  const [hobbli, setHobbli] = useState(() => existing?.hobbli ?? "");
   const [selectedFarmerIds, setSelectedFarmerIds] = useState<number[]>(() =>
     (existing?.lines ?? [])
       .map((l) => l.farmerId)
@@ -101,18 +106,23 @@ export function InvoiceBuilder({
     });
   }
 
-  const locationFields = useMemo(() => {
-    if (selectedCustomer) return locationFromCustomer(selectedCustomer);
-    if (existing) {
-      return {
-        district: existing.district ?? "",
-        taluk: existing.taluk ?? "",
-        village: existing.village ?? "",
-        hobbli: existing.hobbli ?? "",
-      };
-    }
-    return { district: "", taluk: "", village: "", hobbli: "" };
-  }, [selectedCustomer, existing]);
+  const locationFields = useMemo(
+    () => ({
+      district,
+      taluk,
+      village,
+      hobbli,
+    }),
+    [district, taluk, village, hobbli],
+  );
+
+  function applyCustomerLocation(customer: InvoiceBillingCustomerOption) {
+    const loc = locationFromCustomer(customer);
+    setDistrict(loc.district);
+    setTaluk(loc.taluk);
+    setVillage(loc.village);
+    setHobbli(loc.hobbli);
+  }
 
   const documentData: InvoiceDocumentData | null = useMemo(() => {
     if (!selectedCustomer) return null;
@@ -167,6 +177,15 @@ export function InvoiceBuilder({
     documentTitle: documentData?.invoiceNumber ?? "Invoice",
   });
 
+  useEffect(() => {
+    if (!showPreview) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setShowPreview(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showPreview]);
+
   function updateLine(index: number, patch: Partial<InvoiceLineInput>) {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   }
@@ -213,7 +232,14 @@ export function InvoiceBuilder({
               <Label>Billing customer</Label>
               <select
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value ? Number(e.target.value) : "")}
+                onChange={(e) => {
+                  const nextId = e.target.value ? Number(e.target.value) : "";
+                  setCustomerId(nextId);
+                  if (nextId) {
+                    const customer = customers.find((c) => c.id === nextId);
+                    if (customer) applyCustomerLocation(customer);
+                  }
+                }}
                 className="mt-1 flex h-9 w-full rounded-md border border-[#E5E7EB] px-3 text-sm"
               >
                 <option value="">Select customer…</option>
@@ -261,6 +287,34 @@ export function InvoiceBuilder({
               </div>
             ) : null}
           </div>
+          {category === "service" ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <Label>District</Label>
+                <Input
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
+                  className="mt-1 h-9"
+                />
+              </div>
+              <div>
+                <Label>Taluk</Label>
+                <Input value={taluk} onChange={(e) => setTaluk(e.target.value)} className="mt-1 h-9" />
+              </div>
+              <div>
+                <Label>Village</Label>
+                <Input
+                  value={village}
+                  onChange={(e) => setVillage(e.target.value)}
+                  className="mt-1 h-9"
+                />
+              </div>
+              <div>
+                <Label>Hobli</Label>
+                <Input value={hobbli} onChange={(e) => setHobbli(e.target.value)} className="mt-1 h-9" />
+              </div>
+            </div>
+          ) : null}
           {selectedCustomer ? (
             <p className="mt-2 text-xs text-[#6B7280]">
               {selectedCustomer.district ?? "—"}, {selectedCustomer.state ?? "—"} · PIN{" "}
@@ -423,7 +477,7 @@ export function InvoiceBuilder({
             variant="outline"
             size="sm"
             disabled={!documentData}
-            onClick={() => setShowPreview((v) => !v)}
+            onClick={() => setShowPreview(true)}
           >
             <Eye className="h-4 w-4" />
             Preview
@@ -473,14 +527,13 @@ export function InvoiceBuilder({
       </div>
 
       {showPreview && documentData ? (
-        <aside className="w-full shrink-0 lg:w-[min(100%,920px)] lg:max-w-[920px]">
-          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-auto overscroll-contain rounded-lg border border-[#D1D5DB] bg-[#F3F4F6] p-4 shadow-sm">
-            <p className="mb-3 text-center text-xs font-medium text-[#6B7280]">
-              Invoice preview — scroll horizontally on narrow screens
-            </p>
-            <InvoiceDocumentPreview ref={printRef} data={documentData} />
-          </div>
-        </aside>
+        <PreviewPanel
+          title="Invoice Preview"
+          closeLabel="Close Preview"
+          onClose={() => setShowPreview(false)}
+        >
+          <InvoiceDocumentPreview ref={printRef} data={documentData} />
+        </PreviewPanel>
       ) : (
         <div className="hidden">
           {documentData ? <InvoiceDocumentPreview ref={printRef} data={documentData} /> : null}

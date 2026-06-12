@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
+import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { InvoiceHeader } from "./invoice-header";
 import { InvoiceSummary } from "./invoice-summary";
 import { InvoiceTable } from "./invoice-table";
@@ -18,8 +18,8 @@ export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
     <article
       className={
         isService
-          ? "invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-4 py-4 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
-          : "invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-6 py-8 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+          ? "invoice-print-area mx-auto flex min-h-[277mm] w-full min-w-0 max-w-[900px] flex-col bg-white px-4 py-4 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+          : "invoice-print-area mx-auto flex min-h-[277mm] w-full min-w-0 max-w-[900px] flex-col bg-white px-6 py-8 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
       }
     >
       <InvoiceHeader data={data} compact={isService} />
@@ -37,15 +37,7 @@ export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
           {data.notes}
         </p>
       ) : null}
-      <footer className="mt-8 border-t border-[#E5E7EB] pt-3 text-center text-[9.5px] leading-relaxed text-[#4B5563]">
-        {footer ?? (
-          <>
-            {COMPANY_INVOICE_HEADER.footerAddressLines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </>
-        )}
-      </footer>
+      {footer ?? <CompanyDocumentFooter className="mt-auto pt-4" compact={isService} />}
     </article>
   );
 }

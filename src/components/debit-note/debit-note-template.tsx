@@ -1,4 +1,5 @@
 import { CompanyBrandHeader } from "@/components/company-brand-header";
+import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 import { DebitNoteType } from "@/lib/debit-note-types";
 
@@ -96,10 +97,7 @@ function FooterAndSignature() {
         <p className="font-semibold">For Apoorva Energy Solutions</p>
         <p className="mt-4 font-semibold">Authorized Signatory</p>
       </div>
-      <footer className="mt-6 border-t border-[#9ACA66] pt-2 text-center text-[10px] leading-relaxed">
-        <p>No 15 & 18 Riddi Siddi Complex, 2nd Floor Opp Giants School,</p>
-        <p>Chaitanya Colony, R N Shetty Road, Hubli - 580030</p>
-      </footer>
+      <CompanyDocumentFooter className="mt-auto pt-2" />
     </>
   );
 }
@@ -116,7 +114,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
     const detailPages = chunkRows(rows, 14);
     return (
       <article className="mx-auto w-full max-w-[210mm] bg-white font-serif text-[11px] text-[#111827]">
-        <section className="min-h-[277mm] px-4 py-4 print:break-after-page">
+        <section className="flex min-h-[277mm] flex-col px-4 py-4 print:break-after-page">
           <HeaderBlock data={data} customerName={customerName} gstNumber={gstNumber} address={address} />
           <div className="mt-3 overflow-hidden rounded border border-[#111827]">
             <table className="w-full border-collapse text-[11px]">
@@ -142,7 +140,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
         {detailPages.map((pageRows, pageIndex) => (
           <section
             key={pageIndex}
-            className={`min-h-[277mm] px-4 py-4 ${pageIndex < detailPages.length - 1 ? "print:break-after-page" : ""}`}
+            className={`flex min-h-[277mm] flex-col px-4 py-4 ${pageIndex < detailPages.length - 1 ? "print:break-after-page" : ""}`}
           >
             <HeaderBlock data={data} customerName={customerName} gstNumber={gstNumber} address={address} />
             <div className="mt-3 overflow-hidden rounded border border-[#111827]">
@@ -213,7 +211,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
 
   return (
     <article className="mx-auto w-full max-w-[210mm] bg-white font-serif text-[11px] text-[#111827]">
-      <section className="min-h-[277mm] px-4 py-4 print:break-after-page">
+      <section className="flex min-h-[277mm] flex-col px-4 py-4 print:break-after-page">
         <HeaderBlock data={data} customerName={customerName} gstNumber={gstNumber} address={address} />
         <div className="mt-3 overflow-hidden rounded border border-[#111827]">
           <table className="w-full border-collapse text-[11px]">
@@ -236,7 +234,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
         <FooterAndSignature />
       </section>
 
-      <section className="min-h-[277mm] px-4 py-4">
+      <section className="flex min-h-[277mm] flex-col px-4 py-4">
         <HeaderBlock data={data} customerName={customerName} gstNumber={gstNumber} address={address} />
         <div className="mt-3 overflow-hidden rounded border border-[#111827]">
           <table className="w-full border-collapse text-[9px]">

@@ -13,9 +13,9 @@ type Props = {
 };
 
 /**
- * [Logo] APOORVA ENERGY SOLUTIONS
- * ───────── green line ─────────
- *        INVOICE / DEBIT NOTE
+ * [Logo]     APOORVA ENERGY SOLUTIONS (page-centered)
+ * ───────────── green line ─────────────
+ *           INVOICE / DEBIT NOTE
  */
 export function CompanyBrandHeader({
   documentTitle,
@@ -23,23 +23,29 @@ export function CompanyBrandHeader({
   compact = false,
 }: Props) {
   const logoH = compact ? 45 : INVOICE_LOGO.heightPx;
-  const nameSize = compact ? "text-[22px]" : "text-[26px]";
+  const nameSize = compact ? "text-[22px]" : "text-[28px]";
   const titleSize = compact ? "text-sm" : "text-[15px]";
 
   return (
-    <div style={{ marginBottom: INVOICE_LOGO.metadataMarginPx }}>
-      <div className="flex items-center" style={{ gap: INVOICE_LOGO.gapPx }}>
+    <div className="w-full" style={{ marginBottom: INVOICE_LOGO.metadataMarginPx }}>
+      <div
+        className="relative flex w-full items-center"
+        style={{ minHeight: logoH, paddingLeft: logoH + INVOICE_LOGO.gapPx }}
+      >
         <Image
           src={INVOICE_LOGO.src}
           alt={COMPANY_INVOICE_HEADER.signatureName}
           width={logoH}
           height={logoH}
-          className="shrink-0 object-contain"
+          className="absolute left-0 top-1/2 shrink-0 -translate-y-1/2 object-contain"
           style={{ width: logoH, height: logoH }}
           priority
         />
         <h1
-          className={cn("font-bold uppercase leading-tight tracking-wide", nameSize)}
+          className={cn(
+            "w-full text-center font-bold uppercase leading-tight tracking-wide",
+            nameSize,
+          )}
           style={{ color: COMPANY_BRAND_STYLE.companyNameColor }}
         >
           {COMPANY_INVOICE_HEADER.name}

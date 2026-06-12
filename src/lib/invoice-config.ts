@@ -80,10 +80,8 @@ export const COMPANY_INVOICE_HEADER = {
   name: "APOORVA ENERGY SOLUTIONS",
   gstin: "29AUPJ5095P1ZC",
   signatureName: "Apoorva Energy Solutions",
-  footerAddressLines: [
-    "No 15 & 18 Riddi Siddi Complex, 2nd Floor Opp Giants School,",
-    "Chaitanya Colony, R N Shetty Road, Hubli - 580030",
-  ],
+  footerAddress:
+    "No 15 & 18 Riddi Siddi Complex, 2nd Floor Opp Giants School, Chaitanya Colony, R N Shetty Road, Hubli - 580030",
   phone: "Mobile: +91-9160 37152",
 } as const;
 
@@ -110,7 +108,7 @@ export const INVOICE_LOGO = {
 export const INVOICE_LOGO_PDF_MM = {
   logoHeight: 13.2,
   gap: 3.2,
-  companyFontSize: 20,
+  companyFontSize: 22,
   titleFontSize: 11,
   lineWidth: 0.35,
   metadataMargin: 4.8,

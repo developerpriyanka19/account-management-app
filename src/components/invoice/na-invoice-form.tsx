@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Loader2, Save, X } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -12,13 +12,7 @@ import { CustomerCombobox } from "@/components/invoice/customer-combobox";
 import { FarmerSearchList } from "@/components/invoice/farmer-search-list";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
 import { useToast } from "@/components/customer/toast";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { PreviewDialog } from "@/components/preview/preview-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -391,30 +385,13 @@ export function NaInvoiceForm({ customers, farmers, existing }: Props) {
         </Button>
       </div>
 
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent
-          className="w-[min(100%,220mm)] max-h-[90vh] overflow-x-hidden overflow-y-auto"
-          onEscapeKeyDown={() => setShowPreview(false)}
-          onPointerDownOutside={() => setShowPreview(false)}
-        >
-          <DialogHeader>
-            <DialogTitle>Invoice Preview</DialogTitle>
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="absolute right-10 top-4"
-                onClick={() => setShowPreview(false)}
-              >
-                <X className="h-4 w-4" />
-                Close
-              </Button>
-            </DialogClose>
-          </DialogHeader>
-          {documentData ? <InvoiceDocumentPreview data={documentData} /> : null}
-        </DialogContent>
-      </Dialog>
+      <PreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        title="Invoice Preview"
+      >
+        {documentData ? <InvoiceDocumentPreview data={documentData} /> : null}
+      </PreviewDialog>
     </div>
   );
 }
