@@ -22,7 +22,7 @@ export function InvoiceViewClient({ document, autoDownload = false, autoPrint = 
   });
   useEffect(() => {
     if (autoDownload) {
-      generateInvoicePdf(document);
+      void generateInvoicePdf(document);
     }
   }, [autoDownload, document]);
   useEffect(() => {
@@ -40,7 +40,7 @@ export function InvoiceViewClient({ document, autoDownload = false, autoPrint = 
           <Printer className="h-4 w-4" />
           Print
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => generateInvoicePdf(document)}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void generateInvoicePdf(document)}>
           <Download className="h-4 w-4" />
           Download PDF
         </Button>

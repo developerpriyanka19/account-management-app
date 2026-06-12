@@ -1,6 +1,8 @@
 import { formatInvoiceInteger, formatInvoiceMoney } from "@/lib/invoice-calculations";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import { COMPANY_INVOICE_HEADER, getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
+import { InvoiceBrandHeader } from "./invoice-brand-header";
+import { InvoiceMetadataRow } from "./invoice-metadata-row";
 import {
   formatRatePerAcreDisplay,
   naInvoiceAmountInWords,
@@ -85,27 +87,13 @@ export function NaInvoiceDocument({ data }: Props) {
       className="na-invoice-a4 invoice-print-area mx-auto box-border w-[210mm] max-w-full overflow-hidden bg-white px-[10mm] py-[10mm] font-serif text-black shadow-md print:shadow-none"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
-      <header className="border-b border-[#9ACA66] pb-2 text-center">
-        <h1 className="text-[32px] font-bold uppercase leading-none tracking-wide text-[#F28C2A]">
-          {COMPANY_INVOICE_HEADER.name}
-        </h1>
-        <p className="mt-1 text-[18px] font-bold tracking-wide text-black">INVOICE</p>
-        <div className="mt-2 flex justify-between text-[8px]">
-          <div className="space-y-0.5 text-left">
-            <p>
-              <span className="font-semibold">Invoice No: </span>
-              {prepared.invoiceNumber}
-            </p>
-            <p>
-              <span className="font-semibold">GST: </span>
-              {COMPANY_INVOICE_HEADER.gstin}
-            </p>
-          </div>
-          <p>
-            <span className="font-semibold">Date: </span>
-            {formatDisplayDate(prepared.invoiceDate)}
-          </p>
-        </div>
+      <header className="border-b border-[#9ACA66] pb-2">
+        <InvoiceBrandHeader />
+        <InvoiceMetadataRow
+          invoiceNumber={prepared.invoiceNumber}
+          invoiceDate={formatDisplayDate(prepared.invoiceDate)}
+          className="text-[8px]"
+        />
       </header>
 
       <div className="mt-2 grid grid-cols-2 gap-4 border-b border-black pb-2">

@@ -1,11 +1,12 @@
 import { buildBillToLines } from "@/lib/invoice-customer-format";
-import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
 import {
   hasInvoiceLocation,
   invoiceLocationEntries,
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
+import { InvoiceBrandHeader } from "./invoice-brand-header";
+import { InvoiceMetadataRow } from "./invoice-metadata-row";
 
 type Props = {
   data: InvoiceDocumentData;
@@ -33,44 +34,16 @@ export function InvoiceHeader({ data, compact = false }: Props) {
     <header
       className={
         isService
-          ? "border-b-2 border-[#9ACA66] pb-2 text-center"
-          : "border-b-2 border-[#9ACA66] pb-3 text-center"
+          ? "border-b-2 border-[#9ACA66] pb-2"
+          : "border-b-2 border-[#9ACA66] pb-3"
       }
     >
-      <h1
-        className={
-          isService
-            ? "text-[28px] font-bold uppercase leading-none tracking-wide text-[#F28C2A]"
-            : "text-[32px] font-bold uppercase leading-none tracking-wide text-[#F28C2A]"
-        }
-      >
-        {COMPANY_INVOICE_HEADER.name}
-      </h1>
-      <p className={isService ? "mt-0.5 text-base font-bold tracking-wide" : "mt-1 text-lg font-bold tracking-wide"}>
-        INVOICE
-      </p>
-      <div
-        className={
-          isService
-            ? "mt-1.5 flex items-start justify-between px-1 text-[11px] text-[#374151]"
-            : "mt-2 flex items-start justify-between px-1 text-[11px] text-[#374151]"
-        }
-      >
-        <div className="space-y-0.5 text-left">
-          <p>
-            <span className="font-semibold text-[#6B7280]">Invoice No: </span>
-            <span className="font-mono font-semibold text-[#111827]">{data.invoiceNumber}</span>
-          </p>
-          <p>
-            <span className="font-semibold text-[#6B7280]">GST: </span>
-            {COMPANY_INVOICE_HEADER.gstin}
-          </p>
-        </div>
-        <p>
-          <span className="font-semibold text-[#6B7280]">Date: </span>
-          {data.invoiceDate}
-        </p>
-      </div>
+      <InvoiceBrandHeader compact={isService} />
+      <InvoiceMetadataRow
+        invoiceNumber={data.invoiceNumber}
+        invoiceDate={data.invoiceDate}
+        compact={isService}
+      />
 
       <div
         className={
@@ -79,7 +52,7 @@ export function InvoiceHeader({ data, compact = false }: Props) {
             : "mt-4 grid grid-cols-2 gap-4 border-t border-[#E5E7EB] pt-4 text-left text-[11px]"
         }
       >
-        <div className={isService ? "" : ""}>
+        <div>
           {billLines.map((row, i) => {
             if (!row.label && row.value === "To,") {
               return <p key={i}>To,</p>;

@@ -12,7 +12,7 @@ import {
   invoiceLocationEntries,
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
-import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
+import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
 import {
   buildNaInvoiceTableBody,
   buildNaInvoiceTableFoot,
@@ -42,37 +42,63 @@ function formatInvoiceDateDisplay(isoDate: string): string {
   return isoDate;
 }
 
-function drawCompanyHeader(
+let logoDataUrlPromise: Promise<string> | null = null;
+
+function loadInvoiceLogoDataUrl(): Promise<string> {
+  if (!logoDataUrlPromise) {
+    logoDataUrlPromise = fetch("/company-logo.png")
+      .then((response) => response.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          }),
+      );
+  }
+  return logoDataUrlPromise;
+}
+
+async function drawCompanyHeader(
   pdf: jsPDF,
   invoiceDate: string,
   invoiceNumber: string,
   startY: number,
-): number {
-  let y = startY;
-  const centerX = PAGE_W / 2;
+): Promise<number> {
   const rightX = PAGE_W - MARGIN.right;
+  const leftX = MARGIN.left;
+  const { size: logoMm, gap: gapMm, metadataMargin: metaMarginMm } = INVOICE_LOGO_PDF_MM;
 
+  const logoDataUrl = await loadInvoiceLogoDataUrl();
+  pdf.addImage(logoDataUrl, "PNG", leftX, startY, logoMm, logoMm);
+
+  const textX = leftX + logoMm + gapMm;
+  let textY = startY + 6;
   pdf.setFont(PDF_FONT, "bold");
   pdf.setTextColor(242, 140, 42);
-  pdf.setFontSize(24);
-  pdf.text(COMPANY_INVOICE_HEADER.name, centerX, y, { align: "center" });
-  y += 8;
+  pdf.setFontSize(20);
+  pdf.text(COMPANY_INVOICE_HEADER.name, textX, textY);
+  textY += 7;
 
   pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(16);
-  pdf.text("INVOICE", centerX, y, { align: "center" });
-  y += 7;
+  pdf.setFontSize(14);
+  pdf.text("INVOICE", textX, textY);
+
+  const brandBlockH = Math.max(logoMm, textY - startY + 2);
+  let y = startY + brandBlockH + metaMarginMm;
 
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(8);
-  pdf.text(`Invoice No: ${invoiceNumber}`, MARGIN.left, y);
+  pdf.text(`Invoice No: ${invoiceNumber}`, leftX, y);
   y += 3.5;
-  pdf.text(`GST: ${COMPANY_INVOICE_HEADER.gstin}`, MARGIN.left, y);
+  pdf.text(`GST: ${COMPANY_INVOICE_HEADER.gstin}`, leftX, y);
   pdf.text(`Date: ${formatInvoiceDateDisplay(invoiceDate)}`, rightX, y, { align: "right" });
   y += 4;
 
   pdf.setLineWidth(0.3);
-  pdf.line(MARGIN.left, y, PAGE_W - MARGIN.right, y);
+  pdf.line(leftX, y, PAGE_W - MARGIN.right, y);
   return y + 4;
 }
 
@@ -169,7 +195,7 @@ function drawPageFooter(pdf: jsPDF, pageNumber: number, pageCount: number) {
   }
 }
 
-function generateNaInvoicePdf(document: InvoiceDocumentData) {
+async function generateNaInvoicePdf(document: InvoiceDocumentData) {
   const prepared = prepareNaInvoiceDocument(document);
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -177,7 +203,7 @@ function generateNaInvoicePdf(document: InvoiceDocumentData) {
     format: "a4",
   }) as JsPdfWithAutoTable;
 
-  let y = drawCompanyHeader(pdf, prepared.invoiceDate, prepared.invoiceNumber, MARGIN.top);
+  let y = await drawCompanyHeader(pdf, prepared.invoiceDate, prepared.invoiceNumber, MARGIN.top);
   y = drawBillToSection(pdf, prepared, y);
 
   autoTable(pdf, {
@@ -256,10 +282,10 @@ function generateNaInvoicePdf(document: InvoiceDocumentData) {
 }
 
 /** Service invoice PDF — aligned with on-screen print layout (no type/status). */
-function generateServiceInvoicePdf(document: InvoiceDocumentData) {
+async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as JsPdfWithAutoTable;
 
-  let y = drawCompanyHeader(pdf, document.invoiceDate, document.invoiceNumber, MARGIN.top);
+  let y = await drawCompanyHeader(pdf, document.invoiceDate, document.invoiceNumber, MARGIN.top);
   y = drawBillToSection(pdf, document, y);
 
   const tableBody = document.lines.map((line, index) => [
@@ -336,10 +362,10 @@ function generateServiceInvoicePdf(document: InvoiceDocumentData) {
   pdf.save(`${document.invoiceNumber}.pdf`);
 }
 
-export function generateInvoicePdf(document: InvoiceDocumentData) {
+export async function generateInvoicePdf(document: InvoiceDocumentData) {
   if (document.invoiceType === "na") {
-    generateNaInvoicePdf(document);
+    await generateNaInvoicePdf(document);
     return;
   }
-  generateServiceInvoicePdf(document);
+  await generateServiceInvoicePdf(document);
 }

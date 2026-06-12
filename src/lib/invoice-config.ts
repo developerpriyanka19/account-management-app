@@ -86,3 +86,19 @@ export const COMPANY_INVOICE_HEADER = {
   ],
   phone: "Mobile: +91-9160 37152",
 } as const;
+
+/** Logo + flex header spacing (screen). */
+export const INVOICE_LOGO = {
+  src: "/company-logo.png",
+  sizePx: 80,
+  gapPx: 16,
+  /** Space before invoice no / GST / date row */
+  metadataMarginPx: 18,
+} as const;
+
+/** Same layout in mm for jsPDF (80px and 16px at 96dpi). */
+export const INVOICE_LOGO_PDF_MM = {
+  size: 21.2,
+  gap: 4.2,
+  metadataMargin: 4.8,
+} as const;
