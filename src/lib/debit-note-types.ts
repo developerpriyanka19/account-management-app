@@ -1,3 +1,5 @@
+import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
+
 export const DebitNoteType = {
   LAND_CONVERSION: "LAND_CONVERSION",
   ATL_POA: "ATL_POA",
@@ -96,4 +98,5 @@ export type DebitNotePayload = {
   total: number;
   status: "DRAFT" | "FINAL";
   rows: (LandConversionRow | AtlPoaRow)[];
+  bank: BankDetailsSnapshot;
 };

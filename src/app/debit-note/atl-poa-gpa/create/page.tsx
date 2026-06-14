@@ -23,6 +23,7 @@ export default async function CreateAtlPoaGpaDebitNotePage() {
           listHref={debitNoteListPath(DebitNoteType.ATL_POA)}
           customers={data.customers}
           farmers={data.farmers}
+          banks={data.banks}
         />
       </div>
     </ToastProvider>

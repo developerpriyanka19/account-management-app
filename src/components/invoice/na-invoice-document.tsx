@@ -1,6 +1,7 @@
 import { formatInvoiceInteger, formatInvoiceMoney } from "@/lib/invoice-calculations";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
+import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { COMPANY_INVOICE_HEADER, getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
 import { InvoiceBrandHeader } from "./invoice-brand-header";
 import { InvoiceMetadataRow } from "./invoice-metadata-row";
@@ -244,9 +245,12 @@ export function NaInvoiceDocument({ data }: Props) {
         {amountWords}
       </p>
 
-      <div className="mt-6 text-right text-[7px]">
-        <p className="font-bold">For {COMPANY_INVOICE_HEADER.signatureName}</p>
-        <p className="mt-6">Authorized Signatory</p>
+      <div className="mt-4 flex items-end justify-between gap-4">
+        <BankDetailsDisplay bank={prepared.bank} />
+        <div className="text-right text-[7px]">
+          <p className="font-bold">For {COMPANY_INVOICE_HEADER.signatureName}</p>
+          <p className="mt-6">Authorized Signatory</p>
+        </div>
       </div>
 
       <CompanyDocumentFooter className="na-invoice-footer mt-auto pt-2" />

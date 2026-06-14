@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { saveInvoice } from "@/app/invoice/actions";
+import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { CustomerCombobox } from "@/components/invoice/customer-combobox";
 import { FarmerSearchList } from "@/components/invoice/farmer-search-list";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
@@ -27,6 +28,11 @@ import {
   getNaInvoiceSubtypeConfig,
   NA_INVOICE_SUBTYPES,
 } from "@/lib/invoice-config";
+import {
+  bankFromSelection,
+  initialBankSelection,
+  type BankDetailsOption,
+} from "@/lib/bank-details-types";
 import type {
   InvoiceBillingCustomerOption,
   InvoiceDocumentData,
@@ -51,6 +57,7 @@ type FormValues = z.infer<typeof schema>;
 type Props = {
   customers: InvoiceBillingCustomerOption[];
   farmers: InvoiceFarmerOption[];
+  banks: BankDetailsOption[];
   existing?: InvoiceDocumentData | null;
 };
 
@@ -58,7 +65,7 @@ function todayDate() {
   return format(new Date(), "yyyy-MM-dd");
 }
 
-export function NaInvoiceForm({ customers, farmers, existing }: Props) {
+export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
   const isFinal = (existing?.status ?? "").toUpperCase() === "FINAL";
   const toast = useToast();
   const router = useRouter();
@@ -76,6 +83,9 @@ export function NaInvoiceForm({ customers, farmers, existing }: Props) {
       ? String(existing.ratePerAcre)
       : String(getNaInvoiceSubtypeConfig(existing?.subType ?? defaultSubtypeForCategory("na")).defaultRatePerAcre);
   const [ratePerAcre, setRatePerAcre] = useState(initialRate);
+  const [bankDetailsId, setBankDetailsId] = useState<number | "">(() =>
+    initialBankSelection(existing?.bank, banks),
+  );
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -171,12 +181,20 @@ export function NaInvoiceForm({ customers, farmers, existing }: Props) {
       lines: computedLines,
       totals,
       pdfUrl: existing?.pdfUrl,
+      bank: bankFromSelection(bankDetailsId, banks) ?? existing?.bank ?? {
+        bankDetailsId: null,
+        bankName: "",
+        accountHolderName: "",
+        accountNumber: "",
+        ifscCode: "",
+        branchName: "",
+      },
     };
   }
 
   const documentData = useMemo(
     () => buildDocumentData(undefined, formValues),
-    [customers, existing?.id, existing?.pdfUrl, existing?.status, formValues, lines, subType, ratePerAcre],
+    [customers, existing?.id, existing?.pdfUrl, existing?.status, existing?.bank, formValues, lines, subType, ratePerAcre, bankDetailsId, banks],
   );
 
   function handleCustomerChange(customer: InvoiceBillingCustomerOption | null) {
@@ -212,6 +230,10 @@ export function NaInvoiceForm({ customers, farmers, existing }: Props) {
     const payload = buildDocumentData(status);
     if (!payload) {
       toast.error("Select a customer and at least one farmer.");
+      return;
+    }
+    if (!payload.bank.bankDetailsId) {
+      toast.error("Select a bank account.");
       return;
     }
 
@@ -302,6 +324,14 @@ export function NaInvoiceForm({ customers, farmers, existing }: Props) {
               onChange={handleCustomerChange}
               disabled={isFinal}
               error={form.formState.errors.customerId?.message}
+            />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <BankAccountSelect
+              banks={banks}
+              value={bankDetailsId}
+              onChange={setBankDetailsId}
+              disabled={isFinal}
             />
           </div>
           <div><Label>District</Label><Input className="mt-1" {...form.register("district")} disabled={isFinal} /></div>

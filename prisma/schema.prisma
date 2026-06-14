@@ -172,11 +172,18 @@ model Invoice {
   totalAmountWords String?
   pdfUrl        String?
   notes         String?
+  bankDetailsId Int?
+  bankName          String?
+  accountHolderName String?
+  accountNumber     String?
+  ifscCode          String?
+  branchName        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   customer GstCustomer   @relation(fields: [customerId], references: [id])
   items    InvoiceItem[]
+  bankDetail BankDetail? @relation(fields: [bankDetailsId], references: [id], onDelete: SetNull)
 
   @@map("invoices")
 }
@@ -221,11 +228,18 @@ model DebitNote {
   total         Float    @default(0)
   remarks       String?
   status        String   @default("DRAFT")
+  bankDetailsId Int?
+  bankName          String?
+  accountHolderName String?
+  accountNumber     String?
+  ifscCode          String?
+  branchName        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   customer GstCustomer @relation(fields: [customerId], references: [id])
   items    DebitNoteItem[]
+  bankDetail BankDetail? @relation(fields: [bankDetailsId], references: [id], onDelete: SetNull)
 
   @@map("debit_notes")
 }
@@ -265,6 +279,24 @@ model DebitNoteItem {
   debitNote DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
 
   @@map("debit_note_items")
+}
+
+model BankDetail {
+  id                Int      @id @default(autoincrement())
+  bankName          String
+  accountHolderName String
+  accountNumber     String
+  ifscCode          String
+  branchName        String?
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  invoices   Invoice[]
+  debitNotes DebitNote[]
+
+  @@map("bank_details")
 }
 
 model User {

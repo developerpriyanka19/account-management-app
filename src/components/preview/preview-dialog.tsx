@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PreviewHeader } from "@/components/preview/preview-header";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -38,6 +38,7 @@ export function PreviewDialog({
         onEscapeKeyDown={close}
         onPointerDownOutside={close}
       >
+        <DialogTitle className="sr-only">{title}</DialogTitle>
         <PreviewHeader title={title} onClose={close} closeLabel={closeLabel} className="mb-3" />
         <div className="max-h-[calc(92vh-4.5rem)] overflow-x-hidden overflow-y-auto">{children}</div>
       </DialogContent>

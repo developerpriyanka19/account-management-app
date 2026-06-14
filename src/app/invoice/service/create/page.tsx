@@ -26,7 +26,7 @@ export default async function CreateServiceInvoicePage({ searchParams }: Props) 
     notFound();
   }
   const existing = existingRecord ? invoiceRecordToDocument(existingRecord) : null;
-  const { customers, farmers, nextSequence } = await getInvoiceBuilderData();
+  const { customers, farmers, nextSequence, banks } = await getInvoiceBuilderData();
 
   return (
     <ToastProvider>
@@ -36,6 +36,7 @@ export default async function CreateServiceInvoicePage({ searchParams }: Props) 
           title={existing ? "Edit Service Invoice" : "Service Invoice"}
           customers={customers}
           farmers={farmers}
+          banks={banks}
           nextSequence={nextSequence}
           existing={existing}
         />

@@ -14,6 +14,8 @@ import {
 } from "@/lib/invoice-location";
 import { drawCompanyBrandHeaderPdf } from "@/lib/company-brand-header-pdf";
 import { drawCompanyDocumentFooterPdf } from "@/lib/company-document-footer-pdf";
+import { drawBankDetailsPdf } from "@/lib/bank-details-pdf";
+import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
 import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
 import {
   buildNaInvoiceTableBody,
@@ -175,7 +177,14 @@ function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: nu
   return y + 5;
 }
 
-function drawPageFooter(pdf: jsPDF, pageNumber: number, pageCount: number) {
+function drawPageFooter(
+  pdf: jsPDF,
+  pageNumber: number,
+  pageCount: number,
+  bank?: BankDetailsSnapshot,
+) {
+  const footerY = PAGE_H - MARGIN.bottom;
+  drawBankDetailsPdf({ pdf, leftX: MARGIN.left, footerY, snapshot: bank });
   drawCompanyDocumentFooterPdf({
     pdf,
     pageWidth: PAGE_W,
@@ -286,7 +295,7 @@ async function generateNaInvoicePdf(document: InvoiceDocumentData) {
   const pageCount = pdf.getNumberOfPages();
   for (let p = 1; p <= pageCount; p += 1) {
     pdf.setPage(p);
-    drawPageFooter(pdf, p, pageCount);
+    drawPageFooter(pdf, p, pageCount, prepared.bank);
   }
 
   pdf.save(`${prepared.invoiceNumber}.pdf`);
@@ -391,7 +400,7 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
   const pageCount = pdf.getNumberOfPages();
   for (let p = 1; p <= pageCount; p += 1) {
     pdf.setPage(p);
-    drawPageFooter(pdf, p, pageCount);
+    drawPageFooter(pdf, p, pageCount, document.bank);
   }
 
   pdf.save(`${document.invoiceNumber}.pdf`);

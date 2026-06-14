@@ -5,11 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { debitNoteListPath } from "@/lib/debit-note-routes";
 import type { DebitNotePayload, DebitNoteType } from "@/lib/debit-note-types";
 import { DebitNoteType as DNType, normalizeDebitNoteType } from "@/lib/debit-note-types";
+import { resolveBankSnapshotForSave } from "@/actions/bank-details-actions";
+import { bankSnapshotToPrismaFields } from "@/lib/bank-details-types";
 
 export type DebitNoteListSortField = "date" | "amount" | "customer";
 
 export async function getDebitNoteBuilderData() {
-  const [customers, farmers] = await Promise.all([
+  const { getActiveBankOptions } = await import("@/actions/bank-details-actions");
+  const [customers, farmers, banks] = await Promise.all([
     prisma.gstCustomer.findMany({
       orderBy: [{ companyName: "asc" }, { firstName: "asc" }],
       select: {
@@ -42,6 +45,7 @@ export async function getDebitNoteBuilderData() {
         leaseExtentGunta: true,
       },
     }),
+    getActiveBankOptions(),
   ]);
 
   return {
@@ -72,6 +76,7 @@ export async function getDebitNoteBuilderData() {
         leaseExtentAcre: f.leaseExtentAcre,
         leaseExtentGunta: f.leaseExtentGunta,
       })),
+    banks,
   };
 }
 
@@ -101,6 +106,21 @@ export async function saveDebitNote(
   if (!payload.customerId) return { ok: false, message: "Customer is required." };
   if (!payload.debitNoteNo.trim()) return { ok: false, message: "Debit note number is required." };
   if (payload.rows.length === 0) return { ok: false, message: "Add at least one row." };
+  if (!payload.bank?.bankDetailsId) {
+    return { ok: false, message: "Select a bank account." };
+  }
+
+  const bankSnapshot = await resolveBankSnapshotForSave(
+    payload.bank.bankDetailsId,
+    payload.id
+      ? (await prisma.debitNote.findUnique({ where: { id: payload.id }, select: { bankDetailsId: true } }))
+          ?.bankDetailsId
+      : null,
+  );
+  if (!bankSnapshot) {
+    return { ok: false, message: "Selected bank account is invalid or inactive." };
+  }
+  const bankFields = bankSnapshotToPrismaFields(bankSnapshot);
 
   try {
     const base = {
@@ -117,6 +137,7 @@ export async function saveDebitNote(
       total: payload.total,
       remarks: payload.remarks || null,
       status: payload.status,
+      ...bankFields,
     };
 
     const items = payload.rows.map((row) => {

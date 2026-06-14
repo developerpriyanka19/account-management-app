@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { saveDebitNote } from "@/actions/debit-note-actions";
 import { DebitNoteTemplate } from "@/components/debit-note/debit-note-template";
 import { PreviewDialog } from "@/components/preview/preview-dialog";
@@ -27,6 +28,11 @@ import type {
   LandConversionRow,
 } from "@/lib/debit-note-types";
 import { DebitNoteType } from "@/lib/debit-note-types";
+import {
+  bankFromSelection,
+  initialBankSelection,
+  type BankDetailsOption,
+} from "@/lib/bank-details-types";
 import {
   DN_ACTION_COL_W,
   DN_ATL_HEADER_H,
@@ -48,6 +54,7 @@ type Props = {
   listHref: string;
   customers: DebitNoteCustomerOption[];
   farmers: DebitNoteFarmerOption[];
+  banks: BankDetailsOption[];
   existing?: DebitNotePayload;
 };
 
@@ -79,6 +86,7 @@ export function DebitNoteBuilder({
   listHref,
   customers,
   farmers,
+  banks,
   existing,
 }: Props) {
   const router = useRouter();
@@ -98,6 +106,9 @@ export function DebitNoteBuilder({
   const [village, setVillage] = useState(existing?.village ?? "");
   const [hobbli, setHobbli] = useState(existing?.hobbli ?? "");
   const [remarks, setRemarks] = useState(existing?.remarks ?? "");
+  const [bankDetailsId, setBankDetailsId] = useState<number | "">(() =>
+    initialBankSelection(existing?.bank, banks),
+  );
   const [rows, setRows] = useState<(LandConversionRow | AtlPoaRow)[]>(existing?.rows ?? []);
   const [farmerSearch, setFarmerSearch] = useState("");
   const [showFarmerList, setShowFarmerList] = useState(false);
@@ -185,8 +196,16 @@ export function DebitNoteBuilder({
       total: totals.total,
       status: "DRAFT",
       rows,
+      bank: bankFromSelection(bankDetailsId, banks) ?? existing?.bank ?? {
+        bankDetailsId: null,
+        bankName: "",
+        accountHolderName: "",
+        accountNumber: "",
+        ifscCode: "",
+        branchName: "",
+      },
     };
-  }, [debitNoteId, type, customerId, debitNoteNo, date, district, taluk, village, hobbli, remarks, totals, rows]);
+  }, [debitNoteId, type, customerId, debitNoteNo, date, district, taluk, village, hobbli, remarks, totals, rows, bankDetailsId, banks, existing?.bank]);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -322,6 +341,10 @@ export function DebitNoteBuilder({
       toast.error("Select customer and add rows.");
       return;
     }
+    if (!payload.bank.bankDetailsId) {
+      toast.error("Select a bank account.");
+      return;
+    }
     startTransition(async () => {
       const result = await saveDebitNote({ ...payload, status });
       if (!result.ok) {
@@ -410,6 +433,13 @@ export function DebitNoteBuilder({
           <div><Label>Taluk</Label><Input value={taluk} onChange={(e) => setTaluk(e.target.value)} className="mt-1" /></div>
           <div><Label>Village</Label><Input value={village} onChange={(e) => setVillage(e.target.value)} className="mt-1" /></div>
           <div><Label>Hobli</Label><Input value={hobbli} onChange={(e) => setHobbli(e.target.value)} className="mt-1" /></div>
+          <div className="md:col-span-2 lg:col-span-4">
+            <BankAccountSelect
+              banks={banks}
+              value={bankDetailsId}
+              onChange={setBankDetailsId}
+            />
+          </div>
           <div className="md:col-span-2 lg:col-span-4">
             <Label>Remark</Label>
             <Textarea

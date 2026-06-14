@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
+import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
 import { InvoiceHeader } from "./invoice-header";
 import { InvoiceSummary } from "./invoice-summary";
 import { InvoiceTable } from "./invoice-table";
@@ -37,6 +39,13 @@ export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
           {data.notes}
         </p>
       ) : null}
+      <div className="mt-4 flex items-end justify-between gap-4">
+        <BankDetailsDisplay bank={data.bank} className="text-[10px] leading-snug" />
+        <div className="text-right text-[10px]">
+          <p className="font-semibold">For {COMPANY_INVOICE_HEADER.signatureName}</p>
+          <p className="mt-4">Authorized Signatory</p>
+        </div>
+      </div>
       {footer ?? <CompanyDocumentFooter className="mt-auto pt-4" compact={isService} />}
     </article>
   );

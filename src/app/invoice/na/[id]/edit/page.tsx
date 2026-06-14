@@ -19,13 +19,14 @@ export default async function EditNaInvoicePage({ params }: Props) {
   }
 
   const existing = invoiceRecordToDocument(record);
-  const { customers, farmers } = await getInvoiceBuilderData();
+  const { customers, farmers, banks } = await getInvoiceBuilderData();
   return (
     <ToastProvider>
       <div className="px-4 py-6 sm:px-6 lg:px-8">
         <NaInvoiceForm
           customers={customers}
           farmers={farmers}
+          banks={banks}
           existing={existing}
         />
       </div>

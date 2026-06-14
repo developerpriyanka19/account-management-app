@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Printer, Save } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
+import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { saveInvoice } from "@/app/invoice/actions";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
 import { PreviewPanel } from "@/components/preview/preview-panel";
@@ -22,6 +23,11 @@ import {
   type InvoiceCategory,
 } from "@/lib/invoice-config";
 import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
+import {
+  bankFromSelection,
+  initialBankSelection,
+  type BankDetailsOption,
+} from "@/lib/bank-details-types";
 import type {
   InvoiceBillingCustomerOption,
   InvoiceDocumentData,
@@ -37,6 +43,7 @@ type Props = {
   title: string;
   customers: InvoiceBillingCustomerOption[];
   farmers: InvoiceFarmerOption[];
+  banks: BankDetailsOption[];
   nextSequence: number;
   existing?: InvoiceDocumentData | null;
 };
@@ -46,6 +53,7 @@ export function InvoiceBuilder({
   title,
   customers,
   farmers,
+  banks,
   nextSequence,
   existing = null,
 }: Props) {
@@ -78,6 +86,9 @@ export function InvoiceBuilder({
       .filter((id): id is number => id != null),
   );
   const [lines, setLines] = useState<InvoiceLineInput[]>(() => existing?.lines ?? []);
+  const [bankDetailsId, setBankDetailsId] = useState<number | "">(() =>
+    initialBankSelection(existing?.bank, banks),
+  );
 
   const subtypes = getSubtypesForCategory(category);
   const rate = Number(ratePerAcre) || 0;
@@ -157,6 +168,14 @@ export function InvoiceBuilder({
       }),
       lines: computedLines,
       totals,
+      bank: bankFromSelection(bankDetailsId, banks) ?? existing?.bank ?? {
+        bankDetailsId: null,
+        bankName: "",
+        accountHolderName: "",
+        accountNumber: "",
+        ifscCode: "",
+        branchName: "",
+      },
     };
   }, [
     selectedCustomer,
@@ -169,7 +188,10 @@ export function InvoiceBuilder({
     nextSequence,
     existing?.id,
     existing?.invoiceNumber,
+    existing?.bank,
     locationFields,
+    bankDetailsId,
+    banks,
   ]);
 
   const handlePrint = useReactToPrint({
@@ -197,6 +219,10 @@ export function InvoiceBuilder({
   function handleSave(status: "DRAFT" | "FINAL") {
     if (!documentData) {
       toast.error("Select a customer and at least one farmer.");
+      return;
+    }
+    if (!documentData.bank.bankDetailsId) {
+      toast.error("Select a bank account.");
       return;
     }
     startTransition(async () => {
@@ -286,6 +312,13 @@ export function InvoiceBuilder({
                 />
               </div>
             ) : null}
+          </div>
+          <div className="mt-3">
+            <BankAccountSelect
+              banks={banks}
+              value={bankDetailsId}
+              onChange={setBankDetailsId}
+            />
           </div>
           {category === "service" ? (
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

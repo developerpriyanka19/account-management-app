@@ -1,5 +1,6 @@
 import { CompanyBrandHeader } from "@/components/company-brand-header";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
+import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 import { DebitNoteType } from "@/lib/debit-note-types";
 
@@ -90,14 +91,17 @@ function RemarkBlock({ remarks }: { remarks?: string | null }) {
   );
 }
 
-function FooterAndSignature() {
+function FooterAndSignature({ data }: { data: DebitNotePayload }) {
   return (
     <>
-      <div className="mt-8 pr-3 text-right text-[11px]">
-        <p className="font-semibold">For Apoorva Energy Solutions</p>
-        <p className="mt-4 font-semibold">Authorized Signatory</p>
+      <div className="mt-auto flex items-end justify-between gap-4 pt-4">
+        <BankDetailsDisplay bank={data.bank} />
+        <div className="text-right text-[11px]">
+          <p className="font-semibold">For Apoorva Energy Solutions</p>
+          <p className="mt-4 font-semibold">Authorized Signatory</p>
+        </div>
       </div>
-      <CompanyDocumentFooter className="mt-auto pt-2" />
+      <CompanyDocumentFooter className="pt-2" />
     </>
   );
 }
@@ -134,7 +138,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
             </table>
           </div>
           <RemarkBlock remarks={data.remarks} />
-          <FooterAndSignature />
+          <FooterAndSignature data={data} />
         </section>
 
         {detailPages.map((pageRows, pageIndex) => (
@@ -196,7 +200,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
               <div className="mt-3 text-right text-[10.5px] font-bold">Grand Total: {money(data.total)}</div>
             ) : null}
             {pageIndex === detailPages.length - 1 ? <RemarkBlock remarks={data.remarks} /> : null}
-            <FooterAndSignature />
+            <FooterAndSignature data={data} />
           </section>
         ))}
       </article>
@@ -231,7 +235,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
           </table>
         </div>
         <RemarkBlock remarks={data.remarks} />
-        <FooterAndSignature />
+        <FooterAndSignature data={data} />
       </section>
 
       <section className="flex min-h-[277mm] flex-col px-4 py-4">
@@ -303,7 +307,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
         </div>
         <div className="mt-3 text-right text-[10.5px] font-bold">TOTAL AMOUNT: {money(data.total)}</div>
         <RemarkBlock remarks={data.remarks} />
-        <FooterAndSignature />
+        <FooterAndSignature data={data} />
       </section>
     </article>
   );

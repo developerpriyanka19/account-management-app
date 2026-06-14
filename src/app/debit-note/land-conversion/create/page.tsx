@@ -23,6 +23,7 @@ export default async function CreateLandConversionDebitNotePage() {
           listHref={debitNoteListPath(DebitNoteType.LAND_CONVERSION)}
           customers={data.customers}
           farmers={data.farmers}
+          banks={data.banks}
         />
       </div>
     </ToastProvider>

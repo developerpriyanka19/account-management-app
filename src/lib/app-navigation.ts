@@ -32,6 +32,7 @@ export const SIDEBAR_INVOICE_GROUP: SidebarNavGroup = {
     { label: "NA Invoices", href: "/invoice/na" },
     { label: "Service Invoices", href: "/invoice/service" },
     { label: "Customers", href: "/customers-management" },
+    { label: "Bank Details", href: "/invoice/bank-details" },
   ],
 };
 
@@ -62,11 +63,17 @@ export function isSidebarPathActive(pathname: string, href: string): boolean {
   if (href === "/customers-management") {
     return pathname === "/customers-management" || pathname.startsWith("/customers-management/");
   }
+  if (href === "/invoice/bank-details") {
+    return pathname === "/invoice/bank-details" || pathname.startsWith("/invoice/bank-details/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function isSidebarGroupActive(pathname: string, group: SidebarNavGroup): boolean {
   if (group.id === "invoice" && /^\/invoice\/\d+/.test(pathname)) {
+    return true;
+  }
+  if (group.id === "invoice" && pathname.startsWith("/invoice/bank-details")) {
     return true;
   }
   if (

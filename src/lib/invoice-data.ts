@@ -1,4 +1,5 @@
 import type { Invoice, InvoiceItem, GstCustomer } from "@prisma/client";
+import { snapshotFromRecord } from "@/lib/bank-details-types";
 import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
 import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types";
 import {
@@ -81,6 +82,7 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     }),
     lines: normalizedLines,
     totals,
+    bank: snapshotFromRecord(record),
   };
 }
 

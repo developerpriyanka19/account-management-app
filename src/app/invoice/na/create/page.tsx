@@ -18,12 +18,12 @@ export default async function CreateNaInvoicePage({ searchParams }: Props) {
   const existingRecord =
     Number.isInteger(editId) && editId > 0 ? await getNaInvoiceById(editId) : null;
   const existing = existingRecord ? invoiceRecordToDocument(existingRecord) : null;
-  const { customers, farmers } = await getInvoiceBuilderData();
+  const { customers, farmers, banks } = await getInvoiceBuilderData();
 
   return (
     <ToastProvider>
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <NaInvoiceForm customers={customers} farmers={farmers} existing={existing} />
+        <NaInvoiceForm customers={customers} farmers={farmers} banks={banks} existing={existing} />
       </div>
     </ToastProvider>
   );

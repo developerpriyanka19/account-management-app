@@ -11,6 +11,8 @@ import {
   type InvoiceCategoryCode,
 } from "@/lib/invoice-category";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
+import { resolveBankSnapshotForSave } from "@/actions/bank-details-actions";
+import { bankSnapshotToPrismaFields } from "@/lib/bank-details-types";
 import { prisma } from "@/lib/prisma";
 import { gstCustomerDb } from "@/lib/prisma-gst-customer";
 import { countInvoices, invoiceDb } from "@/lib/prisma-invoice";
@@ -108,7 +110,8 @@ export async function getServiceInvoiceList(input: {
 }
 
 export async function getInvoiceBuilderData() {
-  const [customers, farmers, invoiceCount] = await Promise.all([
+  const { getActiveBankOptions } = await import("@/actions/bank-details-actions");
+  const [customers, farmers, invoiceCount, banks] = await Promise.all([
     gstCustomerDb().findMany({
       orderBy: [{ companyName: "asc" }, { firstName: "asc" }],
       select: {
@@ -146,6 +149,7 @@ export async function getInvoiceBuilderData() {
       },
     }),
     countInvoices(),
+    getActiveBankOptions(),
   ]);
 
   return {
@@ -186,6 +190,7 @@ export async function getInvoiceBuilderData() {
         totalCents: f.totalCents,
       })),
     nextSequence: invoiceCount + 1,
+    banks,
   };
 }
 
@@ -203,6 +208,18 @@ export async function saveInvoice(
   if (payload.lines.length === 0) {
     return { ok: false, message: "Add at least one farmer line." };
   }
+  if (!payload.bank?.bankDetailsId) {
+    return { ok: false, message: "Select a bank account." };
+  }
+
+  const bankSnapshot = await resolveBankSnapshotForSave(
+    payload.bank.bankDetailsId,
+    payload.id ? (await invoiceDb().findUnique({ where: { id: payload.id }, select: { bankDetailsId: true } }))?.bankDetailsId : null,
+  );
+  if (!bankSnapshot) {
+    return { ok: false, message: "Selected bank account is invalid or inactive." };
+  }
+  const bankFields = bankSnapshotToPrismaFields(bankSnapshot);
 
   const totals = computeInvoiceTotals(payload.lines);
   const invoiceNumber = payload.invoiceNumber?.trim();
@@ -232,6 +249,7 @@ export async function saveInvoice(
       grandTotal: totals.grandTotal,
       totalAmountWords: amountToIndianWords(totals.grandTotal),
       notes: payload.notes || null,
+      ...bankFields,
     };
     const items = payload.lines.map((line) => ({
       farmerId: line.farmerId,
@@ -288,6 +306,7 @@ export async function saveInvoice(
 
     revalidatePath("/invoice/na");
     revalidatePath("/invoice/service");
+    revalidatePath("/invoice/bank-details");
     revalidatePath(`/invoice/na/${created.id}`);
     revalidatePath(`/invoice/${created.id}`);
 

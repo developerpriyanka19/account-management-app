@@ -21,7 +21,7 @@ export default async function EditDebitNotePage({ params }: Props) {
   }
 
   const existing = debitNoteRecordToPayload(record);
-  const { customers, farmers } = await getDebitNoteBuilderData();
+  const { customers, farmers, banks } = await getDebitNoteBuilderData();
   const isLand = existing.type === DebitNoteType.LAND_CONVERSION;
 
   return (
@@ -34,6 +34,7 @@ export default async function EditDebitNotePage({ params }: Props) {
           listHref={debitNoteListPath(existing.type)}
           customers={customers}
           farmers={farmers}
+          banks={banks}
           existing={existing}
         />
       </div>

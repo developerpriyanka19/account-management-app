@@ -1,3 +1,5 @@
+import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
+
 /** Invoice builder and template types. */
 
 export type InvoiceBillingCustomerOption = {
@@ -90,6 +92,7 @@ export type InvoiceDocumentData = {
     cgst: number;
     grandTotal: number;
   };
+  bank: BankDetailsSnapshot;
 };
 
 export function farmerToInvoiceLine(

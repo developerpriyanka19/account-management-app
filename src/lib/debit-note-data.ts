@@ -1,4 +1,5 @@
 import type { DebitNotePayload } from "@/lib/debit-note-types";
+import { snapshotFromRecord } from "@/lib/bank-details-types";
 import { normalizeDebitNoteType, DebitNoteType } from "@/lib/debit-note-types";
 
 type DebitNoteRecord = {
@@ -16,6 +17,12 @@ type DebitNoteRecord = {
   total: number;
   remarks: string | null;
   status: string;
+  bankDetailsId?: number | null;
+  bankName?: string | null;
+  accountHolderName?: string | null;
+  accountNumber?: string | null;
+  ifscCode?: string | null;
+  branchName?: string | null;
   items: Array<{
     farmerId: number | null;
     farmerName: string | null;
@@ -98,5 +105,6 @@ export function debitNoteRecordToPayload(record: DebitNoteRecord): DebitNotePayl
     total: record.total ?? 0,
     status: (record.status ?? "DRAFT").toUpperCase() === "FINAL" ? "FINAL" : "DRAFT",
     rows,
+    bank: snapshotFromRecord(record),
   };
 }
