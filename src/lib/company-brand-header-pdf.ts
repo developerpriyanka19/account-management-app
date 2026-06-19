@@ -1,5 +1,9 @@
 import type { jsPDF } from "jspdf";
-import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
+import {
+  COMPANY_INVOICE_HEADER,
+  INVOICE_LOGO_PDF_MM,
+  invoiceLogoHeightMm,
+} from "@/lib/invoice-config";
 
 const PDF_FONT = "times";
 
@@ -33,12 +37,13 @@ export function drawCompanyBrandHeaderPdf({
   startY,
 }: DrawBrandHeaderOptions): number {
   const rightX = pageWidth - rightMargin;
-  const { logoHeight, companyFontSize, titleFontSize, lineWidth, metadataMargin } =
+  const { logoWidth, headerRowHeight, companyFontSize, titleFontSize, lineWidth, metadataMargin } =
     INVOICE_LOGO_PDF_MM;
 
-  pdf.addImage(logoDataUrl, "PNG", leftMargin, startY, logoHeight, logoHeight);
+  const logoHeight = invoiceLogoHeightMm(logoWidth);
+  pdf.addImage(logoDataUrl, "PNG", leftMargin, startY, logoWidth, logoHeight);
 
-  const nameBaselineY = startY + logoHeight * 0.62;
+  const nameBaselineY = startY + headerRowHeight * 0.62;
   pdf.setFont(PDF_FONT, "bold");
   pdf.setTextColor(...COMPANY_ORANGE);
   pdf.setFontSize(companyFontSize);
@@ -47,7 +52,7 @@ export function drawCompanyBrandHeaderPdf({
     maxWidth: rightX - leftMargin,
   });
 
-  let y = startY + logoHeight + 2;
+  let y = startY + Math.max(headerRowHeight, logoHeight) + 2;
   pdf.setDrawColor(...DIVIDER_GREEN);
   pdf.setLineWidth(lineWidth);
   pdf.line(leftMargin, y, rightX, y);

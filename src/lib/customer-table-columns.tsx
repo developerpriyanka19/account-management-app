@@ -10,29 +10,44 @@ import {
 export const HEADER_ROW_H = 44;
 
 export const FARMER_DETAILS_GROUP_ID = "farmerDetails";
-export const SURVEY_FIELDS_GROUP_ID = "surveyFields";
 export const ACTIONS_GROUP_ID = "actionsGroup";
 export const ACTIONS_COLUMN_ID = "actions";
 export const ACTIONS_COLUMN_WIDTH = 160;
 
-export const PINNED_LEFT = ["farmerName", "changedFarmerName", "vendorCode"] as const;
+export const PINNED_LEFT = [
+  "farmerName",
+  "changedFarmerName",
+  "vendorCode",
+  "surveyNo",
+  "newSurveyNo",
+] as const;
 export const PINNED_RIGHT = [ACTIONS_COLUMN_ID] as const;
+
+export const FARMER_DETAILS_LEAF_IDS = [
+  "farmerName",
+  "changedFarmerName",
+  "vendorCode",
+  "surveyNo",
+  "newSurveyNo",
+] as const;
 
 type CustomerColumnMeta = {
   suppressSubHeader?: boolean;
+  headerTone?: "red";
 };
 
 function columnGroup(
   groupId: string,
   parentLabel: string,
   leaf: ColumnDef<CustomerListRow>,
-  opts?: { subHeader?: string | null },
+  opts?: { subHeader?: string | null; headerTone?: "red" },
 ): ColumnDef<CustomerListRow> {
   const suppressSubHeader = opts?.subHeader === null;
   const subHeader = suppressSubHeader ? "" : (opts?.subHeader ?? parentLabel);
   return {
     id: groupId,
     header: parentLabel,
+    meta: opts?.headerTone ? { headerTone: opts.headerTone } : undefined,
     columns: [
       {
         ...leaf,
@@ -46,6 +61,7 @@ function columnGroup(
   };
 }
 
+
 export function tableTotalWidth(
   leafColumns: { id: string; columnDef: { size?: number } }[],
 ): number {
@@ -56,6 +72,16 @@ export function pinnedLeftTotalWidth(
   leafColumns: { id: string; columnDef: { size?: number } }[],
 ): number {
   return PINNED_LEFT.reduce((sum, id) => {
+    const col = leafColumns.find((c) => c.id === id);
+    if (!col) return sum;
+    return sum + (col.columnDef.size ?? 100);
+  }, 0);
+}
+
+export function farmerDetailsGroupWidth(
+  leafColumns: { id: string; columnDef: { size?: number } }[],
+): number {
+  return FARMER_DETAILS_LEAF_IDS.reduce((sum, id) => {
     const col = leafColumns.find((c) => c.id === id);
     if (!col) return sum;
     return sum + (col.columnDef.size ?? 100);
@@ -134,7 +160,7 @@ export function computeLeaseDeedGovtFee(row: CustomerListRow): number | null {
   return Number.isNaN(total) ? null : total;
 }
 
-/** Leaf column ids in display order (for export). */
+/** Leaf column ids in display order (matches export). */
 export const LEAF_COLUMN_IDS = [
   "farmerName",
   "changedFarmerName",
@@ -159,6 +185,19 @@ export const LEAF_COLUMN_IDS = [
   "aesAdvanceBankName",
   "balanceRentAmount",
   "tdsAmount",
+  "shortageChequeAmount",
+  "shortageDate",
+  "shortageChequeNo",
+  "shortageBankName",
+  "shortageAmountSecondTime",
+  "shortageSecondDate",
+  "shortageSecondChequeNo",
+  "shortageSecondBankName",
+  "shortageThirdChequeAmount",
+  "shortageThirdDate",
+  "shortageThirdChequeNo",
+  "shortageThirdBankName",
+  "shortageAmountTotal",
   "bankLoanDdDate",
   "loanAmount",
   "bankLoanDdNo",
@@ -167,13 +206,14 @@ export const LEAF_COLUMN_IDS = [
   "leaseAmount",
   "rentalDdChequeNo",
   "rentalDdBankName",
-  "shortageChequeAmount",
-  "shortageDate",
-  "shortageChequeNo",
-  "shortageBankName",
+  "rentalDdPart1Date",
+  "rentalDdPart1Amount",
+  "rentalDdPart1ChequeNo",
+  "rentalDdPart1BankName",
   "atlTotal",
   "paoTotal",
   "landConversion",
+  "otherRecoveries",
   "podiFee",
   "leaseDeedGovtFee",
   "debitNoteNo",
@@ -189,19 +229,16 @@ export type ExportGroup = {
   label: string;
   leafLabels: string[];
   leafIds: LeafColumnId[];
+  /** Red parent header text in Excel export (matches dashboard). */
+  headerTone?: "red";
 };
 
 /** Grouped header structure for Excel export (row 0 merges). */
 export const EXPORT_GROUPS: ExportGroup[] = [
   {
     label: "Farmer Details",
-    leafLabels: ["Farmer Name", "Changed Name", "Vendor Code"],
-    leafIds: ["farmerName", "changedFarmerName", "vendorCode"],
-  },
-  {
-    label: "",
-    leafLabels: ["Survey No", "New Survey No"],
-    leafIds: ["surveyNo", "newSurveyNo"],
+    leafLabels: ["Farmer Name", "Changed Name", "Vendor Code", "Survey No", "New Survey No"],
+    leafIds: ["farmerName", "changedFarmerName", "vendorCode", "surveyNo", "newSurveyNo"],
   },
   {
     label: "RTC Extent",
@@ -224,7 +261,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
   { label: "Total Rent", leafLabels: ["Total Rent"], leafIds: ["rentAmount"] },
   {
     label: "AES Advance Per Acre",
-    leafLabels: ["Date", "Cheque no", "cheque amount", "Bank name"],
+    leafLabels: ["Date", "Cheque No", "Cheque Amount", "Bank Name"],
     leafIds: [
       "aesAdvanceDate",
       "aesAdvanceChequeNo",
@@ -239,17 +276,7 @@ export const EXPORT_GROUPS: ExportGroup[] = [
   },
   { label: "TDS Amount", leafLabels: ["TDS Amount"], leafIds: ["tdsAmount"] },
   {
-    label: "Bank Loan DD From Company",
-    leafLabels: ["Date", "Amount", "DD no", "Bank name"],
-    leafIds: ["bankLoanDdDate", "loanAmount", "bankLoanDdNo", "bankLoanBankName"],
-  },
-  {
-    label: "Rental DD From Company",
-    leafLabels: ["Date", "Amount", "Cheque no", "Bank name"],
-    leafIds: ["rentalDdDate", "leaseAmount", "rentalDdChequeNo", "rentalDdBankName"],
-  },
-  {
-    label: "Shortage Amount Through Cheque Once",
+    label: "Shortage Amount Through Cheque One",
     leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
     leafIds: [
       "shortageChequeAmount",
@@ -258,27 +285,77 @@ export const EXPORT_GROUPS: ExportGroup[] = [
       "shortageBankName",
     ],
   },
+  {
+    label: "Shortage Amount Through Cheque Second",
+    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
+    leafIds: [
+      "shortageAmountSecondTime",
+      "shortageSecondDate",
+      "shortageSecondChequeNo",
+      "shortageSecondBankName",
+    ],
+  },
+  {
+    label: "Shortage Amount Through Cheque Third",
+    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
+    leafIds: [
+      "shortageThirdChequeAmount",
+      "shortageThirdDate",
+      "shortageThirdChequeNo",
+      "shortageThirdBankName",
+    ],
+  },
+  {
+    label: "SHORTAGE AMOUNT TOTAL",
+    leafLabels: ["SHORTAGE AMOUNT TOTAL"],
+    leafIds: ["shortageAmountTotal"],
+  },
+  {
+    label: "Bank Loan DD From Company",
+    leafLabels: ["Date", "Amount", "DD No", "Bank Name"],
+    leafIds: ["bankLoanDdDate", "loanAmount", "bankLoanDdNo", "bankLoanBankName"],
+  },
+  {
+    label: "Rental DD From Company",
+    leafLabels: ["Date", "Amount", "Cheque No", "Bank Name"],
+    leafIds: ["rentalDdDate", "leaseAmount", "rentalDdChequeNo", "rentalDdBankName"],
+  },
+  {
+    label: "Rental DD From Company Part 1",
+    leafLabels: ["Date", "Amount", "Cheque No", "Bank Name"],
+    leafIds: [
+      "rentalDdPart1Date",
+      "rentalDdPart1Amount",
+      "rentalDdPart1ChequeNo",
+      "rentalDdPart1BankName",
+    ],
+  },
   { label: "ATL", leafLabels: ["ATL Govt Fee"], leafIds: ["atlTotal"] },
-  { label: "POA/GPA", leafLabels: ["GPA/POA GOVT fee"], leafIds: ["paoTotal"] },
+  { label: "POA/GPA", leafLabels: ["GPA/POA GOVT Fee"], leafIds: ["paoTotal"] },
   {
     label: "NA",
-    leafLabels: ["land conversion", "Podi fee"],
-    leafIds: ["landConversion", "podiFee"],
+    leafLabels: ["Land Conversion", "Other Recoveries", "Podi Fee"],
+    leafIds: ["landConversion", "otherRecoveries", "podiFee"],
   },
-  { label: "Lease Deed", leafLabels: ["Govt fee"], leafIds: ["leaseDeedGovtFee"] },
+  { label: "Lease Deed", leafLabels: ["Govt Fee"], leafIds: ["leaseDeedGovtFee"] },
   {
     label: "Debit Note",
-    leafLabels: ["DB NO", "Amount"],
+    leafLabels: ["DB No", "Amount"],
     leafIds: ["debitNoteNo", "debitNoteAmount"],
   },
   { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
-  { label: "Other charger", leafLabels: ["Other charger"], leafIds: ["otherCharges"] },
+  { label: "Other Charger", leafLabels: ["Other Charger"], leafIds: ["otherCharges"] },
   {
     label: "Crop Compensations",
     leafLabels: ["Crop Compensations"],
     leafIds: ["cropCompensation"],
   },
 ];
+
+/** Leaf column ids in Excel export order (derived from grouped headers). */
+export const EXPORT_LEAF_COLUMN_IDS = EXPORT_GROUPS.flatMap(
+  (g) => g.leafIds,
+) as LeafColumnId[];
 
 const MONEY_IDS = new Set<string>([
   "totalGunta",
@@ -291,9 +368,14 @@ const MONEY_IDS = new Set<string>([
   "leaseAmount",
   "tdsAmount",
   "shortageChequeAmount",
+  "shortageAmountSecondTime",
+  "shortageThirdChequeAmount",
+  "shortageAmountTotal",
+  "rentalDdPart1Amount",
   "atlTotal",
   "paoTotal",
   "landConversion",
+  "otherRecoveries",
   "podiFee",
   "leaseDeedGovtFee",
   "debitNoteAmount",
@@ -313,7 +395,10 @@ const DATE_IDS = new Set([
   "aesAdvanceDate",
   "bankLoanDdDate",
   "rentalDdDate",
+  "rentalDdPart1Date",
   "shortageDate",
+  "shortageSecondDate",
+  "shortageThirdDate",
 ]);
 
 /** Leaf column ids rendered as right-aligned currency / numeric amounts in the table. */
@@ -398,12 +483,6 @@ export function buildCustomerTableColumns(
           maxSize: 120,
           enablePinning: true,
         },
-      ],
-    },
-    {
-      id: SURVEY_FIELDS_GROUP_ID,
-      header: "",
-      columns: [
         {
           id: "surveyNo",
           accessorKey: "surveyNo",
@@ -412,6 +491,7 @@ export function buildCustomerTableColumns(
           size: 120,
           minSize: 120,
           maxSize: 120,
+          enablePinning: true,
         },
         {
           id: "newSurveyNo",
@@ -420,6 +500,7 @@ export function buildCustomerTableColumns(
           cell: ({ getValue }) => textCell(getValue() as string),
           size: 95,
           minSize: 90,
+          enablePinning: true,
         },
       ],
     },
@@ -551,14 +632,14 @@ export function buildCustomerTableColumns(
         {
           id: "aesAdvanceChequeNo",
           accessorKey: "aesAdvanceChequeNo",
-          header: "Cheque no",
+          header: "Cheque No",
           cell: ({ getValue }) => textCell(getValue() as string),
           size: 90,
         },
         {
           id: "aesAdvanceChequeAmount",
           accessorKey: "aesAdvanceChequeAmount",
-          header: "cheque amount",
+          header: "Cheque Amount",
           cell: ({ getValue }) => moneyCell(getValue() as number),
           size: 112,
           minSize: 104,
@@ -566,7 +647,7 @@ export function buildCustomerTableColumns(
         {
           id: "aesAdvanceBankName",
           accessorKey: "aesAdvanceBankName",
-          header: "Bank name",
+          header: "Bank Name",
           cell: ({ getValue }) => textCell(getValue() as string),
           size: 110,
         },
@@ -589,78 +670,8 @@ export function buildCustomerTableColumns(
       minSize: 96,
     }, { subHeader: null }),
     {
-      id: "bankLoanDd",
-      header: "Bank Loan DD From Company",
-      columns: [
-        {
-          id: "bankLoanDdDate",
-          accessorKey: "bankLoanDdDate",
-          header: "Date",
-          cell: ({ getValue }) => dateCell(getValue() as string),
-          size: 95,
-        },
-        {
-          id: "loanAmount",
-          accessorKey: "loanAmount",
-          header: "Amount",
-          cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 112,
-          minSize: 104,
-        },
-        {
-          id: "bankLoanDdNo",
-          accessorKey: "bankLoanDdNo",
-          header: "DD no",
-          cell: ({ getValue }) => textCell(getValue() as string),
-          size: 90,
-        },
-        {
-          id: "bankLoanBankName",
-          accessorKey: "bankLoanBankName",
-          header: "Bank name",
-          cell: ({ getValue }) => textCell(getValue() as string),
-          size: 110,
-        },
-      ],
-    },
-    {
-      id: "rentalDd",
-      header: "Rental DD From Company",
-      columns: [
-        {
-          id: "rentalDdDate",
-          accessorKey: "rentalDdDate",
-          header: "Date",
-          cell: ({ getValue }) => dateCell(getValue() as string),
-          size: 95,
-        },
-        {
-          id: "leaseAmount",
-          accessorKey: "leaseAmount",
-          header: "Amount",
-          cell: ({ getValue }) => moneyCell(getValue() as number),
-          size: 112,
-          minSize: 104,
-        },
-        {
-          id: "rentalDdChequeNo",
-          accessorKey: "rentalDdChequeNo",
-          header: "Cheque no",
-          cell: ({ getValue }) => textCell(getValue() as string),
-          size: 90,
-        },
-        {
-          id: "rentalDdBankName",
-          accessorKey: "rentalDdBankName",
-          header: "Bank name",
-          cell: ({ getValue }) => textCell(getValue() as string),
-          size: 110,
-        },
-      ],
-    },
-    {
       id: "shortageOnce",
-      header: "Shortage Amount Through Cheque Once",
+      header: "Shortage Amount Through Cheque One",
       columns: [
         {
           id: "shortageChequeAmount",
@@ -693,6 +704,194 @@ export function buildCustomerTableColumns(
         },
       ],
     },
+    {
+      id: "shortageSecond",
+      header: "Shortage Amount Through Cheque Second",
+      columns: [
+        {
+          id: "shortageAmountSecondTime",
+          accessorKey: "shortageAmountSecondTime",
+          header: "Amount",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 112,
+          minSize: 104,
+        },
+        {
+          id: "shortageSecondDate",
+          accessorKey: "shortageSecondDate",
+          header: "Date",
+          cell: ({ getValue }) => dateCell(getValue() as string),
+          size: 95,
+        },
+        {
+          id: "shortageSecondChequeNo",
+          accessorKey: "shortageSecondChequeNo",
+          header: "Cheque No",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 90,
+        },
+        {
+          id: "shortageSecondBankName",
+          accessorKey: "shortageSecondBankName",
+          header: "Bank Name",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 110,
+        },
+      ],
+    },
+    {
+      id: "shortageThird",
+      header: "Shortage Amount Through Cheque Third",
+      columns: [
+        {
+          id: "shortageThirdChequeAmount",
+          accessorKey: "shortageThirdChequeAmount",
+          header: "Amount",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 112,
+          minSize: 104,
+        },
+        {
+          id: "shortageThirdDate",
+          accessorKey: "shortageThirdDate",
+          header: "Date",
+          cell: ({ getValue }) => dateCell(getValue() as string),
+          size: 95,
+        },
+        {
+          id: "shortageThirdChequeNo",
+          accessorKey: "shortageThirdChequeNo",
+          header: "Cheque No",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 90,
+        },
+        {
+          id: "shortageThirdBankName",
+          accessorKey: "shortageThirdBankName",
+          header: "Bank Name",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 110,
+        },
+      ],
+    },
+    columnGroup(
+      "shortageAmountTotalGroup",
+      "SHORTAGE AMOUNT TOTAL",
+      {
+        id: "shortageAmountTotal",
+        accessorKey: "shortageAmountTotal",
+        header: "SHORTAGE AMOUNT TOTAL",
+        cell: ({ getValue }) => moneyCell(getValue() as number),
+        size: 140,
+        minSize: 120,
+      },
+      { subHeader: null },
+    ),
+    {
+      id: "bankLoanDd",
+      header: "Bank Loan DD From Company",
+      columns: [
+        {
+          id: "bankLoanDdDate",
+          accessorKey: "bankLoanDdDate",
+          header: "Date",
+          cell: ({ getValue }) => dateCell(getValue() as string),
+          size: 95,
+        },
+        {
+          id: "loanAmount",
+          accessorKey: "loanAmount",
+          header: "Amount",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 112,
+          minSize: 104,
+        },
+        {
+          id: "bankLoanDdNo",
+          accessorKey: "bankLoanDdNo",
+          header: "DD No",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 90,
+        },
+        {
+          id: "bankLoanBankName",
+          accessorKey: "bankLoanBankName",
+          header: "Bank Name",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 110,
+        },
+      ],
+    },
+    {
+      id: "rentalDd",
+      header: "Rental DD From Company",
+      columns: [
+        {
+          id: "rentalDdDate",
+          accessorKey: "rentalDdDate",
+          header: "Date",
+          cell: ({ getValue }) => dateCell(getValue() as string),
+          size: 95,
+        },
+        {
+          id: "leaseAmount",
+          accessorKey: "leaseAmount",
+          header: "Amount",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 112,
+          minSize: 104,
+        },
+        {
+          id: "rentalDdChequeNo",
+          accessorKey: "rentalDdChequeNo",
+          header: "Cheque No",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 90,
+        },
+        {
+          id: "rentalDdBankName",
+          accessorKey: "rentalDdBankName",
+          header: "Bank Name",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 110,
+        },
+      ],
+    },
+    {
+      id: "rentalDdPart1",
+      header: "Rental DD From Company Part 1",
+      columns: [
+        {
+          id: "rentalDdPart1Date",
+          accessorKey: "rentalDdPart1Date",
+          header: "Date",
+          cell: ({ getValue }) => dateCell(getValue() as string),
+          size: 95,
+        },
+        {
+          id: "rentalDdPart1Amount",
+          accessorKey: "rentalDdPart1Amount",
+          header: "Amount",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 112,
+          minSize: 104,
+        },
+        {
+          id: "rentalDdPart1ChequeNo",
+          accessorKey: "rentalDdPart1ChequeNo",
+          header: "Cheque No",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 90,
+        },
+        {
+          id: "rentalDdPart1BankName",
+          accessorKey: "rentalDdPart1BankName",
+          header: "Bank Name",
+          cell: ({ getValue }) => textCell(getValue() as string),
+          size: 110,
+        },
+      ],
+    },
     columnGroup("atl", "ATL", {
       id: "atlTotal",
       accessorKey: "atlTotal",
@@ -704,11 +903,11 @@ export function buildCustomerTableColumns(
     columnGroup("pao", "POA/GPA", {
       id: "paoTotal",
       accessorKey: "paoTotal",
-      header: "GPA/POA GOVT fee",
+      header: "GPA/POA GOVT Fee",
       cell: ({ getValue }) => moneyCell(getValue() as number),
       size: 120,
       minSize: 104,
-    }, { subHeader: "GPA/POA GOVT fee" }),
+    }, { subHeader: "GPA/POA GOVT Fee" }),
     {
       id: "na",
       header: "NA",
@@ -716,15 +915,23 @@ export function buildCustomerTableColumns(
         {
           id: "landConversion",
           accessorKey: "landConversion",
-          header: "land conversion",
+          header: "Land Conversion",
           cell: ({ getValue }) => moneyCell(getValue() as number),
           size: 112,
           minSize: 104,
         },
         {
+          id: "otherRecoveries",
+          accessorKey: "otherRecoveries",
+          header: "Other Recoveries",
+          cell: ({ getValue }) => moneyCell(getValue() as number),
+          size: 120,
+          minSize: 104,
+        },
+        {
           id: "podiFee",
           accessorKey: "podiFee",
-          header: "Podi fee",
+          header: "Podi Fee",
           cell: ({ getValue }) => moneyCell(getValue() as number),
           size: 104,
           minSize: 96,
@@ -733,11 +940,11 @@ export function buildCustomerTableColumns(
     },
     columnGroup("leaseDeed", "Lease Deed", {
       id: "leaseDeedGovtFee",
-      header: "Govt fee",
+      header: "Govt Fee",
       cell: ({ row }) => moneyCell(computeLeaseDeedGovtFee(row.original)),
       size: 104,
       minSize: 96,
-    }, { subHeader: "Govt fee" }),
+    }, { subHeader: "Govt Fee" }),
     {
       id: "debitNote",
       header: "Debit Note",
@@ -745,7 +952,7 @@ export function buildCustomerTableColumns(
         {
           id: "debitNoteNo",
           accessorKey: "debitNoteNo",
-          header: "DB NO",
+          header: "DB No",
           cell: ({ getValue }) => textCell(getValue() as string),
           size: 85,
         },
@@ -768,10 +975,10 @@ export function buildCustomerTableColumns(
       minSize: 120,
       maxSize: 200,
     }, { subHeader: null }),
-    columnGroup("otherChargesGroup", "Other charger", {
+    columnGroup("otherChargesGroup", "Other Charger", {
       id: "otherCharges",
       accessorKey: "otherCharges",
-      header: "Other charger",
+      header: "Other Charger",
       cell: ({ getValue }) => moneyCell(getValue() as number),
       size: 112,
       minSize: 104,

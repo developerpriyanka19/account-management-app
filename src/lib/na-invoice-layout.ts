@@ -1,9 +1,9 @@
 import {
   amountToIndianWords,
   computeInvoiceTotals,
-  formatInvoiceInteger,
+  formatInvoiceDecimal,
   formatInvoiceMoney,
-  lineAmountFromAcreage,
+  lineAmountFromExtent,
 } from "@/lib/invoice-calculations";
 import { getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
 import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types";
@@ -50,13 +50,16 @@ export function resolveNaRatePerAcre(document: InvoiceDocumentData): number {
 }
 
 export function formatRatePerAcreDisplay(rate: number): string {
-  const formatted = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(rate);
+  const formatted = new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(rate);
   return `${formatted}/- per acre`;
 }
 
 export function naLineAmount(line: InvoiceLineInput, ratePerAcre: number): number {
   if (line.debitNote > 0) return line.debitNote;
-  return lineAmountFromAcreage(line.acres, ratePerAcre);
+  return lineAmountFromExtent(line.acres, line.gunta, ratePerAcre);
 }
 
 export function prepareNaInvoiceDocument(document: InvoiceDocumentData): InvoiceDocumentData {
@@ -86,11 +89,11 @@ export function buildNaInvoiceTableBody(document: InvoiceDocumentData): string[]
     line.farmerName || line.description || "—",
     hsn,
     line.surveyNo || "—",
-    line.acres != null ? formatInvoiceInteger(line.acres) : "—",
-    line.gunta != null ? formatInvoiceInteger(line.gunta) : "—",
+    line.acres != null ? formatInvoiceDecimal(line.acres) : "—",
+    line.gunta != null ? formatInvoiceDecimal(line.gunta) : "—",
     line.affidavitId || "—",
     line.requestId || "—",
-    line.totalCents != null ? formatInvoiceInteger(line.totalCents) : "—",
+    line.totalCents != null ? formatInvoiceDecimal(line.totalCents) : "—",
     formatInvoiceMoney(naLineAmount(line, rate)),
   ]);
 }

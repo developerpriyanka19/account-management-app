@@ -80,6 +80,7 @@ export function InvoiceBuilder({
   const [taluk, setTaluk] = useState(() => existing?.taluk ?? "");
   const [village, setVillage] = useState(() => existing?.village ?? "");
   const [hobbli, setHobbli] = useState(() => existing?.hobbli ?? "");
+  const [state, setState] = useState(() => existing?.state ?? "");
   const [selectedFarmerIds, setSelectedFarmerIds] = useState<number[]>(() =>
     (existing?.lines ?? [])
       .map((l) => l.farmerId)
@@ -123,21 +124,24 @@ export function InvoiceBuilder({
       taluk,
       village,
       hobbli,
+      state,
     }),
-    [district, taluk, village, hobbli],
+    [district, taluk, village, hobbli, state],
   );
 
   function applyCustomerLocation(customer: InvoiceBillingCustomerOption) {
     const loc = locationFromCustomer(customer);
-    setDistrict(loc.district);
-    setTaluk(loc.taluk);
-    setVillage(loc.village);
     setHobbli(loc.hobbli);
+    setVillage(loc.village);
+    setTaluk(loc.taluk);
+    setDistrict(loc.district);
+    setState(loc.state);
   }
 
   const documentData: InvoiceDocumentData | null = useMemo(() => {
     if (!selectedCustomer) return null;
-    const computedLines = computeLineAmounts(lines, rate, category);
+    const computedLines =
+      category === "service" ? lines : computeLineAmounts(lines, rate, category);
     const totals = computeInvoiceTotals(computedLines);
     return {
       id: existing?.id,
@@ -150,6 +154,7 @@ export function InvoiceBuilder({
       taluk: locationFields.taluk,
       village: locationFields.village,
       hobbli: locationFields.hobbli,
+      state: locationFields.state,
       status: "draft",
       ratePerAcre: rate,
       notes,
@@ -321,30 +326,26 @@ export function InvoiceBuilder({
             />
           </div>
           {category === "service" ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div>
-                <Label>District</Label>
-                <Input
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="mt-1 h-9"
-                />
+                <Label>Hobli</Label>
+                <Input value={hobbli} onChange={(e) => setHobbli(e.target.value)} className="mt-1 h-9" />
+              </div>
+              <div>
+                <Label>Village</Label>
+                <Input value={village} onChange={(e) => setVillage(e.target.value)} className="mt-1 h-9" />
               </div>
               <div>
                 <Label>Taluk</Label>
                 <Input value={taluk} onChange={(e) => setTaluk(e.target.value)} className="mt-1 h-9" />
               </div>
               <div>
-                <Label>Village</Label>
-                <Input
-                  value={village}
-                  onChange={(e) => setVillage(e.target.value)}
-                  className="mt-1 h-9"
-                />
+                <Label>District</Label>
+                <Input value={district} onChange={(e) => setDistrict(e.target.value)} className="mt-1 h-9" />
               </div>
               <div>
-                <Label>Hobli</Label>
-                <Input value={hobbli} onChange={(e) => setHobbli(e.target.value)} className="mt-1 h-9" />
+                <Label>State</Label>
+                <Input value={state} onChange={(e) => setState(e.target.value)} className="mt-1 h-9" />
               </div>
             </div>
           ) : null}
@@ -387,9 +388,11 @@ export function InvoiceBuilder({
           <section className="rounded-lg border border-[#D1D5DB] bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-[#111827]">3. Line items</h2>
-              <Button type="button" variant="outline" size="sm" onClick={recalculateAmounts}>
-                Recalculate
-              </Button>
+              {category === "na" ? (
+                <Button type="button" variant="outline" size="sm" onClick={recalculateAmounts}>
+                  Recalculate
+                </Button>
+              ) : null}
             </div>
             <div className="mt-3 overflow-x-auto overscroll-x-contain rounded-md border border-[#E5E7EB]">
               <table
@@ -480,12 +483,16 @@ export function InvoiceBuilder({
                       <td className="px-2 py-1.5">
                         <Input
                           type="number"
-                          value={line.amount}
+                          step="any"
+                          value={line.amount ?? ""}
                           onChange={(e) => {
-                            const n = Number(e.target.value);
-                            updateLine(i, { amount: Number.isFinite(n) ? n : 0 });
+                            const raw = e.target.value.trim();
+                            updateLine(i, {
+                              amount: raw === "" ? null : Number(raw),
+                            });
                           }}
                           className="h-8 w-full min-w-0 text-right text-xs tabular-nums"
+                          placeholder="Enter amount"
                         />
                       </td>
                     </tr>

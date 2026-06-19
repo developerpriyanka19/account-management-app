@@ -5,7 +5,9 @@ import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types"
 import {
   computeInvoiceTotals,
   invoiceLineTaxableAmount,
+  lineAmountFromExtent,
   toFiniteNumber,
+  toOptionalNumber,
 } from "@/lib/invoice-calculations";
 
 export type InvoiceWithRelations = Invoice & {
@@ -41,9 +43,8 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
       ? lines.map((line) => {
           const acres = toFiniteNumber(line.acres);
           const amount =
-            acres > 0 && ratePerAcre > 0
-              ? Math.round(acres * ratePerAcre * 100) / 100
-              : invoiceLineTaxableAmount(line);
+            toOptionalNumber(line.amount) ??
+            (lineAmountFromExtent(line.acres, line.gunta, ratePerAcre) || null);
           return { ...line, amount };
         })
       : lines;
@@ -60,6 +61,7 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     taluk: (record as { taluk?: string | null }).taluk ?? "",
     village: (record as { village?: string | null }).village ?? "",
     hobbli: (record as { hobbli?: string | null }).hobbli ?? "",
+    state: (record as { state?: string | null }).state ?? "",
     status: record.status,
     ratePerAcre: record.ratePerAcre ?? 0,
     notes: record.notes ?? "",

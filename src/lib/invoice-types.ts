@@ -1,6 +1,6 @@
 import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
 
-/** Invoice builder and template types. */
+import { lineAmountFromExtent } from "@/lib/invoice-calculations";
 
 export type InvoiceBillingCustomerOption = {
   id: number;
@@ -65,7 +65,7 @@ export type InvoiceLineInput = {
   requestId: string;
   debitNote: number;
   remark: string;
-  amount: number;
+  amount: number | null;
   description: string;
 };
 
@@ -79,6 +79,7 @@ export type InvoiceDocumentData = {
   taluk: string;
   village: string;
   hobbli: string;
+  state: string;
   status: string;
   ratePerAcre: number;
   notes: string;
@@ -122,9 +123,9 @@ export function farmerToInvoiceLine(
     debitNote: 0,
     remark: "",
     amount:
-      acres != null && ratePerAcre > 0
-        ? Math.round(Number(acres) * Number(ratePerAcre) * 100) / 100
-        : 0,
+      ratePerAcre > 0
+        ? lineAmountFromExtent(acres, gunta, ratePerAcre) || null
+        : null,
     description: farmer.label,
   };
 }

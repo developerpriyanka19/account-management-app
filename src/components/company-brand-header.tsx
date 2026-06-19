@@ -3,6 +3,7 @@ import {
   COMPANY_BRAND_STYLE,
   COMPANY_INVOICE_HEADER,
   INVOICE_LOGO,
+  invoiceLogoHeightPx,
 } from "@/lib/invoice-config";
 import { cn } from "@/lib/utils";
 
@@ -22,23 +23,32 @@ export function CompanyBrandHeader({
   documentSubtitle,
   compact = false,
 }: Props) {
-  const logoH = compact ? 45 : INVOICE_LOGO.heightPx;
+  const logoW = compact ? INVOICE_LOGO.compactWidthPx : INVOICE_LOGO.widthPx;
+  const logoH = invoiceLogoHeightPx(logoW);
+  const headerRowH = compact
+    ? INVOICE_LOGO.compactHeaderRowHeightPx
+    : INVOICE_LOGO.headerRowHeightPx;
   const nameSize = compact ? "text-[22px]" : "text-[28px]";
   const titleSize = compact ? "text-sm" : "text-[15px]";
+  /** Extra space before the rule when the logo extends below the name row. */
+  const ruleMarginTop = Math.max(8, logoH - headerRowH);
 
   return (
     <div className="w-full" style={{ marginBottom: INVOICE_LOGO.metadataMarginPx }}>
       <div
         className="relative flex w-full items-center"
-        style={{ minHeight: logoH, paddingLeft: logoH + INVOICE_LOGO.gapPx }}
+        style={{
+          minHeight: headerRowH,
+          paddingLeft: logoW + INVOICE_LOGO.gapPx,
+        }}
       >
         <Image
           src={INVOICE_LOGO.src}
           alt={COMPANY_INVOICE_HEADER.signatureName}
-          width={logoH}
-          height={logoH}
-          className="absolute left-0 top-1/2 shrink-0 -translate-y-1/2 object-contain"
-          style={{ width: logoH, height: logoH }}
+          width={INVOICE_LOGO.intrinsicWidthPx}
+          height={INVOICE_LOGO.intrinsicHeightPx}
+          className="absolute left-0 top-0 shrink-0 object-contain object-left-top"
+          style={{ width: logoW, height: "auto" }}
           priority
         />
         <h1
@@ -52,8 +62,9 @@ export function CompanyBrandHeader({
         </h1>
       </div>
       <hr
-        className="mt-2 border-0"
+        className="border-0"
         style={{
+          marginTop: ruleMarginTop,
           borderTopWidth: 1,
           borderTopStyle: "solid",
           borderTopColor: COMPANY_BRAND_STYLE.dividerColor,

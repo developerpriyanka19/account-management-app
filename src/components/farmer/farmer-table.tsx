@@ -23,9 +23,8 @@ import {
   MONEY_COLUMN_IDS,
   PINNED_LEFT,
   PINNED_RIGHT,
-  SURVEY_FIELDS_GROUP_ID,
   buildCustomerTableColumns,
-  pinnedLeftTotalWidth,
+  farmerDetailsGroupWidth,
   tableTotalWidth,
 } from "@/lib/customer-table-columns";
 import { cn } from "@/lib/utils";
@@ -157,11 +156,13 @@ function getHeaderCellStyles(
   };
 
   if (isFarmerDetailsParent) {
-    const frozenWidth = pinnedLeftTotalWidth(leafColumns);
+    const groupWidth = farmerDetailsGroupWidth(leafColumns);
     return {
       ...style,
       left: "0px",
-      minWidth: `${frozenWidth}px`,
+      width: `${groupWidth}px`,
+      minWidth: `${groupWidth}px`,
+      maxWidth: `${groupWidth}px`,
       boxShadow: "4px 0 8px -2px rgba(15,23,42,0.12)",
     };
   }
@@ -381,8 +382,6 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                   const isGroupRow = depth === 0 && headerRowCount > 1;
                   const isGroupParentHeader =
                     isGroupRow && header.subHeaders.length > 0;
-                  const isBlankGroupHeader =
-                    isGroupParentHeader && header.column.id === SURVEY_FIELDS_GROUP_ID;
                   const isActionsParentHeader =
                     depth === 0 && header.column.id === ACTIONS_GROUP_ID;
                   const columnMeta = header.column.columnDef.meta as
@@ -391,17 +390,19 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                   const isSuppressedSubHeader =
                     depth === 1 && columnMeta?.suppressSubHeader === true;
                   const headerBg =
-                    isGroupParentHeader && !isBlankGroupHeader
-                      ? GROUP_BG
-                      : HEADER_BG;
+                    isGroupParentHeader ? GROUP_BG : HEADER_BG;
                   const isSubHeaderRow = headerRowCount > 1 && depth === 1;
+
+                  const isFarmerDetailsParentHeader =
+                    isGroupParentHeader && header.column.id === FARMER_DETAILS_GROUP_ID;
+                  const farmerDetailsWidth = farmerDetailsGroupWidth(leafColumns);
 
                   return (
                     <th
                       key={header.id}
                       colSpan={header.colSpan}
                       className={cn(
-                        (isGroupParentHeader && !isBlankGroupHeader) || isActionsParentHeader
+                        (isGroupParentHeader) || isActionsParentHeader
                           ? GROUP_TH
                           : LEAF_TH,
                         isSubHeaderRow && "-mt-px border-t-0",
@@ -417,9 +418,16 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                           headerRowCount,
                           backgroundColor: headerBg,
                         }),
-                        ...(isGroupParentHeader
+                        ...(isGroupParentHeader && !isFarmerDetailsParentHeader
                           ? {}
                           : getStableColumnStyle(header.column)),
+                        ...(isFarmerDetailsParentHeader
+                          ? {
+                              width: `${farmerDetailsWidth}px`,
+                              minWidth: `${farmerDetailsWidth}px`,
+                              maxWidth: `${farmerDetailsWidth}px`,
+                            }
+                          : {}),
                         ...(header.column.id === ACTIONS_COLUMN_ID ||
                         header.column.id === ACTIONS_GROUP_ID
                           ? {

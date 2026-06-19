@@ -241,6 +241,7 @@ export async function saveInvoice(
       taluk: payload.taluk || null,
       village: payload.village || null,
       hobbli: payload.hobbli || null,
+      state: payload.state || null,
       status,
       ratePerAcre: payload.ratePerAcre,
       subtotal: totals.subtotal,

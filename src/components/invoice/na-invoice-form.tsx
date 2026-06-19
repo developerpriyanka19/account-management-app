@@ -49,6 +49,7 @@ const schema = z.object({
   taluk: z.string().min(1, "Taluk is required"),
   village: z.string().min(1, "Village is required"),
   hobbli: z.string().min(1, "Hobbli is required"),
+  state: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -96,6 +97,7 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
       taluk: existing?.taluk ?? "",
       village: existing?.village ?? "",
       hobbli: existing?.hobbli ?? "",
+      state: existing?.state ?? "",
       notes: existing?.notes ?? "",
     },
   });
@@ -159,6 +161,7 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
       taluk: values.taluk,
       village: values.village,
       hobbli: values.hobbli,
+      state: values.state ?? "",
       status: statusOverride ?? existing?.status?.toUpperCase() ?? "DRAFT",
       ratePerAcre: rate,
       notes: values.notes ?? "",
@@ -207,6 +210,7 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
     form.setValue("taluk", customer.taluk ?? "");
     form.setValue("village", customer.village ?? "");
     form.setValue("hobbli", customer.hobbli ?? "");
+    form.setValue("state", customer.state ?? "");
     if (selectedFarmerIds.length > 0) {
       syncLines(selectedFarmerIds);
     }
@@ -334,10 +338,11 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
               disabled={isFinal}
             />
           </div>
-          <div><Label>District</Label><Input className="mt-1" {...form.register("district")} disabled={isFinal} /></div>
-          <div><Label>Taluk</Label><Input className="mt-1" {...form.register("taluk")} disabled={isFinal} /></div>
+          <div><Label>Hobli</Label><Input className="mt-1" {...form.register("hobbli")} disabled={isFinal} /></div>
           <div><Label>Village</Label><Input className="mt-1" {...form.register("village")} disabled={isFinal} /></div>
-          <div><Label>Hobbli</Label><Input className="mt-1" {...form.register("hobbli")} disabled={isFinal} /></div>
+          <div><Label>Taluk</Label><Input className="mt-1" {...form.register("taluk")} disabled={isFinal} /></div>
+          <div><Label>District</Label><Input className="mt-1" {...form.register("district")} disabled={isFinal} /></div>
+          <div><Label>State</Label><Input className="mt-1" {...form.register("state")} disabled={isFinal} /></div>
         </div>
       </section>
 
@@ -364,10 +369,10 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                   <th className="px-2 py-2 text-left">Sl No</th>
                   <th className="px-2 py-2 text-left">Farmer Name</th>
                   <th className="px-2 py-2 text-left">Survey No</th>
-                  <th className="px-2 py-2 text-left">District</th>
-                  <th className="px-2 py-2 text-left">Taluk</th>
-                  <th className="px-2 py-2 text-left">Village</th>
                   <th className="px-2 py-2 text-left">Hobbli</th>
+                  <th className="px-2 py-2 text-left">Village</th>
+                  <th className="px-2 py-2 text-left">Taluk</th>
+                  <th className="px-2 py-2 text-left">District</th>
                   <th className="px-2 py-2 text-left">Affidavit ID</th>
                   <th className="px-2 py-2 text-left">Request ID</th>
                   <th className="px-2 py-2 text-right">Debit Note</th>
@@ -383,10 +388,10 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                     <td className="px-2 py-1.5">{i + 1}</td>
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
                     <td className="px-2 py-1.5">{line.surveyNo}</td>
-                    <td className="px-2 py-1.5"><Input value={line.district} onChange={(e) => updateLine(i, { district: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.taluk} onChange={(e) => updateLine(i, { taluk: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.village} onChange={(e) => updateLine(i, { village: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
                     <td className="px-2 py-1.5"><Input value={line.hobbli} onChange={(e) => updateLine(i, { hobbli: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
+                    <td className="px-2 py-1.5"><Input value={line.village} onChange={(e) => updateLine(i, { village: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
+                    <td className="px-2 py-1.5"><Input value={line.taluk} onChange={(e) => updateLine(i, { taluk: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
+                    <td className="px-2 py-1.5"><Input value={line.district} onChange={(e) => updateLine(i, { district: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
                     <td className="px-2 py-1.5"><Input value={line.affidavitId} onChange={(e) => updateLine(i, { affidavitId: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
                     <td className="px-2 py-1.5"><Input value={line.requestId} onChange={(e) => updateLine(i, { requestId: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
                     <td className="px-2 py-1.5"><Input type="number" value={line.debitNote} onChange={(e) => updateLine(i, { debitNote: Number(e.target.value) || 0 })} className="h-8 text-right text-xs" disabled={isFinal} /></td>

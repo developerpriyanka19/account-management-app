@@ -150,10 +150,11 @@ function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: nu
   }
 
   const location: InvoiceLocationFields = {
-    district: document.district?.trim() ?? "",
-    taluk: document.taluk?.trim() ?? "",
-    village: document.village?.trim() ?? "",
     hobbli: document.hobbli?.trim() ?? "",
+    village: document.village?.trim() ?? "",
+    taluk: document.taluk?.trim() ?? "",
+    district: document.district?.trim() ?? "",
+    state: document.state?.trim() ?? "",
   };
 
   let y = Math.max(leftY, rightY);

@@ -1,4 +1,10 @@
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
+import {
+  computeTotalCents,
+  computeTotalGunta,
+  computeTotalRent,
+  computeShortageAmountTotal,
+} from "@/lib/customer-computed-totals";
 
 export type CustomerFormFieldErrors = Record<string, string>;
 
@@ -101,6 +107,10 @@ export type ValidatedCustomerPayload = {
   leaseAmount: number | null;
   rentalDdChequeNo: string | null;
   rentalDdBankName: string | null;
+  rentalDdPart1Date: string | null;
+  rentalDdPart1Amount: number | null;
+  rentalDdPart1ChequeNo: string | null;
+  rentalDdPart1BankName: string | null;
   receivedDate: string | null;
   balanceRentChequeNo: string | null;
   receivedNeftAmount: number | null;
@@ -108,9 +118,20 @@ export type ValidatedCustomerPayload = {
   shortageDate: string | null;
   shortageChequeNo: string | null;
   shortageBankName: string | null;
+  shortageNote: string | null;
+  shortageAmountSecondTime: number | null;
+  shortageSecondDate: string | null;
+  shortageSecondChequeNo: string | null;
+  shortageSecondBankName: string | null;
+  shortageThirdChequeAmount: number | null;
+  shortageThirdDate: string | null;
+  shortageThirdChequeNo: string | null;
+  shortageThirdBankName: string | null;
+  shortageAmountTotal: number | null;
   atlTotal: number | null;
   paoTotal: number | null;
   landConversion: number | null;
+  otherRecoveries: number | null;
   podiFee: number | null;
   leaseDeedStampDuty: number | null;
   leaseDeedRegCharges: number | null;
@@ -166,6 +187,16 @@ export function validateCustomerForm(
     return { ok: false, state: { fieldErrors, values } };
   }
 
+  const totalsInput = {
+    rtcExtentAcre: floats.rtcExtentAcre,
+    rtcExtentGunta: floats.rtcExtentGunta,
+    balanceExtentAcre: floats.balanceExtentAcre,
+    balanceExtentGunta: floats.balanceExtentGunta,
+    leaseExtentAcre: floats.leaseExtentAcre,
+    leaseExtentGunta: floats.leaseExtentGunta,
+    rentPerAcre: floats.rentPerAcre,
+  };
+
   return {
     ok: true,
     data: {
@@ -182,10 +213,10 @@ export function validateCustomerForm(
       balanceExtentGunta: floats.balanceExtentGunta ?? null,
       leaseExtentAcre: floats.leaseExtentAcre ?? null,
       leaseExtentGunta: floats.leaseExtentGunta ?? null,
-      totalGunta: floats.totalGunta ?? null,
-      totalCents: floats.totalCents ?? null,
+      totalGunta: computeTotalGunta(totalsInput),
+      totalCents: computeTotalCents(totalsInput),
       rentPerAcre: floats.rentPerAcre ?? null,
-      rentAmount: floats.rentAmount ?? null,
+      rentAmount: computeTotalRent(totalsInput),
       aesAdvanceDate: dates.aesAdvanceDate ?? null,
       aesAdvanceChequeNo: optionalTexts.aesAdvanceChequeNo ?? null,
       aesAdvanceChequeAmount: floats.aesAdvanceChequeAmount ?? null,
@@ -200,6 +231,10 @@ export function validateCustomerForm(
       leaseAmount: floats.leaseAmount ?? null,
       rentalDdChequeNo: optionalTexts.rentalDdChequeNo ?? null,
       rentalDdBankName: optionalTexts.rentalDdBankName ?? null,
+      rentalDdPart1Date: dates.rentalDdPart1Date ?? null,
+      rentalDdPart1Amount: floats.rentalDdPart1Amount ?? null,
+      rentalDdPart1ChequeNo: optionalTexts.rentalDdPart1ChequeNo ?? null,
+      rentalDdPart1BankName: optionalTexts.rentalDdPart1BankName ?? null,
       receivedDate: dates.receivedDate ?? null,
       balanceRentChequeNo: optionalTexts.balanceRentChequeNo ?? null,
       receivedNeftAmount: floats.receivedNeftAmount ?? null,
@@ -207,9 +242,24 @@ export function validateCustomerForm(
       shortageDate: dates.shortageDate ?? null,
       shortageChequeNo: optionalTexts.shortageChequeNo ?? null,
       shortageBankName: optionalTexts.shortageBankName ?? null,
+      shortageNote: optionalTexts.shortageNote ?? null,
+      shortageAmountSecondTime: floats.shortageAmountSecondTime ?? null,
+      shortageSecondDate: dates.shortageSecondDate ?? null,
+      shortageSecondChequeNo: optionalTexts.shortageSecondChequeNo ?? null,
+      shortageSecondBankName: optionalTexts.shortageSecondBankName ?? null,
+      shortageThirdChequeAmount: floats.shortageThirdChequeAmount ?? null,
+      shortageThirdDate: dates.shortageThirdDate ?? null,
+      shortageThirdChequeNo: optionalTexts.shortageThirdChequeNo ?? null,
+      shortageThirdBankName: optionalTexts.shortageThirdBankName ?? null,
+      shortageAmountTotal: computeShortageAmountTotal({
+        shortageChequeAmount: floats.shortageChequeAmount,
+        shortageAmountSecondTime: floats.shortageAmountSecondTime,
+        shortageThirdChequeAmount: floats.shortageThirdChequeAmount,
+      }),
       atlTotal: floats.atlTotal ?? null,
       paoTotal: floats.paoTotal ?? null,
       landConversion: floats.landConversion ?? null,
+      otherRecoveries: floats.otherRecoveries ?? null,
       podiFee: floats.podiFee ?? null,
       leaseDeedStampDuty: floats.leaseDeedStampDuty ?? null,
       leaseDeedRegCharges: floats.leaseDeedRegCharges ?? null,

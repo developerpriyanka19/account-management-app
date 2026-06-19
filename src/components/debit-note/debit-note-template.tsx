@@ -70,10 +70,10 @@ function HeaderBlock({
       </header>
       <div className="mt-2 border-b border-[#111827] pb-1 text-[10.5px]">
         <div className="grid grid-cols-4 gap-2">
-          <p><span className="font-semibold">District:</span> {data.district || "—"}</p>
-          <p><span className="font-semibold">Taluk:</span> {data.taluk || "—"}</p>
-          <p><span className="font-semibold">Village:</span> {data.village || "—"}</p>
           <p><span className="font-semibold">Hobli:</span> {data.hobbli || "—"}</p>
+          <p><span className="font-semibold">Village:</span> {data.village || "—"}</p>
+          <p><span className="font-semibold">Taluk:</span> {data.taluk || "—"}</p>
+          <p><span className="font-semibold">District:</span> {data.district || "—"}</p>
         </div>
       </div>
     </>

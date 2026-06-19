@@ -1,4 +1,4 @@
-import { formatInvoiceInteger, formatInvoiceMoney } from "@/lib/invoice-calculations";
+import { formatInvoiceDecimal, formatInvoiceMoney } from "@/lib/invoice-calculations";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
@@ -77,10 +77,11 @@ export function NaInvoiceDocument({ data }: Props) {
   const amountWords = naInvoiceAmountInWords(prepared);
   const { totals } = prepared;
   const location: InvoiceLocationFields = {
-    district: prepared.district?.trim() ?? "",
-    taluk: prepared.taluk?.trim() ?? "",
-    village: prepared.village?.trim() ?? "",
     hobbli: prepared.hobbli?.trim() ?? "",
+    village: prepared.village?.trim() ?? "",
+    taluk: prepared.taluk?.trim() ?? "",
+    district: prepared.district?.trim() ?? "",
+    state: prepared.state?.trim() ?? "",
   };
   const locationItems = invoiceLocationEntries(location);
 
@@ -110,7 +111,9 @@ export function NaInvoiceDocument({ data }: Props) {
       {hasInvoiceLocation(location) ? (
         <div
           className={`mt-1 grid gap-x-3 border-b border-black pb-1 text-[7px] ${
-            locationItems.length >= 4
+            locationItems.length >= 5
+              ? "grid-cols-5"
+              : locationItems.length >= 4
               ? "grid-cols-4"
               : locationItems.length === 3
                 ? "grid-cols-3"
@@ -196,15 +199,15 @@ export function NaInvoiceDocument({ data }: Props) {
                   <td className={tdNum}>{config.hsnSaacCode}</td>
                   <td className={td}>{line.surveyNo || "—"}</td>
                   <td className={tdNum}>
-                    {line.acres != null ? formatInvoiceInteger(line.acres) : "—"}
+                    {line.acres != null ? formatInvoiceDecimal(line.acres) : "—"}
                   </td>
                   <td className={tdNum}>
-                    {line.gunta != null ? formatInvoiceInteger(line.gunta) : "—"}
+                    {line.gunta != null ? formatInvoiceDecimal(line.gunta) : "—"}
                   </td>
                   <td className={td}>{line.affidavitId || "—"}</td>
                   <td className={td}>{line.requestId || "—"}</td>
                   <td className={tdRight}>
-                    {line.totalCents != null ? formatInvoiceInteger(line.totalCents) : "—"}
+                    {line.totalCents != null ? formatInvoiceDecimal(line.totalCents) : "—"}
                   </td>
                   <td className={tdRight}>{formatInvoiceMoney(naLineAmount(line, rate))}</td>
                 </tr>

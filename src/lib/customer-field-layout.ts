@@ -4,7 +4,7 @@ export type FieldInputType = "text" | "number" | "date";
 export type FieldVariant = "money" | "extent" | "text";
 
 export type CustomerLayoutRow =
-  | { row: "parent"; label: string }
+  | { row: "parent"; label: string; headerTone?: "red" }
   | {
       row: "field";
       label: string;
@@ -12,6 +12,7 @@ export type CustomerLayoutRow =
       inputType: FieldInputType;
       variant?: FieldVariant;
       required?: boolean;
+      computed?: boolean;
     };
 
 export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
@@ -49,10 +50,10 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
   { row: "parent", label: "Lease Extent" },
   { row: "field", label: "Acre", name: "leaseExtentAcre", inputType: "number", variant: "extent" },
   { row: "field", label: "Gunta", name: "leaseExtentGunta", inputType: "number", variant: "extent" },
-  { row: "field", label: "Total Gunta", name: "totalGunta", inputType: "number", variant: "extent" },
-  { row: "field", label: "Total Cents", name: "totalCents", inputType: "number", variant: "extent" },
+  { row: "field", label: "Total Gunta", name: "totalGunta", inputType: "number", variant: "extent", computed: true },
+  { row: "field", label: "Total Cents", name: "totalCents", inputType: "number", variant: "extent", computed: true },
   { row: "field", label: "Rent Per Acre", name: "rentPerAcre", inputType: "number", variant: "money" },
-  { row: "field", label: "Total Rent", name: "rentAmount", inputType: "number", variant: "money" },
+  { row: "field", label: "Total Rent", name: "rentAmount", inputType: "number", variant: "money", computed: true },
   { row: "parent", label: "AES Advance Per Acre" },
   { row: "field", label: "Date", name: "aesAdvanceDate", inputType: "date" },
   { row: "field", label: "Cheque No", name: "aesAdvanceChequeNo", inputType: "text" },
@@ -72,26 +73,7 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
     variant: "money",
   },
   { row: "field", label: "TDS Amount", name: "tdsAmount", inputType: "number", variant: "money" },
-  { row: "parent", label: "Bank Loan DD From Company" },
-  { row: "field", label: "Date", name: "bankLoanDdDate", inputType: "date" },
-  { row: "field", label: "Amount", name: "loanAmount", inputType: "number", variant: "money" },
-  { row: "field", label: "DD No", name: "bankLoanDdNo", inputType: "text" },
-  { row: "field", label: "Bank Name", name: "bankLoanBankName", inputType: "text" },
-  { row: "parent", label: "Rental DD From Company" },
-  { row: "field", label: "Date", name: "rentalDdDate", inputType: "date" },
-  { row: "field", label: "Amount", name: "leaseAmount", inputType: "number", variant: "money" },
-  { row: "field", label: "Cheque No", name: "rentalDdChequeNo", inputType: "text" },
-  { row: "field", label: "Bank Name", name: "rentalDdBankName", inputType: "text" },
-  { row: "field", label: "Date", name: "receivedDate", inputType: "date" },
-  { row: "field", label: "Cheque No", name: "balanceRentChequeNo", inputType: "text" },
-  {
-    row: "field",
-    label: "Cheque Amount",
-    name: "receivedNeftAmount",
-    inputType: "number",
-    variant: "money",
-  },
-  { row: "parent", label: "Shortage Amount Through Cheque Once" },
+  { row: "parent", label: "Shortage Amount Through Cheque One" },
   {
     row: "field",
     label: "Amount",
@@ -102,6 +84,62 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
   { row: "field", label: "Date", name: "shortageDate", inputType: "date" },
   { row: "field", label: "Cheque No", name: "shortageChequeNo", inputType: "text" },
   { row: "field", label: "Bank Name", name: "shortageBankName", inputType: "text" },
+  { row: "field", label: "Note", name: "shortageNote", inputType: "text" },
+  { row: "parent", label: "Shortage Amount Through Cheque Second" },
+  {
+    row: "field",
+    label: "Amount",
+    name: "shortageAmountSecondTime",
+    inputType: "number",
+    variant: "money",
+  },
+  { row: "field", label: "Date", name: "shortageSecondDate", inputType: "date" },
+  { row: "field", label: "Cheque No", name: "shortageSecondChequeNo", inputType: "text" },
+  { row: "field", label: "Bank Name", name: "shortageSecondBankName", inputType: "text" },
+  { row: "parent", label: "Shortage Amount Through Cheque Third" },
+  {
+    row: "field",
+    label: "Amount",
+    name: "shortageThirdChequeAmount",
+    inputType: "number",
+    variant: "money",
+  },
+  { row: "field", label: "Date", name: "shortageThirdDate", inputType: "date" },
+  { row: "field", label: "Cheque No", name: "shortageThirdChequeNo", inputType: "text" },
+  { row: "field", label: "Bank Name", name: "shortageThirdBankName", inputType: "text" },
+  { row: "parent", label: "SHORTAGE AMOUNT TOTAL" },
+  {
+    row: "field",
+    label: "SHORTAGE AMOUNT TOTAL",
+    name: "shortageAmountTotal",
+    inputType: "number",
+    variant: "money",
+    computed: true,
+  },
+  { row: "parent", label: "Bank Loan DD From Company" },
+  { row: "field", label: "Date", name: "bankLoanDdDate", inputType: "date" },
+  { row: "field", label: "Amount", name: "loanAmount", inputType: "number", variant: "money" },
+  { row: "field", label: "DD No", name: "bankLoanDdNo", inputType: "text" },
+  { row: "field", label: "Bank Name", name: "bankLoanBankName", inputType: "text" },
+  { row: "parent", label: "Rental DD From Company" },
+  { row: "field", label: "Date", name: "rentalDdDate", inputType: "date" },
+  { row: "field", label: "Amount", name: "leaseAmount", inputType: "number", variant: "money" },
+  { row: "field", label: "Cheque No", name: "rentalDdChequeNo", inputType: "text" },
+  { row: "field", label: "Bank Name", name: "rentalDdBankName", inputType: "text" },
+  { row: "parent", label: "Rental DD From Company Part 1" },
+  { row: "field", label: "Date", name: "rentalDdPart1Date", inputType: "date" },
+  { row: "field", label: "Amount", name: "rentalDdPart1Amount", inputType: "number", variant: "money" },
+  { row: "field", label: "Cheque No", name: "rentalDdPart1ChequeNo", inputType: "text" },
+  { row: "field", label: "Bank Name", name: "rentalDdPart1BankName", inputType: "text" },
+  { row: "field", label: "Date", name: "receivedDate", inputType: "date" },
+  { row: "field", label: "Cheque No", name: "balanceRentChequeNo", inputType: "text" },
+  {
+    row: "field",
+    label: "Cheque Amount",
+    name: "receivedNeftAmount",
+    inputType: "number",
+    variant: "money",
+  },
   { row: "parent", label: "ATL" },
   { row: "field", label: "ATL Govt Fee", name: "atlTotal", inputType: "number", variant: "money" },
   { row: "parent", label: "POA/GPA" },
@@ -111,6 +149,13 @@ export const CUSTOMER_FIELD_LAYOUT: CustomerLayoutRow[] = [
     row: "field",
     label: "Land Conversion",
     name: "landConversion",
+    inputType: "number",
+    variant: "money",
+  },
+  {
+    row: "field",
+    label: "Other Recoveries",
+    name: "otherRecoveries",
     inputType: "number",
     variant: "money",
   },

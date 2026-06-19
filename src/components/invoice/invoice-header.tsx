@@ -16,10 +16,11 @@ type Props = {
 
 function locationFromDocument(data: InvoiceDocumentData): InvoiceLocationFields {
   return {
-    district: data.district?.trim() ?? "",
-    taluk: data.taluk?.trim() ?? "",
-    village: data.village?.trim() ?? "",
     hobbli: data.hobbli?.trim() ?? "",
+    village: data.village?.trim() ?? "",
+    taluk: data.taluk?.trim() ?? "",
+    district: data.district?.trim() ?? "",
+    state: data.state?.trim() ?? "",
   };
 }
 
@@ -87,7 +88,7 @@ export function InvoiceHeader({ data, compact = false }: Props) {
 
       {showLocation ? (
         <div className="mt-2 border-t border-[#E5E7EB] pt-2 text-[11px] text-[#111827]">
-          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-5">
             {locationItems.map(({ label, value }) => (
               <p key={label} className="min-w-0">
                 <span className="font-semibold text-[#6B7280]">{label}: </span>

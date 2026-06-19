@@ -1,5 +1,5 @@
 import {
-  formatInvoiceInteger,
+  formatInvoiceDecimal,
   formatInvoiceMoney,
   invoiceLineTaxableAmount,
 } from "@/lib/invoice-calculations";
@@ -78,10 +78,10 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
               <>
                 <th className={cn(thBase)}>Farmer Name</th>
                 <th className={cn(thBase)}>Survey No</th>
-                <th className={cn(thBase)}>District</th>
-                <th className={cn(thBase)}>Taluk</th>
-                <th className={cn(thBase)}>Village</th>
                 <th className={cn(thBase)}>Hobbli</th>
+                <th className={cn(thBase)}>Village</th>
+                <th className={cn(thBase)}>Taluk</th>
+                <th className={cn(thBase)}>District</th>
                 <th className={cn(thBase)}>Affidavit ID</th>
                 <th className={cn(thBase)}>Request ID</th>
                 <th className={cn(thBase, "text-right")}>Debit Note</th>
@@ -124,16 +124,16 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                       <span className="block max-w-full">{line.surveyNo}</span>
                     </td>
                     <td className={tdBase}>
-                      <span className="block max-w-full">{line.district}</span>
-                    </td>
-                    <td className={tdBase}>
-                      <span className="block max-w-full">{line.taluk}</span>
+                      <span className="block max-w-full">{line.hobbli}</span>
                     </td>
                     <td className={tdBase}>
                       <span className="block max-w-full">{line.village}</span>
                     </td>
                     <td className={tdBase}>
-                      <span className="block max-w-full">{line.hobbli}</span>
+                      <span className="block max-w-full">{line.taluk}</span>
+                    </td>
+                    <td className={tdBase}>
+                      <span className="block max-w-full">{line.district}</span>
                     </td>
                     <td className={tdBase}>
                       <span className="block max-w-full break-all">
@@ -147,9 +147,9 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                     </td>
                     <td className={cn(tdBase, tdNumeric)}>{formatInvoiceMoney(line.debitNote || 0)}</td>
                     <td className={tdBase}>{line.remark || "—"}</td>
-                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceInteger(line.acres)}</td>
-                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceInteger(line.gunta)}</td>
-                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceInteger(line.totalCents)}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceDecimal(line.acres)}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceDecimal(line.gunta)}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceDecimal(line.totalCents)}</td>
                   </>
                 ) : (
                   <td className={tdBase}>
@@ -161,7 +161,9 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                 {!showNaColumns ? (
                   <td className={cn(tdBase, tdAmount)}>
                     <span className="block max-w-full">
-                      {formatInvoiceMoney(invoiceLineTaxableAmount(line))}
+                      {line.amount != null
+                        ? formatInvoiceMoney(line.amount)
+                        : "—"}
                     </span>
                   </td>
                 ) : null}

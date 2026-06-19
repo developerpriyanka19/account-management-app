@@ -95,8 +95,14 @@ export const COMPANY_BRAND_STYLE = {
 /** Logo + flex header spacing (screen). */
 export const INVOICE_LOGO = {
   src: "/company-logo.png",
-  /** Logo height 45–55px */
-  heightPx: 50,
+  intrinsicWidthPx: 593,
+  intrinsicHeightPx: 518,
+  /** Logo display width (height scales automatically). */
+  widthPx: 100,
+  compactWidthPx: 80,
+  /** Fixed row height — company name vertical position unchanged. */
+  headerRowHeightPx: 50,
+  compactHeaderRowHeightPx: 45,
   gapPx: 12,
   companyNameFontPx: 26,
   titleFontPx: 15,
@@ -104,14 +110,28 @@ export const INVOICE_LOGO = {
   metadataMarginPx: 18,
 } as const;
 
-/** Same layout in mm for jsPDF (~50px logo at 96dpi). */
+/** Logo height for a given display width (preserves intrinsic aspect ratio). */
+export function invoiceLogoHeightPx(widthPx: number): number {
+  return Math.round(
+    widthPx * (INVOICE_LOGO.intrinsicHeightPx / INVOICE_LOGO.intrinsicWidthPx),
+  );
+}
+
+/** Same layout in mm for jsPDF (logo width; height from aspect ratio). */
 export const INVOICE_LOGO_PDF_MM = {
-  logoHeight: 13.2,
+  logoWidth: 26.5,
+  compactLogoWidth: 21.2,
+  headerRowHeight: 13.2,
   gap: 3.2,
   companyFontSize: 22,
   titleFontSize: 11,
   lineWidth: 0.35,
   metadataMargin: 4.8,
   /** Reserved top margin on continuation pages (logo row + line + title). */
-  repeatHeaderHeight: 30,
+  repeatHeaderHeight: 36,
 } as const;
+
+/** Logo height in mm for a given display width in mm. */
+export function invoiceLogoHeightMm(widthMm: number): number {
+  return widthMm * (INVOICE_LOGO.intrinsicHeightPx / INVOICE_LOGO.intrinsicWidthPx);
+}

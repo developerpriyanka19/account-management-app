@@ -59,9 +59,15 @@ model Customer {
   shortageDate         String? // YYYY-MM-DD
   shortageChequeNo     String?
   shortageBankName     String?
+  shortageNote         String?
   shortageSecondDate      String? // YYYY-MM-DD
   shortageSecondChequeNo  String?
   shortageSecondBankName  String?
+  shortageThirdChequeAmount Float?
+  shortageThirdDate         String? // YYYY-MM-DD
+  shortageThirdChequeNo   String?
+  shortageThirdBankName   String?
+  shortageAmountTotal     Float?
 
   // --- ATL / PAO ---
   atlStampDuty  Float?
@@ -73,6 +79,7 @@ model Customer {
 
   // --- Other charges ---
   landConversion   Float?
+  otherRecoveries  Float?
   podiFee          Float?
   otherCharges     Float?
   cropCompensation Float?
@@ -90,6 +97,10 @@ model Customer {
   rentalDdDate     String? // YYYY-MM-DD
   rentalDdChequeNo String?
   rentalDdBankName String?
+  rentalDdPart1Date     String? // YYYY-MM-DD
+  rentalDdPart1Amount   Float?
+  rentalDdPart1ChequeNo String?
+  rentalDdPart1BankName String?
 
   // --- Received / balance rent cheque ---
   receivedNeftAmount    Float?
@@ -163,6 +174,7 @@ model Invoice {
   taluk         String?
   village       String?
   hobbli        String?
+  state         String?
   status        String   @default("draft") // draft | final
   ratePerAcre   Float?
   subtotal      Float    @default(0)

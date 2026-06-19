@@ -1,3 +1,4 @@
+import { extentToAcres } from "@/lib/customer-computed-totals";
 import type { InvoiceLineInput } from "@/lib/invoice-types";
 
 const SGST_RATE = 0.09;
@@ -17,18 +18,51 @@ export function toFiniteNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function lineAmountFromAcreage(acres: number | null | undefined, ratePerAcre: number): number {
-  const a = toFiniteNumber(acres);
-  const rate = toFiniteNumber(ratePerAcre);
-  if (a <= 0 || rate <= 0) return 0;
-  return Math.round(a * rate * 100) / 100;
+/** Parse optional numeric input; null when empty or invalid. */
+export function toOptionalNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
-/** Line taxable amount: debit note override, else line amount. */
+/** Line extent in decimal acres from acres + guntas (40 guntas = 1 acre). */
+export function lineExtentAcres(
+  acres: number | null | undefined,
+  gunta: number | null | undefined,
+): number | null {
+  const a = toOptionalNumber(acres);
+  const g = toOptionalNumber(gunta);
+  return extentToAcres(a, g);
+}
+
+/** Full-precision line amount from extent × rate; no rounding. */
+export function lineAmountFromExtent(
+  acres: number | null | undefined,
+  gunta: number | null | undefined,
+  ratePerAcre: number,
+): number {
+  const extent = lineExtentAcres(acres, gunta);
+  const rate = toFiniteNumber(ratePerAcre);
+  if (extent == null || extent <= 0 || rate <= 0) return 0;
+  return extent * rate;
+}
+
+/** @deprecated Use lineAmountFromExtent — kept for callers passing acres only. */
+export function lineAmountFromAcreage(acres: number | null | undefined, ratePerAcre: number): number {
+  return lineAmountFromExtent(acres, null, ratePerAcre);
+}
+
+/** Line taxable amount: debit note override, else line amount when set. */
 export function invoiceLineTaxableAmount(line: InvoiceLineInput): number {
   const debitNote = toFiniteNumber(line.debitNote);
   if (debitNote > 0) return debitNote;
-  return toFiniteNumber(line.amount);
+  const amount = toOptionalNumber(line.amount);
+  return amount ?? 0;
+}
+
+/** Whether a service line has a user-entered amount. */
+export function serviceLineHasAmount(line: InvoiceLineInput): boolean {
+  return toOptionalNumber(line.amount) != null;
 }
 
 export function computeLineAmounts(
@@ -38,22 +72,27 @@ export function computeLineAmounts(
 ): InvoiceLineInput[] {
   const rate = toFiniteNumber(ratePerAcre);
   return lines.map((line) => {
-    const acres = toFiniteNumber(line.acres);
-    const computed = lineAmountFromAcreage(acres, rate);
     if (category === "service") {
-      const manual = toFiniteNumber(line.amount);
-      const amount = acres > 0 ? computed : manual > 0 ? manual : computed;
-      return { ...line, acres: acres > 0 ? acres : line.acres, amount };
+      const manual = toOptionalNumber(line.amount);
+      return { ...line, amount: manual };
     }
     const debitNote = toFiniteNumber(line.debitNote);
+    const computed = lineAmountFromExtent(line.acres, line.gunta, rate);
+    const manual = toOptionalNumber(line.amount);
     const amount =
-      debitNote > 0 ? debitNote : computed > 0 ? computed : toFiniteNumber(line.amount);
+      debitNote > 0 ? debitNote : computed > 0 ? computed : manual ?? 0;
     return { ...line, amount };
   });
 }
 
 export function computeInvoiceTotals(lines: InvoiceLineInput[]): InvoiceTotals {
-  const subtotal = lines.reduce((sum, l) => sum + invoiceLineTaxableAmount(l), 0);
+  const subtotal = lines.reduce((sum, l) => {
+    const taxable = invoiceLineTaxableAmount(l);
+    if (taxable === 0 && toOptionalNumber(l.amount) == null && toFiniteNumber(l.debitNote) <= 0) {
+      return sum;
+    }
+    return sum + taxable;
+  }, 0);
   const roundedSubtotal = Math.round(subtotal * 100) / 100;
   const sgst = Math.round(roundedSubtotal * SGST_RATE * 100) / 100;
   const cgst = Math.round(roundedSubtotal * CGST_RATE * 100) / 100;
@@ -61,19 +100,26 @@ export function computeInvoiceTotals(lines: InvoiceLineInput[]): InvoiceTotals {
   return { subtotal: roundedSubtotal, sgst, cgst, grandTotal };
 }
 
-export function formatInvoiceMoney(value: number): string {
+export function formatInvoiceMoney(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
 }
 
-/** Integer / quantity display (e.g. cents) with Indian grouping — no overlap in cells. */
-export function formatInvoiceInteger(value: number | null | undefined): string {
+/** Decimal quantity display — 2 decimal places; blank when null. */
+export function formatInvoiceDecimal(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+/** @deprecated Use formatInvoiceDecimal */
+export function formatInvoiceInteger(value: number | null | undefined): string {
+  return formatInvoiceDecimal(value);
 }
 
 export function formatInvoiceNumber(category: "na" | "service", seq: number): string {
