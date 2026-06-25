@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Customer } from "@prisma/client";
 import {
   cellText,
   formatAmount,
   formatOptionalDate,
 } from "@/lib/customer-display";
-import {
-  computeTotalCents,
-  computeTotalGunta,
-  computeTotalRent,
-  computeShortageAmountTotal,
-  formatComputedTotal,
-} from "@/lib/customer-computed-totals";
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
 import type { CustomerFormFieldErrors } from "@/lib/customer-form-validation";
 
@@ -21,9 +14,6 @@ const inputClass =
   "block w-full rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition placeholder:text-[#6B7280] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20";
 
 const numClass = `${inputClass} tabular-nums font-mono`;
-
-const computedReadOnlyClass =
-  "block w-full rounded-md border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2 text-sm tabular-nums font-mono text-[#111827]";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -88,31 +78,6 @@ export function CustomerAlignedRows(props: Props) {
     }
   }, [props.mode, props.mode === "form" ? props.defaultValues : null]);
 
-  const computedTotals = useMemo(() => {
-    if (props.mode !== "form") return { totalGunta: "", totalCents: "", rentAmount: "", shortageAmountTotal: "" };
-    const input = {
-      rtcExtentAcre: formValues.rtcExtentAcre,
-      rtcExtentGunta: formValues.rtcExtentGunta,
-      balanceExtentAcre: formValues.balanceExtentAcre,
-      balanceExtentGunta: formValues.balanceExtentGunta,
-      leaseExtentAcre: formValues.leaseExtentAcre,
-      leaseExtentGunta: formValues.leaseExtentGunta,
-      rentPerAcre: formValues.rentPerAcre,
-    };
-    return {
-      totalGunta: formatComputedTotal(computeTotalGunta(input)),
-      totalCents: formatComputedTotal(computeTotalCents(input)),
-      rentAmount: formatComputedTotal(computeTotalRent(input)),
-      shortageAmountTotal: formatComputedTotal(
-        computeShortageAmountTotal({
-          shortageChequeAmount: formValues.shortageChequeAmount,
-          shortageAmountSecondTime: formValues.shortageAmountSecondTime,
-          shortageThirdChequeAmount: formValues.shortageThirdChequeAmount,
-        }),
-      ),
-    };
-  }, [props.mode, formValues]);
-
   function updateField(name: string, value: string) {
     setFormValues((prev) => ({ ...prev, [name]: value }));
   }
@@ -144,22 +109,11 @@ export function CustomerAlignedRows(props: Props) {
 
           const id = row.name;
           const error = props.mode === "form" ? e(id) : undefined;
-          const isComputed = row.computed === true;
           const displayValue =
             props.mode === "display"
               ? formatFieldValue(props.customer, row.name, row.variant)
               : null;
           const zebra = index % 2 === 1;
-          const computedValue =
-            id === "totalGunta"
-              ? computedTotals.totalGunta
-              : id === "totalCents"
-                ? computedTotals.totalCents
-                : id === "rentAmount"
-                  ? computedTotals.rentAmount
-                  : id === "shortageAmountTotal"
-                    ? computedTotals.shortageAmountTotal
-                    : "";
 
           return (
             <div
@@ -169,7 +123,7 @@ export function CustomerAlignedRows(props: Props) {
               }`}
             >
               <label
-                htmlFor={props.mode === "form" && !isComputed ? id : undefined}
+                htmlFor={props.mode === "form" ? id : undefined}
                 className="text-xs font-medium text-[#6B7280]"
               >
                 {row.label}
@@ -180,14 +134,7 @@ export function CustomerAlignedRows(props: Props) {
               <div className="min-w-0">
                 {props.mode === "form" ? (
                   <>
-                    {isComputed ? (
-                      <>
-                        <div className={computedReadOnlyClass} aria-live="polite">
-                          {computedValue || "—"}
-                        </div>
-                        <input type="hidden" name={id} value={computedValue} />
-                      </>
-                    ) : row.inputType === "date" ? (
+                    {row.inputType === "date" ? (
                       <input
                         id={id}
                         name={id}

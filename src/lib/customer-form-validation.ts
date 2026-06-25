@@ -1,10 +1,4 @@
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
-import {
-  computeTotalCents,
-  computeTotalGunta,
-  computeTotalRent,
-  computeShortageAmountTotal,
-} from "@/lib/customer-computed-totals";
 
 export type CustomerFormFieldErrors = Record<string, string>;
 
@@ -187,16 +181,6 @@ export function validateCustomerForm(
     return { ok: false, state: { fieldErrors, values } };
   }
 
-  const totalsInput = {
-    rtcExtentAcre: floats.rtcExtentAcre,
-    rtcExtentGunta: floats.rtcExtentGunta,
-    balanceExtentAcre: floats.balanceExtentAcre,
-    balanceExtentGunta: floats.balanceExtentGunta,
-    leaseExtentAcre: floats.leaseExtentAcre,
-    leaseExtentGunta: floats.leaseExtentGunta,
-    rentPerAcre: floats.rentPerAcre,
-  };
-
   return {
     ok: true,
     data: {
@@ -213,10 +197,10 @@ export function validateCustomerForm(
       balanceExtentGunta: floats.balanceExtentGunta ?? null,
       leaseExtentAcre: floats.leaseExtentAcre ?? null,
       leaseExtentGunta: floats.leaseExtentGunta ?? null,
-      totalGunta: computeTotalGunta(totalsInput),
-      totalCents: computeTotalCents(totalsInput),
+      totalGunta: floats.totalGunta ?? null,
+      totalCents: floats.totalCents ?? null,
       rentPerAcre: floats.rentPerAcre ?? null,
-      rentAmount: computeTotalRent(totalsInput),
+      rentAmount: floats.rentAmount ?? null,
       aesAdvanceDate: dates.aesAdvanceDate ?? null,
       aesAdvanceChequeNo: optionalTexts.aesAdvanceChequeNo ?? null,
       aesAdvanceChequeAmount: floats.aesAdvanceChequeAmount ?? null,
@@ -251,11 +235,7 @@ export function validateCustomerForm(
       shortageThirdDate: dates.shortageThirdDate ?? null,
       shortageThirdChequeNo: optionalTexts.shortageThirdChequeNo ?? null,
       shortageThirdBankName: optionalTexts.shortageThirdBankName ?? null,
-      shortageAmountTotal: computeShortageAmountTotal({
-        shortageChequeAmount: floats.shortageChequeAmount,
-        shortageAmountSecondTime: floats.shortageAmountSecondTime,
-        shortageThirdChequeAmount: floats.shortageThirdChequeAmount,
-      }),
+      shortageAmountTotal: floats.shortageAmountTotal ?? null,
       atlTotal: floats.atlTotal ?? null,
       paoTotal: floats.paoTotal ?? null,
       landConversion: floats.landConversion ?? null,
