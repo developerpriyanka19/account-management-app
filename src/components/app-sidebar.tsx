@@ -124,7 +124,7 @@ function SidebarPanel({
   return (
     <aside
       className={cn(
-        "flex h-full w-[240px] shrink-0 flex-col border-r border-[#E5E7EB] bg-white",
+        "app-sidebar flex h-full w-[240px] shrink-0 flex-col border-r border-[#E5E7EB] bg-white",
         className,
       )}
     >

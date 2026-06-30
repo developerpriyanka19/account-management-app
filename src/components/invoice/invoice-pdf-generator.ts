@@ -14,9 +14,20 @@ import {
 } from "@/lib/invoice-location";
 import { drawCompanyBrandHeaderPdf } from "@/lib/company-brand-header-pdf";
 import { drawCompanyDocumentFooterPdf } from "@/lib/company-document-footer-pdf";
-import { drawBankDetailsPdf } from "@/lib/bank-details-pdf";
 import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
 import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
+import {
+  closingBlockHeight,
+  drawClosingSection,
+  drawFootersOnAllPages,
+  ensureVerticalSpace,
+  PDF_A4_PORTRAIT,
+  PDF_FONT,
+  PDF_MARGIN,
+  PDF_TABLE_BOTTOM_MARGIN,
+  pdfContentWidth,
+  pdfFooterY,
+} from "@/lib/company-document-pdf-shared";
 import {
   buildNaInvoiceTableBody,
   buildNaInvoiceTableFoot,
@@ -28,11 +39,10 @@ import {
 } from "@/lib/na-invoice-layout";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 
-const MARGIN = { top: 10, left: 10, right: 10, bottom: 10 };
-const PAGE_W = 210;
-const PAGE_H = 297;
+const PAGE_W = PDF_A4_PORTRAIT.width;
+const PAGE_H = PDF_A4_PORTRAIT.height;
 const CONTENT_W = NA_INVOICE_CONTENT_WIDTH_MM;
-const PDF_FONT = "times";
+const TEXT_LINE_H = 3.5;
 
 type JsPdfWithAutoTable = jsPDF & {
   lastAutoTable?: { finalY: number };
@@ -68,15 +78,15 @@ function loadInvoiceLogoDataUrl(): Promise<string> {
 function drawBrandHeader(
   pdf: jsPDF,
   logoDataUrl: string,
-  startY: number = MARGIN.top,
+  startY: number = PDF_MARGIN.top,
 ): number {
   return drawCompanyBrandHeaderPdf({
     pdf,
     logoDataUrl,
     documentTitle: "INVOICE",
     pageWidth: PAGE_W,
-    leftMargin: MARGIN.left,
-    rightMargin: MARGIN.right,
+    leftMargin: PDF_MARGIN.left,
+    rightMargin: PDF_MARGIN.right,
     startY,
   });
 }
@@ -86,10 +96,10 @@ async function drawCompanyHeader(
   invoiceDate: string,
   invoiceNumber: string,
   logoDataUrl: string,
-  startY: number = MARGIN.top,
+  startY: number = PDF_MARGIN.top,
 ): Promise<number> {
-  const rightX = PAGE_W - MARGIN.right;
-  const leftX = MARGIN.left;
+  const rightX = PAGE_W - PDF_MARGIN.right;
+  const leftX = PDF_MARGIN.left;
   let y = drawBrandHeader(pdf, logoDataUrl, startY);
 
   pdf.setFont(PDF_FONT, "normal");
@@ -107,8 +117,8 @@ async function drawCompanyHeader(
 }
 
 function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: number): number {
-  const leftX = MARGIN.left;
-  const rightX = PAGE_W - MARGIN.right;
+  const leftX = PDF_MARGIN.left;
+  const rightX = PAGE_W - PDF_MARGIN.right;
   const colMid = PAGE_W / 2 + 2;
   let leftY = startY;
   let rightY = startY;
@@ -163,7 +173,7 @@ function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: nu
     const entries = invoiceLocationEntries(location);
     const quarter = CONTENT_W / Math.max(entries.length, 1);
     entries.forEach(({ label, value }, index) => {
-      pdf.text(`${label}: ${value}`, MARGIN.left + quarter * index, metaY, {
+      pdf.text(`${label}: ${value}`, PDF_MARGIN.left + quarter * index, metaY, {
         maxWidth: quarter - 2,
       });
     });
@@ -174,30 +184,56 @@ function drawBillToSection(pdf: jsPDF, document: InvoiceDocumentData, startY: nu
 
   y = Math.max(y, rightY);
   pdf.setLineWidth(0.2);
-  pdf.line(MARGIN.left, y + 1, PAGE_W - MARGIN.right, y + 1);
+  pdf.line(PDF_MARGIN.left, y + 1, PAGE_W - PDF_MARGIN.right, y + 1);
   return y + 5;
 }
 
-function drawPageFooter(
-  pdf: jsPDF,
-  pageNumber: number,
-  pageCount: number,
-  bank?: BankDetailsSnapshot,
-) {
-  const footerY = PAGE_H - MARGIN.bottom;
-  drawBankDetailsPdf({ pdf, leftX: MARGIN.left, footerY, snapshot: bank });
+function drawAddressFooter(pdf: jsPDF, pageNumber: number, pageCount: number) {
   drawCompanyDocumentFooterPdf({
     pdf,
     pageWidth: PAGE_W,
     pageHeight: PAGE_H,
-    bottomMargin: MARGIN.bottom,
     contentWidth: CONTENT_W,
     pageNumber,
     pageCount,
   });
 }
 
-async function generateNaInvoicePdf(document: InvoiceDocumentData) {
+function textBlockHeight(pdf: jsPDF, text: string, maxWidth: number): number {
+  return pdf.splitTextToSize(text, maxWidth).length * TEXT_LINE_H;
+}
+
+function finishInvoicePdf(
+  pdf: jsPDF,
+  contentEndY: number,
+  bank: BankDetailsSnapshot | undefined,
+) {
+  drawClosingSection(pdf, PAGE_W, contentEndY, bank);
+  drawFootersOnAllPages(pdf, (pageNumber, pageCount) => {
+    drawAddressFooter(pdf, pageNumber, pageCount);
+  });
+}
+
+const TABLE_STYLES = {
+  font: PDF_FONT,
+  fontSize: 7,
+  cellPadding: 1.2,
+  overflow: "linebreak" as const,
+  valign: "middle" as const,
+  lineWidth: 0.1,
+  lineColor: [0, 0, 0] as [number, number, number],
+  fillColor: [255, 255, 255] as [number, number, number],
+  fontStyle: "normal" as const,
+};
+
+const TABLE_MARGINS = {
+  left: PDF_MARGIN.left,
+  right: PDF_MARGIN.right,
+  top: INVOICE_LOGO_PDF_MM.repeatHeaderHeight,
+  bottom: PDF_TABLE_BOTTOM_MARGIN,
+};
+
+async function generateNaInvoicePdf(document: InvoiceDocumentData): Promise<jsPDF> {
   const prepared = prepareNaInvoiceDocument(document);
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -211,99 +247,70 @@ async function generateNaInvoicePdf(document: InvoiceDocumentData) {
     prepared.invoiceDate,
     prepared.invoiceNumber,
     logoDataUrl,
-    MARGIN.top,
+    PDF_MARGIN.top,
   );
   y = drawBillToSection(pdf, prepared, y);
 
-  const repeatHeaderTop = INVOICE_LOGO_PDF_MM.repeatHeaderHeight;
-
   autoTable(pdf, {
     startY: y,
-    margin: {
-      left: MARGIN.left,
-      right: MARGIN.right,
-      top: repeatHeaderTop,
-      bottom: 22,
-    },
+    margin: TABLE_MARGINS,
     didDrawPage: (data) => {
       if (data.pageNumber > 1) {
-        drawBrandHeader(pdf, logoDataUrl, MARGIN.top);
+        drawBrandHeader(pdf, logoDataUrl, PDF_MARGIN.top);
       }
     },
     tableWidth: CONTENT_W,
     head: buildNaInvoiceTableHead(prepared),
     body: buildNaInvoiceTableBody(prepared),
     foot: buildNaInvoiceTableFoot(prepared),
-    styles: {
-      font: PDF_FONT,
-      fontSize: 7,
-      cellPadding: 1.5,
-      overflow: "linebreak",
-      valign: "middle",
-      lineWidth: 0.1,
-      lineColor: [0, 0, 0],
-      fillColor: [255, 255, 255],
-    },
+    styles: TABLE_STYLES,
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       lineWidth: 0.2,
       fontStyle: "bold",
       halign: "center",
-      fontSize: 8,
+      fontSize: 7,
     },
     footStyles: {
-      fontSize: 9,
+      fontSize: 8,
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
+      fontStyle: "normal",
     },
     bodyStyles: {
       lineWidth: 0.1,
       fontSize: 7,
+      fontStyle: "normal",
     },
     columnStyles: NA_INVOICE_TABLE_COLUMN_STYLES,
     theme: "grid",
     showHead: "everyPage",
     horizontalPageBreak: false,
+    rowPageBreak: "auto",
   });
 
-  let endY = (pdf.lastAutoTable?.finalY ?? y) + 6;
-  const pageH = PAGE_H - MARGIN.bottom - 28;
+  let endY = (pdf.lastAutoTable?.finalY ?? y) + 4;
+  const words = naInvoiceAmountInWords(prepared);
+  const wordsH = textBlockHeight(pdf, words, CONTENT_W);
+  const totalAfterTable = 4 + wordsH + closingBlockHeight(prepared.bank);
 
-  if (endY > pageH - 35) {
-    pdf.addPage();
-    endY = MARGIN.top + 6;
-  }
+  endY = ensureVerticalSpace(pdf, endY, totalAfterTable);
 
   pdf.setFont(PDF_FONT, "bold");
   pdf.setFontSize(8);
-  pdf.text("Value of Invoice:", MARGIN.left, endY);
+  pdf.text("Value of Invoice:", PDF_MARGIN.left, endY);
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(7.5);
-  const words = naInvoiceAmountInWords(prepared);
-  pdf.text(words, MARGIN.left, endY + 4, { maxWidth: CONTENT_W });
+  const wordLines = pdf.splitTextToSize(words, CONTENT_W);
+  pdf.text(wordLines, PDF_MARGIN.left, endY + 4);
+  const wordsEndY = endY + 4 + wordLines.length * TEXT_LINE_H;
 
-  const signY = Math.min(endY + 20, PAGE_H - MARGIN.bottom - 30);
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(8);
-  pdf.text(`For ${COMPANY_INVOICE_HEADER.signatureName}`, PAGE_W - MARGIN.right, signY, {
-    align: "right",
-  });
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.setFontSize(7);
-  pdf.text("Authorized Signatory", PAGE_W - MARGIN.right, signY + 5, { align: "right" });
-
-  const pageCount = pdf.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p += 1) {
-    pdf.setPage(p);
-    drawPageFooter(pdf, p, pageCount, prepared.bank);
-  }
-
-  pdf.save(`${prepared.invoiceNumber}.pdf`);
+  finishInvoicePdf(pdf, wordsEndY, prepared.bank);
+  return pdf;
 }
 
-/** Service invoice PDF — aligned with on-screen print layout (no type/status). */
-async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
+async function generateServiceInvoicePdf(document: InvoiceDocumentData): Promise<jsPDF> {
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as JsPdfWithAutoTable;
 
   const logoDataUrl = await loadInvoiceLogoDataUrl();
@@ -312,11 +319,9 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
     document.invoiceDate,
     document.invoiceNumber,
     logoDataUrl,
-    MARGIN.top,
+    PDF_MARGIN.top,
   );
   y = drawBillToSection(pdf, document, y);
-
-  const repeatHeaderTop = INVOICE_LOGO_PDF_MM.repeatHeaderHeight;
 
   const tableBody = document.lines.map((line, index) => [
     String(index + 1),
@@ -326,15 +331,10 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
 
   autoTable(pdf, {
     startY: y,
-    margin: {
-      left: MARGIN.left,
-      right: MARGIN.right,
-      top: repeatHeaderTop,
-      bottom: 22,
-    },
+    margin: TABLE_MARGINS,
     didDrawPage: (data) => {
       if (data.pageNumber > 1) {
-        drawBrandHeader(pdf, logoDataUrl, MARGIN.top);
+        drawBrandHeader(pdf, logoDataUrl, PDF_MARGIN.top);
       }
     },
     tableWidth: CONTENT_W,
@@ -344,17 +344,26 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
       [
         { content: "", colSpan: 1 },
         { content: "Subtotal", styles: { halign: "right", fontStyle: "bold" } },
-        { content: formatInvoiceMoney(document.totals.subtotal), styles: { halign: "right" } },
+        {
+          content: formatInvoiceMoney(document.totals.subtotal),
+          styles: { halign: "right", fontStyle: "normal" },
+        },
       ],
       [
         { content: "", colSpan: 1 },
-        { content: "SGST (9%)", styles: { halign: "right" } },
-        { content: formatInvoiceMoney(document.totals.sgst), styles: { halign: "right" } },
+        { content: "SGST (9%)", styles: { halign: "right", fontStyle: "bold" } },
+        {
+          content: formatInvoiceMoney(document.totals.sgst),
+          styles: { halign: "right", fontStyle: "normal" },
+        },
       ],
       [
         { content: "", colSpan: 1 },
-        { content: "CGST (9%)", styles: { halign: "right" } },
-        { content: formatInvoiceMoney(document.totals.cgst), styles: { halign: "right" } },
+        { content: "CGST (9%)", styles: { halign: "right", fontStyle: "bold" } },
+        {
+          content: formatInvoiceMoney(document.totals.cgst),
+          styles: { halign: "right", fontStyle: "normal" },
+        },
       ],
       [
         { content: "", colSpan: 1 },
@@ -365,52 +374,60 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData) {
         },
       ],
     ],
-    styles: {
-      font: PDF_FONT,
-      fontSize: 8,
-      cellPadding: 1.5,
-      overflow: "linebreak",
-    },
+    styles: TABLE_STYLES,
     headStyles: { fillColor: [243, 244, 246], textColor: [0, 0, 0], fontStyle: "bold" },
+    bodyStyles: { fontStyle: "normal" },
     columnStyles: {
       0: { cellWidth: 14, halign: "center" },
-      1: { cellWidth: 130 },
+      1: { cellWidth: CONTENT_W - 50 },
       2: { cellWidth: 36, halign: "right" },
     },
     theme: "grid",
+    showHead: "everyPage",
+    rowPageBreak: "auto",
   });
 
   let endY = (pdf.lastAutoTable?.finalY ?? y) + 4;
   if (document.totalAmountWords) {
+    const wordsH = textBlockHeight(pdf, document.totalAmountWords, CONTENT_W) + 4;
+    const totalNeed = wordsH + closingBlockHeight(document.bank);
+    endY = ensureVerticalSpace(pdf, endY, totalNeed);
+
+    pdf.setFont(PDF_FONT, "normal");
     pdf.setFontSize(7.5);
-    pdf.text(`Total Amount in Words: ${document.totalAmountWords}`, MARGIN.left, endY, {
-      maxWidth: CONTENT_W,
-    });
-    endY += 6;
+    const lines = pdf.splitTextToSize(
+      `Total Amount in Words: ${document.totalAmountWords}`,
+      CONTENT_W,
+    );
+    pdf.text(lines, PDF_MARGIN.left, endY);
+    endY += lines.length * TEXT_LINE_H + 2;
+  } else {
+    endY = ensureVerticalSpace(pdf, endY, closingBlockHeight(document.bank));
   }
 
-  const signY = Math.min(endY + 12, PAGE_H - MARGIN.bottom - 28);
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(8);
-  pdf.text(`For ${COMPANY_INVOICE_HEADER.signatureName}`, PAGE_W - MARGIN.right, signY, {
-    align: "right",
-  });
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.text("Authorized Signatory", PAGE_W - MARGIN.right, signY + 5, { align: "right" });
+  finishInvoicePdf(pdf, endY, document.bank);
+  return pdf;
+}
 
-  const pageCount = pdf.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p += 1) {
-    pdf.setPage(p);
-    drawPageFooter(pdf, p, pageCount, document.bank);
+async function buildInvoicePdf(document: InvoiceDocumentData): Promise<jsPDF> {
+  if (document.invoiceType === "na") {
+    return generateNaInvoicePdf(document);
   }
+  return generateServiceInvoicePdf(document);
+}
 
-  pdf.save(`${document.invoiceNumber}.pdf`);
+export async function getInvoicePdfBlob(document: InvoiceDocumentData): Promise<Blob> {
+  const pdf = await buildInvoicePdf(document);
+  return pdf.output("blob");
 }
 
 export async function generateInvoicePdf(document: InvoiceDocumentData) {
-  if (document.invoiceType === "na") {
-    await generateNaInvoicePdf(document);
-    return;
-  }
-  await generateServiceInvoicePdf(document);
+  const pdf = await buildInvoicePdf(document);
+  pdf.save(`${document.invoiceNumber}.pdf`);
+}
+
+export async function printInvoicePdf(document: InvoiceDocumentData) {
+  const { openPdfBlobInNewTab } = await import("@/lib/pdf-print");
+  const blob = await getInvoicePdfBlob(document);
+  openPdfBlobInNewTab(blob, `${document.invoiceNumber}.pdf`);
 }

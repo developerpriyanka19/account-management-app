@@ -28,6 +28,7 @@ const MONEY_LEAF_IDS = new Set([
   "otherRecoveries",
   "podiFee",
   "leaseDeedGovtFee",
+  "totalGovtFee",
   "debitNoteAmount",
   "otherCharges",
   "cropCompensation",

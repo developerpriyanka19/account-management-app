@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Printer, Save, X } from "lucide-react";
-import { useReactToPrint } from "react-to-print";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { saveDebitNote } from "@/actions/debit-note-actions";
+import {
+  generateDebitNotePdf,
+  printDebitNotePdf,
+} from "@/components/debit-note/debit-note-pdf-generator";
 import { DebitNoteTemplate } from "@/components/debit-note/debit-note-template";
 import { PreviewDialog } from "@/components/preview/preview-dialog";
 import type {
@@ -92,7 +95,6 @@ export function DebitNoteBuilder({
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
-  const printRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [debitNoteId] = useState<number | undefined>(existing?.id);
   const [customerId, setCustomerId] = useState<number | "">(existing?.customerId ?? "");
@@ -207,10 +209,14 @@ export function DebitNoteBuilder({
     };
   }, [debitNoteId, type, customerId, debitNoteNo, date, district, taluk, village, hobbli, remarks, totals, rows, bankDetailsId, banks, existing?.bank]);
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: debitNoteNo || "Debit Note",
-  });
+  const pdfCtx = useMemo(
+    () => ({
+      customerName: customer?.label || "",
+      gstNumber: customer?.gstNumber || "",
+      address: buildCustomerAddress(customer),
+    }),
+    [customer],
+  );
 
   function addRowFromFarmer(farmerId: number) {
     const f = farmers.find((row) => row.id === farmerId);
@@ -761,15 +767,24 @@ export function DebitNoteBuilder({
         </div>
       </section>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg">
+      <div className="top-actions no-print sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg">
         <Button type="button" variant="outline" onClick={() => setShowPreview(true)} disabled={!payload}>
           <Eye className="h-4 w-4" /> Preview
         </Button>
-        <Button type="button" variant="outline" onClick={() => handlePrint()} disabled={!payload}>
-          <Printer className="h-4 w-4" /> Print
-        </Button>
-        <Button type="button" variant="outline" onClick={() => handlePrint()} disabled={!payload}>
+        <Button
+          type="button"
+          onClick={() => payload && void generateDebitNotePdf(payload, pdfCtx)}
+          disabled={!payload}
+        >
           <Download className="h-4 w-4" /> Download PDF
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => payload && void printDebitNotePdf(payload, pdfCtx)}
+          disabled={!payload}
+        >
+          <Printer className="h-4 w-4" /> Open PDF to Print
         </Button>
         <Button type="button" variant="outline" onClick={() => onSave("DRAFT")} disabled={pending || !payload}>
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Draft
@@ -805,30 +820,14 @@ export function DebitNoteBuilder({
         className="bg-[#F3F4F6]"
       >
         {payload ? (
-          <div ref={printRef} className="mx-auto w-full overflow-x-auto">
-            <DebitNoteTemplate
-              data={payload}
-              customerName={customer?.label || ""}
-              gstNumber={customer?.gstNumber || ""}
-              address={buildCustomerAddress(customer)}
-            />
-          </div>
+          <DebitNoteTemplate
+            data={payload}
+            customerName={pdfCtx.customerName}
+            gstNumber={pdfCtx.gstNumber}
+            address={pdfCtx.address}
+          />
         ) : null}
       </PreviewDialog>
-      {!showPreview ? (
-        <div className="hidden">
-          {payload ? (
-            <div ref={printRef}>
-              <DebitNoteTemplate
-                data={payload}
-                customerName={customer?.label || ""}
-                gstNumber={customer?.gstNumber || ""}
-                address={buildCustomerAddress(customer)}
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

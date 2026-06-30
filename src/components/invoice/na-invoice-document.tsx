@@ -2,6 +2,7 @@ import { formatInvoiceDecimal, formatInvoiceMoney } from "@/lib/invoice-calculat
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
+import { PdfPage } from "@/components/pdf/pdf-page";
 import { COMPANY_INVOICE_HEADER, getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
 import { InvoiceBrandHeader } from "./invoice-brand-header";
 import { InvoiceMetadataRow } from "./invoice-metadata-row";
@@ -86,51 +87,56 @@ export function NaInvoiceDocument({ data }: Props) {
   const locationItems = invoiceLocationEntries(location);
 
   return (
-    <article
-      className="na-invoice-a4 invoice-print-area mx-auto flex min-h-[277mm] flex-col box-border w-[210mm] max-w-full overflow-hidden bg-white px-[10mm] py-[10mm] font-serif text-black shadow-md print:shadow-none"
+    <PdfPage
+      isLastPage
+      className="na-invoice-a4 invoice-print-area mx-auto box-border w-[210mm] max-w-full bg-white px-[10mm] py-[10mm] font-serif text-black shadow-md print:shadow-none"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
+      header={
+        <>
+          <header className="border-b border-[#9ACA66] pb-2">
+            <InvoiceBrandHeader />
+            <InvoiceMetadataRow
+              invoiceNumber={prepared.invoiceNumber}
+              invoiceDate={formatDisplayDate(prepared.invoiceDate)}
+              className="text-[8px]"
+            />
+          </header>
+
+          <div className="mt-2 grid grid-cols-2 gap-4 border-b border-black pb-2">
+            <BillToBlock data={prepared} />
+            <div className="text-right text-[7px] leading-snug">
+              <p>
+                <span className="font-semibold">Type: </span>
+                {prepared.subType}
+              </p>
+            </div>
+          </div>
+          {hasInvoiceLocation(location) ? (
+            <div
+              className={`mt-1 grid gap-x-3 border-b border-black pb-1 text-[7px] ${
+                locationItems.length >= 5
+                  ? "grid-cols-5"
+                  : locationItems.length >= 4
+                    ? "grid-cols-4"
+                    : locationItems.length === 3
+                      ? "grid-cols-3"
+                      : locationItems.length === 2
+                        ? "grid-cols-2"
+                        : "grid-cols-1"
+              }`}
+            >
+              {locationItems.map(({ label, value }) => (
+                <p key={label} className="min-w-0">
+                  <span className="font-semibold">{label}: </span>
+                  {value}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </>
+      }
+      footer={<CompanyDocumentFooter className="na-invoice-footer border-0 pt-0" />}
     >
-      <header className="border-b border-[#9ACA66] pb-2">
-        <InvoiceBrandHeader />
-        <InvoiceMetadataRow
-          invoiceNumber={prepared.invoiceNumber}
-          invoiceDate={formatDisplayDate(prepared.invoiceDate)}
-          className="text-[8px]"
-        />
-      </header>
-
-      <div className="mt-2 grid grid-cols-2 gap-4 border-b border-black pb-2">
-        <BillToBlock data={prepared} />
-        <div className="text-right text-[7px] leading-snug">
-          <p>
-            <span className="font-semibold">Type: </span>
-            {prepared.subType}
-          </p>
-        </div>
-      </div>
-      {hasInvoiceLocation(location) ? (
-        <div
-          className={`mt-1 grid gap-x-3 border-b border-black pb-1 text-[7px] ${
-            locationItems.length >= 5
-              ? "grid-cols-5"
-              : locationItems.length >= 4
-              ? "grid-cols-4"
-              : locationItems.length === 3
-                ? "grid-cols-3"
-                : locationItems.length === 2
-                  ? "grid-cols-2"
-                  : "grid-cols-1"
-          }`}
-        >
-          {locationItems.map(({ label, value }) => (
-            <p key={label} className="min-w-0">
-              <span className="font-semibold">{label}: </span>
-              {value}
-            </p>
-          ))}
-        </div>
-      ) : null}
-
       <div className="na-invoice-table-wrap mt-2 w-full overflow-hidden">
         <table className="w-full table-fixed border-collapse border border-black text-[7px]">
           <colgroup>
@@ -218,17 +224,17 @@ export function NaInvoiceDocument({ data }: Props) {
             <tr>
               <td colSpan={8} className="border border-black bg-white" />
               <td className={`${td} text-right font-bold`}>Sub Total</td>
-              <td className={`${tdRight} font-bold`}>{formatInvoiceMoney(totals.subtotal)}</td>
+              <td className={`${tdRight} font-normal`}>{formatInvoiceMoney(totals.subtotal)}</td>
             </tr>
             <tr>
               <td colSpan={8} className="border border-black bg-white" />
               <td className={`${td} text-right font-bold`}>SGST @ 9% on</td>
-              <td className={tdRight}>{formatInvoiceMoney(totals.sgst)}</td>
+              <td className={`${tdRight} font-normal`}>{formatInvoiceMoney(totals.sgst)}</td>
             </tr>
             <tr>
               <td colSpan={8} className="border border-black bg-white" />
               <td className={`${td} text-right font-bold`}>CGST @ 9% on</td>
-              <td className={tdRight}>{formatInvoiceMoney(totals.cgst)}</td>
+              <td className={`${tdRight} font-normal`}>{formatInvoiceMoney(totals.cgst)}</td>
             </tr>
             <tr className="bg-[#1F2937] font-bold text-white">
               <td colSpan={8} className="border border-black bg-white" />
@@ -250,13 +256,11 @@ export function NaInvoiceDocument({ data }: Props) {
 
       <div className="mt-4 flex items-end justify-between gap-4">
         <BankDetailsDisplay bank={prepared.bank} />
-        <div className="text-right text-[7px]">
-          <p className="font-bold">For {COMPANY_INVOICE_HEADER.signatureName}</p>
+        <div className="text-right text-[7px] font-normal">
+          <p className="font-medium">For {COMPANY_INVOICE_HEADER.signatureName}</p>
           <p className="mt-6">Authorized Signatory</p>
         </div>
       </div>
-
-      <CompanyDocumentFooter className="na-invoice-footer mt-auto pt-2" />
-    </article>
+    </PdfPage>
   );
 }

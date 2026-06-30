@@ -28,17 +28,16 @@ export function CompanyBrandHeader({
   const headerRowH = compact
     ? INVOICE_LOGO.compactHeaderRowHeightPx
     : INVOICE_LOGO.headerRowHeightPx;
+  const headerBlockH = Math.max(headerRowH, logoH);
   const nameSize = compact ? "text-[22px]" : "text-[28px]";
   const titleSize = compact ? "text-sm" : "text-[15px]";
-  /** Extra space before the rule when the logo extends below the name row. */
-  const ruleMarginTop = Math.max(8, logoH - headerRowH);
 
   return (
     <div className="w-full" style={{ marginBottom: INVOICE_LOGO.metadataMarginPx }}>
       <div
         className="relative flex w-full items-center"
         style={{
-          minHeight: headerRowH,
+          minHeight: headerBlockH,
           paddingLeft: logoW + INVOICE_LOGO.gapPx,
         }}
       >
@@ -64,7 +63,7 @@ export function CompanyBrandHeader({
       <hr
         className="border-0"
         style={{
-          marginTop: ruleMarginTop,
+          marginTop: 6,
           borderTopWidth: 1,
           borderTopStyle: "solid",
           borderTopColor: COMPANY_BRAND_STYLE.dividerColor,

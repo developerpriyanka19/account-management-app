@@ -6,6 +6,19 @@ import {
   formatIntegerAmount,
   formatOptionalDate,
 } from "@/lib/customer-display";
+import {
+  computeFarmerDerivedFields,
+  roundToTwoDecimals,
+  type FarmerDerivedFields,
+} from "@/lib/customer-computed-totals";
+import {
+  EXPORT_GROUPS,
+  LEAF_COLUMN_IDS,
+  type ExportGroup,
+  type LeafColumnId,
+} from "@/lib/customer-column-layout";
+
+export { EXPORT_GROUPS, LEAF_COLUMN_IDS, type ExportGroup, type LeafColumnId };
 
 export const HEADER_ROW_H = 44;
 
@@ -160,197 +173,37 @@ export function computeLeaseDeedGovtFee(row: CustomerListRow): number | null {
   return Number.isNaN(total) ? null : total;
 }
 
-/** Leaf column ids in display order (matches export). */
-export const LEAF_COLUMN_IDS = [
-  "farmerName",
-  "changedFarmerName",
-  "vendorCode",
-  "surveyNo",
-  "newSurveyNo",
-  "rtcExtentAcre",
-  "rtcExtentGunta",
-  "rtcAKharab",
-  "rtcBKharab",
-  "balanceExtentAcre",
-  "balanceExtentGunta",
-  "leaseExtentAcre",
-  "leaseExtentGunta",
+function farmerDerivedFromRow(row: CustomerListRow): FarmerDerivedFields {
+  return computeFarmerDerivedFields({
+    leaseExtentAcre: row.leaseExtentAcre,
+    leaseExtentGunta: row.leaseExtentGunta,
+    rentPerAcre: row.rentPerAcre,
+    aesAdvanceChequeAmount: row.aesAdvanceChequeAmount,
+    shortageChequeAmount: row.shortageChequeAmount,
+    shortageAmountSecondTime: row.shortageAmountSecondTime,
+    shortageThirdChequeAmount: row.shortageThirdChequeAmount,
+    atlTotal: row.atlTotal,
+    paoTotal: row.paoTotal,
+    landConversion: row.landConversion,
+    otherRecoveries: row.otherRecoveries,
+    podiFee: row.podiFee,
+    leaseDeedStampDuty: row.leaseDeedStampDuty,
+    leaseDeedRegCharges: row.leaseDeedRegCharges,
+  });
+}
+
+const COMPUTED_COLUMN_IDS = new Set<string>([
   "totalGunta",
   "totalCents",
-  "rentPerAcre",
   "rentAmount",
-  "aesAdvanceDate",
-  "aesAdvanceChequeNo",
-  "aesAdvanceChequeAmount",
-  "aesAdvanceBankName",
   "balanceRentAmount",
-  "tdsAmount",
-  "shortageChequeAmount",
-  "shortageDate",
-  "shortageChequeNo",
-  "shortageBankName",
-  "shortageAmountSecondTime",
-  "shortageSecondDate",
-  "shortageSecondChequeNo",
-  "shortageSecondBankName",
-  "shortageThirdChequeAmount",
-  "shortageThirdDate",
-  "shortageThirdChequeNo",
-  "shortageThirdBankName",
   "shortageAmountTotal",
-  "bankLoanDdDate",
-  "loanAmount",
-  "bankLoanDdNo",
-  "bankLoanBankName",
-  "rentalDdDate",
-  "leaseAmount",
-  "rentalDdChequeNo",
-  "rentalDdBankName",
-  "rentalDdPart1Date",
-  "rentalDdPart1Amount",
-  "rentalDdPart1ChequeNo",
-  "rentalDdPart1BankName",
-  "atlTotal",
-  "paoTotal",
-  "landConversion",
-  "otherRecoveries",
-  "podiFee",
-  "leaseDeedGovtFee",
-  "debitNoteNo",
-  "debitNoteAmount",
-  "remark",
-  "otherCharges",
-  "cropCompensation",
-] as const;
+  "totalGovtFee",
+]);
 
-export type LeafColumnId = (typeof LEAF_COLUMN_IDS)[number];
-
-export type ExportGroup = {
-  label: string;
-  leafLabels: string[];
-  leafIds: LeafColumnId[];
-  /** Red parent header text in Excel export (matches dashboard). */
-  headerTone?: "red";
-};
-
-/** Grouped header structure for Excel export (row 0 merges). */
-export const EXPORT_GROUPS: ExportGroup[] = [
-  {
-    label: "Farmer Details",
-    leafLabels: ["Farmer Name", "Changed Name", "Vendor Code", "Survey No", "New Survey No"],
-    leafIds: ["farmerName", "changedFarmerName", "vendorCode", "surveyNo", "newSurveyNo"],
-  },
-  {
-    label: "RTC Extent",
-    leafLabels: ["Acre", "Gunta", "A Kharab", "B Kharab"],
-    leafIds: ["rtcExtentAcre", "rtcExtentGunta", "rtcAKharab", "rtcBKharab"],
-  },
-  {
-    label: "Balance Extent",
-    leafLabels: ["Acre", "Gunta"],
-    leafIds: ["balanceExtentAcre", "balanceExtentGunta"],
-  },
-  {
-    label: "Lease Extent",
-    leafLabels: ["Acre", "Gunta"],
-    leafIds: ["leaseExtentAcre", "leaseExtentGunta"],
-  },
-  { label: "Total Gunta", leafLabels: ["Total Gunta"], leafIds: ["totalGunta"] },
-  { label: "Total Cents", leafLabels: ["Total Cents"], leafIds: ["totalCents"] },
-  { label: "Rent Per Acre", leafLabels: ["Rent Per Acre"], leafIds: ["rentPerAcre"] },
-  { label: "Total Rent", leafLabels: ["Total Rent"], leafIds: ["rentAmount"] },
-  {
-    label: "AES Advance Per Acre",
-    leafLabels: ["Date", "Cheque No", "Cheque Amount", "Bank Name"],
-    leafIds: [
-      "aesAdvanceDate",
-      "aesAdvanceChequeNo",
-      "aesAdvanceChequeAmount",
-      "aesAdvanceBankName",
-    ],
-  },
-  {
-    label: "Balance Rent Amount",
-    leafLabels: ["Balance Rent Amount"],
-    leafIds: ["balanceRentAmount"],
-  },
-  { label: "TDS Amount", leafLabels: ["TDS Amount"], leafIds: ["tdsAmount"] },
-  {
-    label: "Shortage Amount Through Cheque One",
-    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
-    leafIds: [
-      "shortageChequeAmount",
-      "shortageDate",
-      "shortageChequeNo",
-      "shortageBankName",
-    ],
-  },
-  {
-    label: "Shortage Amount Through Cheque Second",
-    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
-    leafIds: [
-      "shortageAmountSecondTime",
-      "shortageSecondDate",
-      "shortageSecondChequeNo",
-      "shortageSecondBankName",
-    ],
-  },
-  {
-    label: "Shortage Amount Through Cheque Third",
-    leafLabels: ["Amount", "Date", "Cheque No", "Bank Name"],
-    leafIds: [
-      "shortageThirdChequeAmount",
-      "shortageThirdDate",
-      "shortageThirdChequeNo",
-      "shortageThirdBankName",
-    ],
-  },
-  {
-    label: "SHORTAGE AMOUNT TOTAL",
-    leafLabels: ["SHORTAGE AMOUNT TOTAL"],
-    leafIds: ["shortageAmountTotal"],
-  },
-  {
-    label: "Bank Loan DD From Company",
-    leafLabels: ["Date", "Amount", "DD No", "Bank Name"],
-    leafIds: ["bankLoanDdDate", "loanAmount", "bankLoanDdNo", "bankLoanBankName"],
-  },
-  {
-    label: "Rental DD From Company",
-    leafLabels: ["Date", "Amount", "Cheque No", "Bank Name"],
-    leafIds: ["rentalDdDate", "leaseAmount", "rentalDdChequeNo", "rentalDdBankName"],
-  },
-  {
-    label: "Rental DD From Company Part 1",
-    leafLabels: ["Date", "Amount", "Cheque No", "Bank Name"],
-    leafIds: [
-      "rentalDdPart1Date",
-      "rentalDdPart1Amount",
-      "rentalDdPart1ChequeNo",
-      "rentalDdPart1BankName",
-    ],
-  },
-  { label: "ATL", leafLabels: ["ATL Govt Fee"], leafIds: ["atlTotal"] },
-  { label: "POA/GPA", leafLabels: ["GPA/POA GOVT Fee"], leafIds: ["paoTotal"] },
-  {
-    label: "NA",
-    leafLabels: ["Land Conversion", "Other Recoveries", "Podi Fee"],
-    leafIds: ["landConversion", "otherRecoveries", "podiFee"],
-  },
-  { label: "Lease Deed", leafLabels: ["Govt Fee"], leafIds: ["leaseDeedGovtFee"] },
-  {
-    label: "Debit Note",
-    leafLabels: ["DB No", "Amount"],
-    leafIds: ["debitNoteNo", "debitNoteAmount"],
-  },
-  { label: "Remark", leafLabels: ["Remark"], leafIds: ["remark"] },
-  { label: "Other Charger", leafLabels: ["Other Charger"], leafIds: ["otherCharges"] },
-  {
-    label: "Crop Compensations",
-    leafLabels: ["Crop Compensations"],
-    leafIds: ["cropCompensation"],
-  },
-];
+function computedColumnCell(row: CustomerListRow, field: keyof FarmerDerivedFields) {
+  return moneyCell(roundToTwoDecimals(farmerDerivedFromRow(row)[field]));
+}
 
 /** Leaf column ids in Excel export order (derived from grouped headers). */
 export const EXPORT_LEAF_COLUMN_IDS = EXPORT_GROUPS.flatMap(
@@ -378,6 +231,7 @@ const MONEY_IDS = new Set<string>([
   "otherRecoveries",
   "podiFee",
   "leaseDeedGovtFee",
+  "totalGovtFee",
   "debitNoteAmount",
   "otherCharges",
   "cropCompensation",
@@ -413,6 +267,10 @@ export function getExportCellValue(row: CustomerListRow, id: LeafColumnId): stri
     const v = computeLeaseDeedGovtFee(row);
     if (v == null || Number.isNaN(v)) return "";
     return v;
+  }
+  if (COMPUTED_COLUMN_IDS.has(id)) {
+    const derived = farmerDerivedFromRow(row);
+    return roundToTwoDecimals(derived[id as keyof FarmerDerivedFields]);
   }
   const v = row[id as keyof CustomerListRow];
   if (DATE_IDS.has(id)) {
@@ -588,17 +446,15 @@ export function buildCustomerTableColumns(
     },
     columnGroup("totalGuntaGroup", "Total Gunta", {
       id: "totalGunta",
-      accessorKey: "totalGunta",
       header: "Total Gunta",
-      cell: ({ getValue }) => moneyCell(getValue() as number),
+      cell: ({ row }) => computedColumnCell(row.original, "totalGunta"),
       size: 104,
       minSize: 96,
     }, { subHeader: null }),
     columnGroup("totalCentsGroup", "Total Cents", {
       id: "totalCents",
-      accessorKey: "totalCents",
       header: "Total Cents",
-      cell: ({ getValue }) => moneyCell(getValue() as number),
+      cell: ({ row }) => computedColumnCell(row.original, "totalCents"),
       size: 104,
       minSize: 96,
     }, { subHeader: null }),
@@ -610,11 +466,18 @@ export function buildCustomerTableColumns(
       size: 104,
       minSize: 96,
     }, { subHeader: null }),
+    columnGroup("noOfYearsGroup", "No. of Years", {
+      id: "noOfYears",
+      accessorKey: "noOfYears",
+      header: "No. of Years",
+      cell: ({ getValue }) => extentCell(getValue() as number),
+      size: 104,
+      minSize: 96,
+    }, { subHeader: null }),
     columnGroup("rentAmountGroup", "Total Rent", {
       id: "rentAmount",
-      accessorKey: "rentAmount",
       header: "Total Rent",
-      cell: ({ getValue }) => moneyCell(getValue() as number),
+      cell: ({ row }) => computedColumnCell(row.original, "rentAmount"),
       size: 104,
       minSize: 96,
     }, { subHeader: null }),
@@ -655,9 +518,8 @@ export function buildCustomerTableColumns(
     },
     columnGroup("balanceRentAmountGroup", "Balance Rent Amount", {
       id: "balanceRentAmount",
-      accessorKey: "balanceRentAmount",
       header: "Balance Rent Amount",
-      cell: ({ getValue }) => moneyCell(getValue() as number),
+      cell: ({ row }) => computedColumnCell(row.original, "balanceRentAmount"),
       size: 120,
       minSize: 104,
     }, { subHeader: null }),
@@ -779,9 +641,8 @@ export function buildCustomerTableColumns(
       "SHORTAGE AMOUNT TOTAL",
       {
         id: "shortageAmountTotal",
-        accessorKey: "shortageAmountTotal",
         header: "SHORTAGE AMOUNT TOTAL",
-        cell: ({ getValue }) => moneyCell(getValue() as number),
+        cell: ({ row }) => computedColumnCell(row.original, "shortageAmountTotal"),
         size: 140,
         minSize: 120,
       },
@@ -940,11 +801,18 @@ export function buildCustomerTableColumns(
     },
     columnGroup("leaseDeed", "Lease Deed", {
       id: "leaseDeedGovtFee",
-      header: "Govt Fee",
+      header: "K2 Challan",
       cell: ({ row }) => moneyCell(computeLeaseDeedGovtFee(row.original)),
       size: 104,
       minSize: 96,
-    }, { subHeader: "Govt Fee" }),
+    }, { subHeader: "K2 Challan" }),
+    columnGroup("totalGovtFeeGroup", "Total Govt Fee", {
+      id: "totalGovtFee",
+      header: "Total Govt Fee",
+      cell: ({ row }) => computedColumnCell(row.original, "totalGovtFee"),
+      size: 120,
+      minSize: 104,
+    }, { subHeader: null }),
     {
       id: "debitNote",
       header: "Debit Note",

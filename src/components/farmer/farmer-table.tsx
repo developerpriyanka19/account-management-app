@@ -42,22 +42,22 @@ const Z_SUPPRESSED_SUBHEADER = 1;
 const Z_BODY_PINNED = 20;
 
 const HEADER_TH_BASE =
-  "border border-[#D1D5DB] px-[10px] py-[6px] text-center align-middle whitespace-normal break-words [overflow-wrap:anywhere] leading-[1.2] overflow-visible";
+  "border-b border-slate-200 px-[10px] py-[6px] text-center align-middle whitespace-normal break-words [overflow-wrap:anywhere] leading-[1.2] overflow-visible";
 const GROUP_TH =
-  `${HEADER_TH_BASE} text-[12px] font-semibold uppercase tracking-wide text-[#111827] bg-[#F8FAFC]`;
+  `${HEADER_TH_BASE} text-[11px] font-semibold uppercase tracking-wide text-slate-600 bg-slate-50/90`;
 const LEAF_TH =
-  `${HEADER_TH_BASE} text-[13px] font-semibold text-[#111827] bg-[#F8FAFC]`;
+  `${HEADER_TH_BASE} text-[12px] font-semibold text-slate-700 bg-slate-50/90`;
 const TD_BASE =
-  "border border-[#D1D5DB] px-[10px] py-[8px] text-[13px] text-[#111827] align-middle min-h-[44px] h-auto";
+  "border-b border-slate-100 px-[10px] py-[8px] text-[13px] text-slate-800 align-middle min-h-[44px] h-auto";
 const TD =
   `${TD_BASE} overflow-hidden max-w-0`;
 const TD_AMOUNT =
   `${TD_BASE} amount-cell-td overflow-visible max-w-none whitespace-normal`;
 
-const HEADER_BG = "#F8FAFC";
-const GROUP_BG = "#F8FAFC";
+const HEADER_BG = "rgba(248, 250, 252, 0.95)";
+const GROUP_BG = "rgba(248, 250, 252, 0.95)";
 const BODY_BG = "#FFFFFF";
-const ZEBRA_BG = "#FAFBFC";
+const ZEBRA_BG = "#F8FAFC";
 const LEFT_ALIGN_HEADER_IDS = new Set([
   "farmerName",
   "changedFarmerName",
@@ -359,10 +359,10 @@ export function FarmerTable({ customers, nameFilter }: Props) {
   const totalTableWidth = tableTotalWidth(leafColumns);
 
   return (
-    <div className="rounded-lg border border-[#D1D5DB] bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white/70 shadow-sm backdrop-blur-sm">
       <div className="max-h-[min(72vh,46rem)] overflow-auto scroll-smooth">
         <table
-          className="table-fixed border-separate border-spacing-0 border-[#D1D5DB] text-left text-[13px]"
+          className="table-fixed border-separate border-spacing-0 text-left text-[13px]"
           style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}
         >
           <colgroup>
@@ -410,7 +410,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                         isActionsParentHeader && "text-center",
                         LEFT_ALIGN_HEADER_IDS.has(header.column.id) && "text-left pl-4",
                         MONEY_COLUMN_IDS.has(header.column.id) && "text-right",
-                        pinned && "border-[#D1D5DB]",
+                        pinned && "border-slate-200",
                       )}
                       style={{
                         ...getHeaderCellStyles(header.column, leafColumns, {
@@ -461,7 +461,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={leafCount} className="border border-[#D1D5DB] px-3 py-10 text-center text-sm text-[#6B7280]">
+                <td colSpan={leafCount} className="border-b border-slate-100 px-3 py-10 text-center text-sm text-slate-500">
                   No farmers match the current filters.
                 </td>
               </tr>
@@ -474,7 +474,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                     key={row.id}
                     role="link"
                     tabIndex={0}
-                    className="group cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]/30"
+                    className="group cursor-pointer transition-colors hover:bg-blue-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]/30"
                     onClick={() => router.push(`/farmer/${row.original.id}`)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -490,7 +490,7 @@ export function FarmerTable({ customers, nameFilter }: Props) {
                         key={cell.id}
                         className={cn(
                           isAmountCol ? TD_AMOUNT : TD,
-                          "group-hover:!bg-[#F9FAFB]",
+                          "group-hover:!bg-blue-50/50",
                           !isAmountCol &&
                             (WRAP_TEXT_COLUMN_IDS.has(cell.column.id)
                               ? "whitespace-normal"

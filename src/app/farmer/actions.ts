@@ -7,6 +7,7 @@ import {
   validateCustomerForm,
   type CustomerFormState,
 } from "@/lib/customer-form-validation";
+import { PRESERVED_OFF_LAYOUT_DB_FIELDS } from "@/lib/customer-field-layout";
 import type { CustomerListRow } from "@/lib/customer-list-format";
 import {
   CUSTOMER_LIST_SELECT,
@@ -54,7 +55,12 @@ export async function updateCustomer(
 
   await prisma.customer.update({
     where: { id },
-    data: { ...result.data },
+    data: {
+      ...result.data,
+      ...Object.fromEntries(
+        PRESERVED_OFF_LAYOUT_DB_FIELDS.map((key) => [key, existing[key as keyof typeof existing]]),
+      ),
+    },
   });
 
   revalidatePath("/farmer");

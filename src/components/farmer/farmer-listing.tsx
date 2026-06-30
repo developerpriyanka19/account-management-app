@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, Plus, Search } from "lucide-react";
+import { Download, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { exportCustomersToExcel } from "@/lib/customer-excel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,58 +64,67 @@ export function FarmerListing({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 rounded-lg border border-[#D1D5DB] bg-white px-3 py-3 shadow-sm">
+    <div className="flex flex-col gap-4">
+      <div className="sticky top-0 z-20 -mx-4 border-b border-slate-100 bg-white/80 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={exportPending || totalAll === 0}
-              onClick={exportAllFarmers}
-            >
-              <Download className="h-3.5 w-3.5" />
-              {exportPending ? "Exporting…" : "Export All Farmers"}
-            </Button>
-            <Link href="/farmer/new">
-              <Button type="button" size="sm">
-                <Plus className="h-3.5 w-3.5" />
-                Add Farmer
-              </Button>
-            </Link>
-          </div>
-
           <form
             onSubmit={runSearch}
-            className="flex min-w-0 flex-1 flex-wrap items-center gap-2 lg:max-w-md lg:justify-end"
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-2 lg:max-w-xl"
           >
             <div className="relative min-w-[14rem] flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6B7280]" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)}
                 placeholder="Search farmer name..."
-                className="h-8 border-[#D1D5DB] pl-8"
+                className="h-[42px] rounded-full border-slate-200 bg-white pl-10 shadow-sm focus-visible:ring-[#2563EB]/30"
                 aria-label="Search by farmer name"
               />
             </div>
-            <Button type="submit" size="sm">
-              Search
+            <Button
+              type="button"
+              variant="outline"
+              className="h-[42px] rounded-full border-slate-200 px-4 shadow-sm"
+              onClick={() => runSearch()}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filter
             </Button>
           </form>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={exportPending || totalAll === 0}
+              onClick={exportAllFarmers}
+              className="h-[42px] rounded-full border-slate-200 px-5 shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              {exportPending ? "Exporting…" : "Export"}
+            </Button>
+            <Link href="/farmer/new">
+              <Button
+                type="button"
+                className="h-[42px] rounded-full bg-[#2563EB] px-5 shadow-sm hover:bg-[#1D4ED8]"
+              >
+                <Plus className="h-4 w-4" />
+                Add Farmer
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#D1D5DB] pt-2 text-xs text-[#6B7280]">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
           <p>
-            <span className="font-semibold tabular-nums text-[#111827]">{totalFiltered}</span>{" "}
+            <span className="font-semibold tabular-nums text-slate-700">{totalFiltered}</span>{" "}
             {totalFiltered === 1 ? "farmer" : "farmers"}
             {query ? " matching search" : ""} ·{" "}
             <span className="tabular-nums">{totalAll}</span> total
           </p>
           <p>
-            Showing <span className="font-medium tabular-nums text-[#111827]">{start}–{end}</span>{" "}
-            of <span className="font-medium tabular-nums text-[#111827]">{totalFiltered}</span> ·{" "}
+            Showing <span className="font-medium tabular-nums text-slate-700">{start}–{end}</span>{" "}
+            of <span className="font-medium tabular-nums text-slate-700">{totalFiltered}</span> ·{" "}
             <span className="tabular-nums">{pageSize}</span> per page
           </p>
         </div>
@@ -125,33 +134,33 @@ export function FarmerListing({
 
       {totalPages > 1 ? (
         <nav
-          className="flex flex-col gap-2 rounded-lg border border-[#D1D5DB] bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
           aria-label="Pagination"
         >
-          <p className="text-xs text-[#6B7280]">
-            Page <span className="font-semibold text-[#111827]">{page}</span> of{" "}
-            <span className="font-semibold text-[#111827]">{totalPages}</span>
+          <p className="text-xs text-slate-500">
+            Page <span className="font-semibold text-slate-700">{page}</span> of{" "}
+            <span className="font-semibold text-slate-700">{totalPages}</span>
           </p>
           <div className="flex gap-2">
             {page > 1 ? (
               <Link href={customersListHref(query, page - 1)}>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-full">
                   Previous
                 </Button>
               </Link>
             ) : (
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" disabled className="rounded-full">
                 Previous
               </Button>
             )}
             {page < totalPages ? (
               <Link href={customersListHref(query, page + 1)}>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-full">
                   Next
                 </Button>
               </Link>
             ) : (
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" disabled className="rounded-full">
                 Next
               </Button>
             )}

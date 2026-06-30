@@ -32,7 +32,7 @@ export function PreviewDialog({
       <DialogContent
         hideCloseButton
         className={cn(
-          "w-[min(100%,220mm)] max-h-[92vh] gap-0 overflow-hidden p-4 sm:p-6",
+          "no-print w-[min(100%,220mm)] max-h-[92vh] gap-0 overflow-hidden p-4 sm:p-6",
           className,
         )}
         onEscapeKeyDown={close}

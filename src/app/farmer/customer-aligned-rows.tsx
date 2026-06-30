@@ -1,19 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Customer } from "@prisma/client";
 import {
   cellText,
   formatAmount,
   formatOptionalDate,
 } from "@/lib/customer-display";
+import {
+  computeFarmerDerivedFields,
+  formatComputedTotal,
+  type FarmerDerivedFields,
+} from "@/lib/customer-computed-totals";
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
+import { k2ChallanFromCustomer } from "@/lib/customer-serialize";
 import type { CustomerFormFieldErrors } from "@/lib/customer-form-validation";
 
 const inputClass =
   "block w-full rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition placeholder:text-[#6B7280] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20";
 
 const numClass = `${inputClass} tabular-nums font-mono`;
+
+const readOnlyClass =
+  "block w-full rounded-md border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-sm tabular-nums font-mono text-[#111827] cursor-default";
+
+const COMPUTED_FIELD_SET = new Set<string>([
+  "totalGunta",
+  "totalCents",
+  "rentAmount",
+  "balanceRentAmount",
+  "shortageAmountTotal",
+  "totalGovtFee",
+]);
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -38,11 +56,64 @@ function ExtentCell({ formatted }: { formatted: string }) {
   return <span className="font-mono text-[#111827]">{formatted}</span>;
 }
 
+function derivedInputFromForm(values: Record<string, string>) {
+  return {
+    leaseExtentAcre: values.leaseExtentAcre,
+    leaseExtentGunta: values.leaseExtentGunta,
+    rentPerAcre: values.rentPerAcre,
+    aesAdvanceChequeAmount: values.aesAdvanceChequeAmount,
+    shortageChequeAmount: values.shortageChequeAmount,
+    shortageAmountSecondTime: values.shortageAmountSecondTime,
+    shortageThirdChequeAmount: values.shortageThirdChequeAmount,
+    atlTotal: values.atlTotal,
+    paoTotal: values.paoTotal,
+    landConversion: values.landConversion,
+    otherRecoveries: values.otherRecoveries,
+    podiFee: values.podiFee,
+    leaseDeedStampDuty: values.leaseDeedGovtFee,
+    leaseDeedRegCharges: 0,
+  };
+}
+
+function derivedInputFromCustomer(customer: Customer) {
+  return {
+    leaseExtentAcre: customer.leaseExtentAcre,
+    leaseExtentGunta: customer.leaseExtentGunta,
+    rentPerAcre: customer.rentPerAcre,
+    aesAdvanceChequeAmount: customer.aesAdvanceChequeAmount,
+    shortageChequeAmount: customer.shortageChequeAmount,
+    shortageAmountSecondTime: customer.shortageAmountSecondTime,
+    shortageThirdChequeAmount: customer.shortageThirdChequeAmount,
+    atlTotal: customer.atlTotal,
+    paoTotal: customer.paoTotal,
+    landConversion: customer.landConversion,
+    otherRecoveries: customer.otherRecoveries,
+    podiFee: customer.podiFee,
+    leaseDeedStampDuty: customer.leaseDeedStampDuty,
+    leaseDeedRegCharges: customer.leaseDeedRegCharges,
+  };
+}
+
 function formatFieldValue(
   customer: Customer,
   name: string,
   variant?: "money" | "extent" | "text",
+  derived?: FarmerDerivedFields,
 ): string {
+  if (COMPUTED_FIELD_SET.has(name) && derived) {
+    const raw = derived[name as keyof FarmerDerivedFields];
+    if (variant === "money") {
+      return formatAmount(raw);
+    }
+    return formatComputedTotal(raw) || "—";
+  }
+  if (name === "leaseDeedGovtFee") {
+    const k2 = k2ChallanFromCustomer(customer);
+    return k2 === "" ? "—" : formatAmount(Number(k2));
+  }
+  if (name === "remark") {
+    return cellText(customer.notes);
+  }
   const raw = customer[name as keyof Customer];
   if (variant === "money" || variant === "extent") {
     return formatAmount(raw as number | null | undefined);
@@ -78,6 +149,22 @@ export function CustomerAlignedRows(props: Props) {
     }
   }, [props.mode, props.mode === "form" ? props.defaultValues : null]);
 
+  const formDerived = useMemo(
+    () =>
+      props.mode === "form"
+        ? computeFarmerDerivedFields(derivedInputFromForm(formValues))
+        : null,
+    [props.mode, formValues],
+  );
+
+  const displayDerived = useMemo(
+    () =>
+      props.mode === "display"
+        ? computeFarmerDerivedFields(derivedInputFromCustomer(props.customer))
+        : null,
+    [props.mode, props.mode === "display" ? props.customer : null],
+  );
+
   function updateField(name: string, value: string) {
     setFormValues((prev) => ({ ...prev, [name]: value }));
   }
@@ -109,9 +196,15 @@ export function CustomerAlignedRows(props: Props) {
 
           const id = row.name;
           const error = props.mode === "form" ? e(id) : undefined;
+          const derived = props.mode === "form" ? formDerived : displayDerived;
+          const isComputed = row.computed === true;
+          const computedValue =
+            isComputed && derived
+              ? formatComputedTotal(derived[id as keyof FarmerDerivedFields])
+              : "";
           const displayValue =
             props.mode === "display"
-              ? formatFieldValue(props.customer, row.name, row.variant)
+              ? formatFieldValue(props.customer, row.name, row.variant, derived ?? undefined)
               : null;
           const zebra = index % 2 === 1;
 
@@ -123,7 +216,7 @@ export function CustomerAlignedRows(props: Props) {
               }`}
             >
               <label
-                htmlFor={props.mode === "form" ? id : undefined}
+                htmlFor={props.mode === "form" && !isComputed ? id : undefined}
                 className="text-xs font-medium text-[#6B7280]"
               >
                 {row.label}
@@ -134,7 +227,18 @@ export function CustomerAlignedRows(props: Props) {
               <div className="min-w-0">
                 {props.mode === "form" ? (
                   <>
-                    {row.inputType === "date" ? (
+                    {isComputed ? (
+                      <>
+                        <input type="hidden" name={id} value={computedValue} />
+                        <div
+                          className={readOnlyClass}
+                          aria-readonly
+                          title="Calculated automatically"
+                        >
+                          {computedValue || "0.00"}
+                        </div>
+                      </>
+                    ) : row.inputType === "date" ? (
                       <input
                         id={id}
                         name={id}

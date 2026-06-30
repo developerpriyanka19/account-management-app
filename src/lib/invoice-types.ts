@@ -1,5 +1,9 @@
 import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
 
+import {
+  computeFarmerDerivedFields,
+  roundToTwoDecimals,
+} from "@/lib/customer-computed-totals";
 import { lineAmountFromExtent } from "@/lib/invoice-calculations";
 
 export type InvoiceBillingCustomerOption = {
@@ -46,6 +50,8 @@ export type InvoiceFarmerOption = {
   rtcExtentGunta: number | null;
   balanceExtentAcre: number | null;
   balanceExtentGunta: number | null;
+  leaseExtentAcre: number | null;
+  leaseExtentGunta: number | null;
   totalCents: number | null;
 };
 
@@ -100,8 +106,15 @@ export function farmerToInvoiceLine(
   farmer: InvoiceFarmerOption,
   ratePerAcre: number,
 ): InvoiceLineInput {
-  const acres = farmer.rtcExtentAcre ?? farmer.balanceExtentAcre ?? null;
-  const gunta = farmer.rtcExtentGunta ?? farmer.balanceExtentGunta ?? null;
+  const acres =
+    farmer.leaseExtentAcre ?? farmer.rtcExtentAcre ?? farmer.balanceExtentAcre ?? null;
+  const gunta =
+    farmer.leaseExtentGunta ?? farmer.rtcExtentGunta ?? farmer.balanceExtentGunta ?? null;
+  const derived = computeFarmerDerivedFields({
+    leaseExtentAcre: farmer.leaseExtentAcre,
+    leaseExtentGunta: farmer.leaseExtentGunta,
+  });
+  const totalCents = roundToTwoDecimals(derived.totalCents);
   const naParts: string[] = [];
   if (acres != null) naParts.push(`${acres} A`);
   if (gunta != null) naParts.push(`${gunta} G`);
@@ -117,7 +130,7 @@ export function farmerToInvoiceLine(
     naExtent: naParts.length > 0 ? naParts.join(" · ") : "—",
     acres,
     gunta,
-    totalCents: farmer.totalCents,
+    totalCents,
     affidavitId: "",
     requestId: farmer.vendorCode?.trim() || "",
     debitNote: 0,

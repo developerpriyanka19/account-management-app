@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Printer, Save } from "lucide-react";
-import { useReactToPrint } from "react-to-print";
 import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { saveInvoice } from "@/app/invoice/actions";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
+import {
+  generateInvoicePdf,
+  printInvoicePdf,
+} from "@/components/invoice/invoice-pdf-generator";
 import { PreviewPanel } from "@/components/preview/preview-panel";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
@@ -59,7 +62,6 @@ export function InvoiceBuilder({
 }: Props) {
   const router = useRouter();
   const toast = useToast();
-  const printRef = useRef<HTMLDivElement>(null);
   const [pending, startTransition] = useTransition();
   const [showPreview, setShowPreview] = useState(false);
 
@@ -198,11 +200,6 @@ export function InvoiceBuilder({
     bankDetailsId,
     banks,
   ]);
-
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: documentData?.invoiceNumber ?? "Invoice",
-  });
 
   useEffect(() => {
     if (!showPreview) return;
@@ -511,7 +508,7 @@ export function InvoiceBuilder({
           </section>
         ) : null}
 
-        <div className="no-print sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur print:hidden">
+        <div className="top-actions no-print sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
           <Button
             type="button"
             variant="outline"
@@ -524,26 +521,28 @@ export function InvoiceBuilder({
           </Button>
           <Button
             type="button"
-            variant="outline"
             size="sm"
-            disabled={!documentData}
-            onClick={() => handlePrint()}
+            disabled={!documentData || pending}
+            onClick={() => {
+              if (!documentData) return;
+              void generateInvoicePdf(documentData);
+            }}
           >
-            <Printer className="h-4 w-4" />
-            Print
+            <Download className="h-4 w-4" />
+            Download PDF
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={!documentData || pending}
+            disabled={!documentData}
             onClick={() => {
               if (!documentData) return;
-              handlePrint();
+              void printInvoicePdf(documentData);
             }}
           >
-            <Download className="h-4 w-4" />
-            Download PDF
+            <Printer className="h-4 w-4" />
+            Open PDF to Print
           </Button>
           <Button
             type="button"
@@ -572,13 +571,9 @@ export function InvoiceBuilder({
           closeLabel="Close Preview"
           onClose={() => setShowPreview(false)}
         >
-          <InvoiceDocumentPreview ref={printRef} data={documentData} />
+          <InvoiceDocumentPreview data={documentData} />
         </PreviewPanel>
-      ) : (
-        <div className="hidden">
-          {documentData ? <InvoiceDocumentPreview ref={printRef} data={documentData} /> : null}
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,8 @@
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
+import {
+  computeFarmerDerivedFields,
+  roundToTwoDecimals,
+} from "@/lib/customer-computed-totals";
 
 export type CustomerFormFieldErrors = Record<string, string>;
 
@@ -22,9 +26,9 @@ const LAYOUT_FIELDS = CUSTOMER_FIELD_LAYOUT.filter(
 
 const ALL_FORM_KEYS = LAYOUT_FIELDS.map((r) => r.name);
 
-const OPTIONAL_FLOAT_FIELDS = LAYOUT_FIELDS.filter((r) => r.inputType === "number").map(
-  (r) => r.name,
-) as readonly string[];
+const OPTIONAL_FLOAT_FIELDS = LAYOUT_FIELDS.filter(
+  (r) => r.inputType === "number" && r.computed !== true,
+).map((r) => r.name) as readonly string[];
 
 const OPTIONAL_DATE_FIELDS = LAYOUT_FIELDS.filter((r) => r.inputType === "date").map(
   (r) => r.name,
@@ -86,6 +90,7 @@ export type ValidatedCustomerPayload = {
   totalGunta: number | null;
   totalCents: number | null;
   rentPerAcre: number | null;
+  noOfYears: number | null;
   rentAmount: number | null;
   aesAdvanceDate: string | null;
   aesAdvanceChequeNo: string | null;
@@ -105,14 +110,10 @@ export type ValidatedCustomerPayload = {
   rentalDdPart1Amount: number | null;
   rentalDdPart1ChequeNo: string | null;
   rentalDdPart1BankName: string | null;
-  receivedDate: string | null;
-  balanceRentChequeNo: string | null;
-  receivedNeftAmount: number | null;
   shortageChequeAmount: number | null;
   shortageDate: string | null;
   shortageChequeNo: string | null;
   shortageBankName: string | null;
-  shortageNote: string | null;
   shortageAmountSecondTime: number | null;
   shortageSecondDate: string | null;
   shortageSecondChequeNo: string | null;
@@ -127,6 +128,7 @@ export type ValidatedCustomerPayload = {
   landConversion: number | null;
   otherRecoveries: number | null;
   podiFee: number | null;
+  totalGovtFee: number | null;
   leaseDeedStampDuty: number | null;
   leaseDeedRegCharges: number | null;
   debitNoteNo: string | null;
@@ -181,6 +183,25 @@ export function validateCustomerForm(
     return { ok: false, state: { fieldErrors, values } };
   }
 
+  const derived = computeFarmerDerivedFields({
+    leaseExtentAcre: floats.leaseExtentAcre,
+    leaseExtentGunta: floats.leaseExtentGunta,
+    rentPerAcre: floats.rentPerAcre,
+    aesAdvanceChequeAmount: floats.aesAdvanceChequeAmount,
+    shortageChequeAmount: floats.shortageChequeAmount,
+    shortageAmountSecondTime: floats.shortageAmountSecondTime,
+    shortageThirdChequeAmount: floats.shortageThirdChequeAmount,
+    atlTotal: floats.atlTotal,
+    paoTotal: floats.paoTotal,
+    landConversion: floats.landConversion,
+    otherRecoveries: floats.otherRecoveries,
+    podiFee: floats.podiFee,
+    leaseDeedStampDuty: floats.leaseDeedGovtFee,
+    leaseDeedRegCharges: 0,
+  });
+
+  const k2Challan = floats.leaseDeedGovtFee ?? null;
+
   return {
     ok: true,
     data: {
@@ -197,15 +218,16 @@ export function validateCustomerForm(
       balanceExtentGunta: floats.balanceExtentGunta ?? null,
       leaseExtentAcre: floats.leaseExtentAcre ?? null,
       leaseExtentGunta: floats.leaseExtentGunta ?? null,
-      totalGunta: floats.totalGunta ?? null,
-      totalCents: floats.totalCents ?? null,
+      totalGunta: roundToTwoDecimals(derived.totalGunta),
+      totalCents: roundToTwoDecimals(derived.totalCents),
       rentPerAcre: floats.rentPerAcre ?? null,
-      rentAmount: floats.rentAmount ?? null,
+      noOfYears: floats.noOfYears ?? null,
+      rentAmount: roundToTwoDecimals(derived.rentAmount),
       aesAdvanceDate: dates.aesAdvanceDate ?? null,
       aesAdvanceChequeNo: optionalTexts.aesAdvanceChequeNo ?? null,
       aesAdvanceChequeAmount: floats.aesAdvanceChequeAmount ?? null,
       aesAdvanceBankName: optionalTexts.aesAdvanceBankName ?? null,
-      balanceRentAmount: floats.balanceRentAmount ?? null,
+      balanceRentAmount: roundToTwoDecimals(derived.balanceRentAmount),
       tdsAmount: floats.tdsAmount ?? null,
       bankLoanDdDate: dates.bankLoanDdDate ?? null,
       loanAmount: floats.loanAmount ?? null,
@@ -219,14 +241,10 @@ export function validateCustomerForm(
       rentalDdPart1Amount: floats.rentalDdPart1Amount ?? null,
       rentalDdPart1ChequeNo: optionalTexts.rentalDdPart1ChequeNo ?? null,
       rentalDdPart1BankName: optionalTexts.rentalDdPart1BankName ?? null,
-      receivedDate: dates.receivedDate ?? null,
-      balanceRentChequeNo: optionalTexts.balanceRentChequeNo ?? null,
-      receivedNeftAmount: floats.receivedNeftAmount ?? null,
       shortageChequeAmount: floats.shortageChequeAmount ?? null,
       shortageDate: dates.shortageDate ?? null,
       shortageChequeNo: optionalTexts.shortageChequeNo ?? null,
       shortageBankName: optionalTexts.shortageBankName ?? null,
-      shortageNote: optionalTexts.shortageNote ?? null,
       shortageAmountSecondTime: floats.shortageAmountSecondTime ?? null,
       shortageSecondDate: dates.shortageSecondDate ?? null,
       shortageSecondChequeNo: optionalTexts.shortageSecondChequeNo ?? null,
@@ -235,14 +253,15 @@ export function validateCustomerForm(
       shortageThirdDate: dates.shortageThirdDate ?? null,
       shortageThirdChequeNo: optionalTexts.shortageThirdChequeNo ?? null,
       shortageThirdBankName: optionalTexts.shortageThirdBankName ?? null,
-      shortageAmountTotal: floats.shortageAmountTotal ?? null,
+      shortageAmountTotal: roundToTwoDecimals(derived.shortageAmountTotal),
       atlTotal: floats.atlTotal ?? null,
       paoTotal: floats.paoTotal ?? null,
       landConversion: floats.landConversion ?? null,
       otherRecoveries: floats.otherRecoveries ?? null,
       podiFee: floats.podiFee ?? null,
-      leaseDeedStampDuty: floats.leaseDeedStampDuty ?? null,
-      leaseDeedRegCharges: floats.leaseDeedRegCharges ?? null,
+      totalGovtFee: roundToTwoDecimals(derived.totalGovtFee),
+      leaseDeedStampDuty: k2Challan,
+      leaseDeedRegCharges: null,
       debitNoteNo: optionalTexts.debitNoteNo ?? null,
       debitNoteAmount: floats.debitNoteAmount ?? null,
       otherCharges: floats.otherCharges ?? null,

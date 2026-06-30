@@ -6,6 +6,14 @@ function numToInput(value: number | null | undefined): string {
   return String(value);
 }
 
+/** K2 Challan = stamp duty + reg charges (matches dashboard column). */
+export function k2ChallanFromCustomer(customer: Customer): string {
+  const stamp = customer.leaseDeedStampDuty;
+  const reg = customer.leaseDeedRegCharges;
+  if (stamp == null && reg == null) return "";
+  return String((stamp ?? 0) + (reg ?? 0));
+}
+
 /** String defaults for every customer form field (edit / error replay). */
 export function customerToFormValues(customer: Customer): Record<string, string> {
   return {
@@ -25,6 +33,7 @@ export function customerToFormValues(customer: Customer): Record<string, string>
     totalGunta: numToInput(customer.totalGunta),
     totalCents: numToInput(customer.totalCents),
     rentPerAcre: numToInput(customer.rentPerAcre),
+    noOfYears: numToInput(customer.noOfYears),
     rentAmount: numToInput(customer.rentAmount),
     aesAdvanceDate: customer.aesAdvanceDate ?? "",
     aesAdvanceChequeNo: customer.aesAdvanceChequeNo ?? "",
@@ -44,14 +53,10 @@ export function customerToFormValues(customer: Customer): Record<string, string>
     rentalDdPart1Amount: numToInput(customer.rentalDdPart1Amount),
     rentalDdPart1ChequeNo: customer.rentalDdPart1ChequeNo ?? "",
     rentalDdPart1BankName: customer.rentalDdPart1BankName ?? "",
-    receivedDate: customer.receivedDate ?? "",
-    balanceRentChequeNo: customer.balanceRentChequeNo ?? "",
-    receivedNeftAmount: numToInput(customer.receivedNeftAmount),
     shortageChequeAmount: numToInput(customer.shortageChequeAmount),
     shortageDate: customer.shortageDate ?? "",
     shortageChequeNo: customer.shortageChequeNo ?? "",
     shortageBankName: customer.shortageBankName ?? "",
-    shortageNote: customer.shortageNote ?? "",
     shortageAmountSecondTime: numToInput(customer.shortageAmountSecondTime),
     shortageSecondDate: customer.shortageSecondDate ?? "",
     shortageSecondChequeNo: customer.shortageSecondChequeNo ?? "",
@@ -66,8 +71,8 @@ export function customerToFormValues(customer: Customer): Record<string, string>
     landConversion: numToInput(customer.landConversion),
     otherRecoveries: numToInput(customer.otherRecoveries),
     podiFee: numToInput(customer.podiFee),
-    leaseDeedStampDuty: numToInput(customer.leaseDeedStampDuty),
-    leaseDeedRegCharges: numToInput(customer.leaseDeedRegCharges),
+    leaseDeedGovtFee: k2ChallanFromCustomer(customer),
+    totalGovtFee: numToInput(customer.totalGovtFee),
     debitNoteNo: customer.debitNoteNo ?? "",
     debitNoteAmount: numToInput(customer.debitNoteAmount),
     remark: customer.notes ?? "",

@@ -42,6 +42,7 @@ model Customer {
 
   // --- Rent ---
   rentPerAcre       Float?
+  noOfYears         Float?
   balanceRentAmount Float?
   rentAmount        Float?
   tdsAmount         Float?
@@ -83,6 +84,7 @@ model Customer {
   podiFee          Float?
   otherCharges     Float?
   cropCompensation Float?
+  totalGovtFee     Float?
 
   // --- Debit note (legacy; migrated to farmerDebitNotes) ---
   debitNoteNo     String?

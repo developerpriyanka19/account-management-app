@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
+import { PdfPage } from "@/components/pdf/pdf-page";
 import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
 import { InvoiceHeader } from "./invoice-header";
 import { InvoiceSummary } from "./invoice-summary";
@@ -17,14 +18,16 @@ type Props = {
 export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
   const isService = !showNaColumns;
   return (
-    <article
+    <PdfPage
+      isLastPage
       className={
         isService
-          ? "invoice-print-area mx-auto flex min-h-[277mm] w-full min-w-0 max-w-[900px] flex-col bg-white px-4 py-4 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
-          : "invoice-print-area mx-auto flex min-h-[277mm] w-full min-w-0 max-w-[900px] flex-col bg-white px-6 py-8 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+          ? "invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-4 py-4 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+          : "invoice-print-area mx-auto w-full min-w-0 max-w-[900px] bg-white px-6 py-8 text-[#111827] shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
       }
+      header={<InvoiceHeader data={data} compact={isService} />}
+      footer={footer ?? <CompanyDocumentFooter compact={isService} className="border-0 pt-0" />}
     >
-      <InvoiceHeader data={data} compact={isService} />
       <InvoiceTable data={data} showNaColumns={showNaColumns} />
       <InvoiceSummary data={data} compact={isService} />
       {data.totalAmountWords ? (
@@ -41,12 +44,11 @@ export function InvoiceLayout({ data, showNaColumns = true, footer }: Props) {
       ) : null}
       <div className="mt-4 flex items-end justify-between gap-4">
         <BankDetailsDisplay bank={data.bank} className="text-[10px] leading-snug" />
-        <div className="text-right text-[10px]">
-          <p className="font-semibold">For {COMPANY_INVOICE_HEADER.signatureName}</p>
+        <div className="text-right text-[10px] font-normal">
+          <p className="font-medium">For {COMPANY_INVOICE_HEADER.signatureName}</p>
           <p className="mt-4">Authorized Signatory</p>
         </div>
       </div>
-      {footer ?? <CompanyDocumentFooter className="mt-auto pt-4" compact={isService} />}
-    </article>
+    </PdfPage>
   );
 }

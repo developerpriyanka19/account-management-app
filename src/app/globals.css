@@ -60,8 +60,8 @@ body {
 
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 14mm 12mm;
+    size: A4;
+    margin: 0;
   }
 
   * {
@@ -69,7 +69,12 @@ body {
     print-color-adjust: exact;
   }
 
-  .no-print {
+  .no-print,
+  .app-sidebar,
+  .top-actions,
+  .invoice-preview-root,
+  .invoice-a4-viewport,
+  .invoice-a4-scale {
     display: none !important;
   }
 
@@ -78,8 +83,57 @@ body {
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
+    padding: 0 !important;
     background: #fff !important;
     color: #000 !important;
+  }
+
+  .print-document-root,
+  .print-document-root html,
+  .print-document-root body {
+    width: 297mm;
+    height: auto;
+    background: white;
+  }
+
+  .pdf-page {
+    width: 210mm;
+    height: 297mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    overflow: hidden;
+    page-break-after: always;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+    position: relative;
+    background: white;
+  }
+
+  .pdf-page-landscape {
+    width: 297mm;
+    height: 210mm;
+    min-height: 210mm;
+    max-height: 210mm;
+  }
+
+  .pdf-page:last-child {
+    page-break-after: auto;
+  }
+
+  .pdf-content {
+    padding-bottom: 25mm;
+  }
+
+  .pdf-content.last-page {
+    padding-bottom: 45mm;
+  }
+
+  .pdf-footer {
+    position: absolute;
+    bottom: 8mm;
+    left: 0;
+    right: 0;
+    text-align: center;
   }
 
   /* Avoid an extra blank page from flex min-height on customer routes */
@@ -101,6 +155,8 @@ body {
   .customer-print-sheet {
     font-size: 10.5pt;
     line-height: 1.4;
+    padding: 14mm 12mm;
+    box-sizing: border-box;
   }
 
   .invoice-print-area {
@@ -149,6 +205,43 @@ body {
   }
 }
 
+/* Shared PDF page layout — screen preview */
+.pdf-page-portrait {
+  width: 210mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  box-sizing: border-box;
+}
+
+.pdf-page-landscape {
+  width: 297mm;
+  min-height: 210mm;
+  max-height: 210mm;
+  box-sizing: border-box;
+}
+
+.pdf-page {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.pdf-content {
+  padding-bottom: 25mm;
+}
+
+.pdf-content.last-page {
+  padding-bottom: 45mm;
+}
+
+.pdf-footer {
+  position: absolute;
+  bottom: 8mm;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
 /* Invoice preview — screen layout (A4 paper simulation) */
 .invoice-preview-root {
   overflow-x: hidden;
@@ -189,25 +282,16 @@ body {
 @layer components {
   .customers-layout-shell .dashboard-summary-grid {
     overflow: visible !important;
-    grid-auto-rows: auto !important;
     align-items: stretch;
   }
 
-  .customers-layout-shell .dashboard-summary-grid > .dashboard-card {
-    min-height: 140px;
+  .customers-layout-shell .dashboard-summary-grid .dashboard-card {
+    min-height: auto;
     height: auto;
     max-height: none !important;
     overflow: visible !important;
   }
 
-  .customers-layout-shell .dashboard-card {
-    min-height: 140px;
-    height: auto;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .customers-layout-shell .dashboard-card .dashboard-card-label,
   .customers-layout-shell .dashboard-card .dashboard-card-value {
     display: block;
     max-width: 100%;
@@ -219,11 +303,7 @@ body {
     -webkit-line-clamp: unset !important;
     line-clamp: unset !important;
     -webkit-box-orient: unset !important;
-  }
-
-  .customers-layout-shell .dashboard-card .dashboard-card-value {
-    line-height: 1.2;
-    font-size: clamp(1.25rem, 2vw, 1.5rem);
+    line-height: 1.15;
     flex: 1 1 auto;
     flex-shrink: 0;
     min-height: auto;

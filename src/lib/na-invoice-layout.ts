@@ -142,7 +142,7 @@ export function buildNaInvoiceTableFoot(document: InvoiceDocumentData): RowInput
   const prepared = prepareNaInvoiceDocument(document);
   const { totals } = prepared;
   const labelStyle = { halign: "right" as const, fontStyle: "bold" as const };
-  const valueStyle = { halign: "right" as const };
+  const valueStyle = { halign: "right" as const, fontStyle: "normal" as const };
 
   return [
     [

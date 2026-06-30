@@ -18,6 +18,7 @@ export type CustomerListRow = {
   totalGunta: number | null;
   totalCents: number | null;
   rentPerAcre: number | null;
+  noOfYears: number | null;
   rentAmount: number | null;
   aesAdvanceDate: string | null;
   aesAdvanceChequeNo: string | null;
@@ -61,6 +62,7 @@ export type CustomerListRow = {
   podiFee: number | null;
   leaseDeedStampDuty: number | null;
   leaseDeedRegCharges: number | null;
+  totalGovtFee: number | null;
   debitNoteNo: string | null;
   debitNoteAmount: number | null;
   balanceReceivable: number | null;
