@@ -17,20 +17,39 @@ function sumOrZero(value: number | null | undefined): number {
   return value ?? 0;
 }
 
+/**
+ * SUM per-farmer shortage:
+ * COALESCE(shortageAmountTotal, cheque1 + cheque2 + cheque3)
+ */
+async function sumTotalShortagePaid(): Promise<number> {
+  const [row] = await prisma.$queryRaw<[{ total: number | null }]>`
+    SELECT SUM(
+      COALESCE(
+        "shortageAmountTotal",
+        COALESCE("shortageChequeAmount", 0)
+        + COALESCE("shortageAmountSecondTime", 0)
+        + COALESCE("shortageThirdChequeAmount", 0)
+      )
+    )::double precision AS total
+    FROM "Customer"
+  `;
+  return sumOrZero(row?.total);
+}
+
 /** Aggregated farmer dashboard metrics across all records. */
 export async function getFarmerDashboardStats(): Promise<FarmerDashboardStats> {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [totalFarmers, farmersAddedThisMonth, sums] = await Promise.all([
+  const [totalFarmers, farmersAddedThisMonth, totalShortagePaid, sums] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.count({
       where: { createdAt: { gte: monthStart } },
     }),
+    sumTotalShortagePaid(),
     prisma.customer.aggregate({
       _sum: {
-        shortageAmountTotal: true,
         atlTotal: true,
         paoTotal: true,
         landConversion: true,
@@ -53,7 +72,7 @@ export async function getFarmerDashboardStats(): Promise<FarmerDashboardStats> {
   return {
     totalFarmers,
     farmersAddedThisMonth,
-    totalShortagePaid: sumOrZero(s.shortageAmountTotal),
+    totalShortagePaid,
     atlTotal,
     gpaPoaTotal,
     landConversion,

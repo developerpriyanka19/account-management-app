@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -22,6 +23,12 @@ export const SIDEBAR_DASHBOARD = {
   label: "Dashboard",
   href: "/farmer",
   icon: LayoutDashboard,
+} as const;
+
+export const SIDEBAR_REPORTS = {
+  label: "Reports",
+  href: "/reports",
+  icon: BarChart3,
 } as const;
 
 export const SIDEBAR_INVOICE_GROUP: SidebarNavGroup = {
@@ -59,6 +66,9 @@ export const SIDEBAR_SIGN_OUT = {
 export function isSidebarPathActive(pathname: string, href: string): boolean {
   if (href === "/farmer") {
     return pathname === "/farmer" || pathname.startsWith("/farmer/");
+  }
+  if (href === "/reports") {
+    return pathname === "/reports" || pathname.startsWith("/reports/");
   }
   if (href === "/customers-management") {
     return pathname === "/customers-management" || pathname.startsWith("/customers-management/");

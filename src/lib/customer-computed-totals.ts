@@ -88,6 +88,17 @@ export function computeShortageAmountTotal(input: ShortageTotalsInput): number {
   );
 }
 
+export type ResolvedShortageInput = ShortageTotalsInput & {
+  shortageAmountTotal?: string | number | null;
+};
+
+/** Use stored total when present; otherwise sum the three cheque amounts. */
+export function resolveShortageAmountTotal(input: ResolvedShortageInput): number {
+  const stored = parseOptionalNumber(input.shortageAmountTotal);
+  if (stored != null) return stored;
+  return computeShortageAmountTotal(input);
+}
+
 /** Lease Deed K2 Challan = Stamp Duty + Reg Charges */
 export function computeLeaseDeedK2Challan(
   stamp: string | number | null | undefined,

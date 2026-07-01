@@ -177,8 +177,8 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
           icon={AlertTriangle}
           iconClassName="bg-amber-50 text-amber-600"
           value={formatDashboardCurrencyCompact(stats.totalShortagePaid)}
-          title="Shortage Paid"
-          subtitle="Total shortage amount"
+          title="Total Shortage Paid"
+          subtitle="Sum of shortage amount totals"
         />
         <KpiCard
           icon={IndianRupee}

@@ -8,6 +8,7 @@ import { LogoutButton } from "@/app/farmer/logout-button";
 import {
   SIDEBAR_DASHBOARD,
   SIDEBAR_NAV_GROUPS,
+  SIDEBAR_REPORTS,
   SIDEBAR_SIGN_OUT,
   isSidebarGroupActive,
   isSidebarPathActive,
@@ -118,8 +119,10 @@ function SidebarPanel({
   className?: string;
 }) {
   const DashboardIcon = SIDEBAR_DASHBOARD.icon;
+  const ReportsIcon = SIDEBAR_REPORTS.icon;
   const SignOutIcon = SIDEBAR_SIGN_OUT.icon;
   const dashboardActive = isSidebarPathActive(pathname, SIDEBAR_DASHBOARD.href);
+  const reportsActive = isSidebarPathActive(pathname, SIDEBAR_REPORTS.href);
 
   return (
     <aside
@@ -151,6 +154,20 @@ function SidebarPanel({
         >
           <DashboardIcon className="h-4 w-4 shrink-0" aria-hidden />
           {SIDEBAR_DASHBOARD.label}
+        </Link>
+
+        <Link
+          href={SIDEBAR_REPORTS.href}
+          onClick={onNavigate}
+          className={cn(
+            "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+            reportsActive
+              ? "bg-[#EFF6FF] text-[#1D4ED8]"
+              : "text-[#374151] hover:bg-[#F3F4F6] hover:text-[#111827]",
+          )}
+        >
+          <ReportsIcon className="h-4 w-4 shrink-0" aria-hidden />
+          {SIDEBAR_REPORTS.label}
         </Link>
 
         {SIDEBAR_NAV_GROUPS.map((group) => (
