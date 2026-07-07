@@ -72,13 +72,12 @@ export function computeLineAmounts(
 ): InvoiceLineInput[] {
   const rate = toFiniteNumber(ratePerAcre);
   return lines.map((line) => {
-    if (category === "service") {
-      const manual = toOptionalNumber(line.amount);
-      return { ...line, amount: manual };
-    }
     const debitNote = toFiniteNumber(line.debitNote);
     const computed = lineAmountFromExtent(line.acres, line.gunta, rate);
     const manual = toOptionalNumber(line.amount);
+    if (category === "service") {
+      return { ...line, amount: computed > 0 ? computed : 0 };
+    }
     const amount =
       debitNote > 0 ? debitNote : computed > 0 ? computed : manual ?? 0;
     return { ...line, amount };
@@ -114,6 +113,15 @@ export function formatInvoiceDecimal(value: number | null | undefined): string {
   return new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/** Total Cents — exactly 3 decimal places in invoices and PDFs. */
+export function formatInvoiceTotalCents(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   }).format(value);
 }
 

@@ -1,6 +1,7 @@
 import {
   formatInvoiceDecimal,
   formatInvoiceMoney,
+  formatInvoiceTotalCents,
   invoiceLineTaxableAmount,
 } from "@/lib/invoice-calculations";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
@@ -149,7 +150,7 @@ export function InvoiceTable({ data, showNaColumns = true }: Props) {
                     <td className={tdBase}>{line.remark || "—"}</td>
                     <td className={cn(tdBase, tdNumeric)}>{formatInvoiceDecimal(line.acres)}</td>
                     <td className={cn(tdBase, tdNumeric)}>{formatInvoiceDecimal(line.gunta)}</td>
-                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceDecimal(line.totalCents)}</td>
+                    <td className={cn(tdBase, tdNumeric)}>{formatInvoiceTotalCents(line.totalCents)}</td>
                   </>
                 ) : (
                   <td className={tdBase}>

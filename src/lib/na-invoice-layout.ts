@@ -3,6 +3,7 @@ import {
   computeInvoiceTotals,
   formatInvoiceDecimal,
   formatInvoiceMoney,
+  formatInvoiceTotalCents,
   lineAmountFromExtent,
 } from "@/lib/invoice-calculations";
 import { getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
@@ -93,7 +94,7 @@ export function buildNaInvoiceTableBody(document: InvoiceDocumentData): string[]
     line.gunta != null ? formatInvoiceDecimal(line.gunta) : "—",
     line.affidavitId || "—",
     line.requestId || "—",
-    line.totalCents != null ? formatInvoiceDecimal(line.totalCents) : "—",
+    line.totalCents != null ? formatInvoiceTotalCents(line.totalCents) : "—",
     formatInvoiceMoney(naLineAmount(line, rate)),
   ]);
 }

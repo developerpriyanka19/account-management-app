@@ -146,7 +146,17 @@ export function roundToTwoDecimals(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+export function roundToThreeDecimals(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 export function formatComputedTotal(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "";
   return roundToTwoDecimals(value).toFixed(2);
+}
+
+/** Total Cents — always 3 decimal places (e.g. 1.700). */
+export function formatTotalCents(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "";
+  return roundToThreeDecimals(value).toFixed(3);
 }

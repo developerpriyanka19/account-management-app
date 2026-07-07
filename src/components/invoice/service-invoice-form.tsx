@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Loader2, Save } from "lucide-react";
+import { Download, Eye, Loader2, Printer, Save } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -12,6 +12,10 @@ import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { CustomerCombobox } from "@/components/invoice/customer-combobox";
 import { FarmerSearchList } from "@/components/invoice/farmer-search-list";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
+import {
+  generateInvoicePdf,
+  printInvoicePdf,
+} from "@/components/invoice/invoice-pdf-generator";
 import { useToast } from "@/components/customer/toast";
 import { PreviewDialog } from "@/components/preview/preview-dialog";
 import { Button } from "@/components/ui/button";
@@ -21,13 +25,13 @@ import {
   amountToIndianWords,
   computeInvoiceTotals,
   computeLineAmounts,
-  formatInvoiceTotalCents,
+  formatInvoiceMoney,
+  formatInvoiceNumber,
 } from "@/lib/invoice-calculations";
 import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
 import {
   defaultSubtypeForCategory,
-  getNaInvoiceSubtypeConfig,
-  NA_INVOICE_SUBTYPES,
+  SERVICE_INVOICE_SUBTYPES,
 } from "@/lib/invoice-config";
 import {
   bankFromSelection,
@@ -60,6 +64,7 @@ type Props = {
   customers: InvoiceBillingCustomerOption[];
   farmers: InvoiceFarmerOption[];
   banks: BankDetailsOption[];
+  nextSequence: number;
   existing?: InvoiceDocumentData | null;
 };
 
@@ -67,24 +72,30 @@ function todayDate() {
   return format(new Date(), "yyyy-MM-dd");
 }
 
-export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
+export function ServiceInvoiceForm({
+  customers,
+  farmers,
+  banks,
+  nextSequence,
+  existing,
+}: Props) {
   const isFinal = (existing?.status ?? "").toUpperCase() === "FINAL";
   const toast = useToast();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFarmerIds, setSelectedFarmerIds] = useState<number[]>(
-    existing?.lines.map((l) => l.farmerId ?? 0).filter(Boolean) as number[] ?? [],
+    (existing?.lines.map((l) => l.farmerId ?? 0).filter(Boolean) as number[]) ?? [],
   );
   const [lines, setLines] = useState<InvoiceLineInput[]>(existing?.lines ?? []);
   const [subType, setSubType] = useState(
-    existing?.subType ?? defaultSubtypeForCategory("na"),
+    existing?.subType ?? defaultSubtypeForCategory("service"),
   );
-  const initialRate =
+  const [ratePerAcre, setRatePerAcre] = useState(
     existing?.ratePerAcre && existing.ratePerAcre > 0
       ? String(existing.ratePerAcre)
-      : String(getNaInvoiceSubtypeConfig(existing?.subType ?? defaultSubtypeForCategory("na")).defaultRatePerAcre);
-  const [ratePerAcre, setRatePerAcre] = useState(initialRate);
+      : "500",
+  );
   const [bankDetailsId, setBankDetailsId] = useState<number | "">(() =>
     initialBankSelection(existing?.bank, banks),
   );
@@ -92,7 +103,8 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       customerId: existing?.customer.id ?? 0,
-      invoiceNumber: existing?.invoiceNumber ?? "",
+      invoiceNumber:
+        existing?.invoiceNumber ?? formatInvoiceNumber("service", nextSequence),
       invoiceDate: existing?.invoiceDate ?? todayDate(),
       district: existing?.district ?? "",
       taluk: existing?.taluk ?? "",
@@ -108,21 +120,21 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
     const baseTaluk = form.getValues("taluk");
     const baseVillage = form.getValues("village");
     const baseHobbli = form.getValues("hobbli");
-    const rate = Number(ratePerAcre) || getNaInvoiceSubtypeConfig(subType).defaultRatePerAcre;
+    const rate = Number(ratePerAcre) || 0;
     const next = ids
       .map((id) => farmers.find((f) => f.id === id))
       .filter((f): f is InvoiceFarmerOption => Boolean(f))
       .map((f) => {
-        const line = farmerToInvoiceLine(f, rate);
+        const prior = lines.find((line) => line.farmerId === f.id);
+        const base = farmerToInvoiceLine(f, rate);
         return {
-          ...line,
+          ...base,
+          description: prior?.description ?? f.label,
+          farmerName: f.label,
           district: baseDistrict,
           taluk: baseTaluk,
-          village: baseVillage || line.village,
+          village: baseVillage || base.village,
           hobbli: baseHobbli,
-          farmerName: f.label,
-          debitNote: line.debitNote || 0,
-          remark: line.remark || "",
         };
       });
     setLines(next);
@@ -148,13 +160,12 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
   ): InvoiceDocumentData | null {
     const customer = customers.find((c) => c.id === values.customerId);
     if (!customer || lines.length === 0) return null;
-    const rate =
-      Number(ratePerAcre) || getNaInvoiceSubtypeConfig(subType).defaultRatePerAcre;
-    const computedLines = computeLineAmounts(lines, rate, "na");
+    const rate = Number(ratePerAcre) || 0;
+    const computedLines = computeLineAmounts(lines, rate, "service");
     const totals = computeInvoiceTotals(computedLines);
     return {
       id: existing?.id,
-      invoiceType: "na",
+      invoiceType: "service",
       subType,
       invoiceNumber: values.invoiceNumber.trim(),
       invoiceDate: values.invoiceDate,
@@ -198,7 +209,19 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
 
   const documentData = useMemo(
     () => buildDocumentData(undefined, formValues),
-    [customers, existing?.id, existing?.pdfUrl, existing?.status, existing?.bank, formValues, lines, subType, ratePerAcre, bankDetailsId, banks],
+    [
+      customers,
+      existing?.id,
+      existing?.pdfUrl,
+      existing?.status,
+      existing?.bank,
+      formValues,
+      lines,
+      subType,
+      ratePerAcre,
+      bankDetailsId,
+      banks,
+    ],
   );
 
   function handleCustomerChange(customer: InvoiceBillingCustomerOption | null) {
@@ -212,15 +235,6 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
     form.setValue("village", customer.village ?? "");
     form.setValue("hobbli", customer.hobbli ?? "");
     form.setValue("state", customer.state ?? "");
-    if (selectedFarmerIds.length > 0) {
-      syncLines(selectedFarmerIds);
-    }
-  }
-
-  function handleSubTypeChange(next: string) {
-    setSubType(next);
-    const config = getNaInvoiceSubtypeConfig(next);
-    setRatePerAcre(String(config.defaultRatePerAcre));
     if (selectedFarmerIds.length > 0) {
       syncLines(selectedFarmerIds);
     }
@@ -251,9 +265,9 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
         }
         toast.success(status === "DRAFT" ? "Draft saved." : "Invoice saved and PDF ready.");
         if (status === "FINAL") {
-          router.push(`/invoice/na/${result.id}`);
+          router.push(`/invoice/${result.id}`);
         } else {
-          router.push("/invoice/na");
+          router.push("/invoice/service");
         }
       } catch {
         toast.error("Failed to save invoice. Please try again.");
@@ -266,9 +280,11 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-4">
       <header className="rounded-lg border border-[#D1D5DB] bg-white p-4">
-        <h1 className="text-xl font-semibold text-[#111827]">{existing ? "Edit NA Invoice" : "New NA Invoice"}</h1>
+        <h1 className="text-xl font-semibold text-[#111827]">
+          {existing ? "Edit Service Invoice" : "New Service Invoice"}
+        </h1>
         <p className="text-sm text-[#6B7280]">
-          Enter invoice number and details manually. Preview opens in modal.
+          Enter invoice details, select farmers, and set line amounts manually.
         </p>
       </header>
 
@@ -283,22 +299,30 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
               disabled={isFinal}
             />
             {form.formState.errors.invoiceNumber ? (
-              <p className="mt-1 text-xs text-red-600">{form.formState.errors.invoiceNumber.message}</p>
+              <p className="mt-1 text-xs text-red-600">
+                {form.formState.errors.invoiceNumber.message}
+              </p>
             ) : null}
           </div>
           <div>
             <Label>Invoice Date</Label>
-            <Input type="date" max={maxDate} {...form.register("invoiceDate")} className="mt-1" disabled={isFinal} />
+            <Input
+              type="date"
+              max={maxDate}
+              {...form.register("invoiceDate")}
+              className="mt-1"
+              disabled={isFinal}
+            />
           </div>
           <div>
-            <Label>Invoice Type</Label>
+            <Label>Invoice Sub-Type</Label>
             <select
               className="mt-1 flex h-9 w-full rounded-md border border-[#E5E7EB] px-3 text-sm"
               value={subType}
               disabled={isFinal}
-              onChange={(e) => handleSubTypeChange(e.target.value)}
+              onChange={(e) => setSubType(e.target.value)}
             >
-              {NA_INVOICE_SUBTYPES.map((t) => (
+              {SERVICE_INVOICE_SUBTYPES.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
@@ -339,18 +363,34 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
               disabled={isFinal}
             />
           </div>
-          <div><Label>Hobli</Label><Input className="mt-1" {...form.register("hobbli")} disabled={isFinal} /></div>
-          <div><Label>Village</Label><Input className="mt-1" {...form.register("village")} disabled={isFinal} /></div>
-          <div><Label>Taluk</Label><Input className="mt-1" {...form.register("taluk")} disabled={isFinal} /></div>
-          <div><Label>District</Label><Input className="mt-1" {...form.register("district")} disabled={isFinal} /></div>
-          <div><Label>State</Label><Input className="mt-1" {...form.register("state")} disabled={isFinal} /></div>
+          <div>
+            <Label>Hobli</Label>
+            <Input className="mt-1" {...form.register("hobbli")} disabled={isFinal} />
+          </div>
+          <div>
+            <Label>Village</Label>
+            <Input className="mt-1" {...form.register("village")} disabled={isFinal} />
+          </div>
+          <div>
+            <Label>Taluk</Label>
+            <Input className="mt-1" {...form.register("taluk")} disabled={isFinal} />
+          </div>
+          <div>
+            <Label>District</Label>
+            <Input className="mt-1" {...form.register("district")} disabled={isFinal} />
+          </div>
+          <div>
+            <Label>State</Label>
+            <Input className="mt-1" {...form.register("state")} disabled={isFinal} />
+          </div>
         </div>
       </section>
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-[#111827]">Farmers</h2>
         <p className="mt-1 text-xs text-[#6B7280]">
-          Search by farmer name, survey number, or village. Selected farmers stay checked while you search.
+          Search by farmer name, survey number, or village. Selected farmers stay checked while you
+          search.
         </p>
         <FarmerSearchList
           farmers={farmers}
@@ -364,70 +404,101 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
         <section className="rounded-lg border border-[#D1D5DB] bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-[#111827]">Line Items</h2>
           <div className="mt-3 overflow-x-auto rounded border border-[#E5E7EB]">
-            <table className="min-w-[1600px] w-full text-xs">
+            <table className="min-w-[720px] w-full text-xs">
               <thead className="bg-[#F9FAFB]">
                 <tr>
                   <th className="px-2 py-2 text-left">Sl No</th>
                   <th className="px-2 py-2 text-left">Farmer Name</th>
-                  <th className="px-2 py-2 text-left">Survey No</th>
-                  <th className="px-2 py-2 text-left">Hobbli</th>
-                  <th className="px-2 py-2 text-left">Village</th>
-                  <th className="px-2 py-2 text-left">Taluk</th>
-                  <th className="px-2 py-2 text-left">District</th>
-                  <th className="px-2 py-2 text-left">Affidavit ID</th>
-                  <th className="px-2 py-2 text-left">Request ID</th>
-                  <th className="px-2 py-2 text-right">Debit Note</th>
-                  <th className="px-2 py-2 text-left">Remark</th>
-                  <th className="px-2 py-2 text-right">Acres</th>
-                  <th className="px-2 py-2 text-right">Guntas</th>
-                  <th className="px-2 py-2 text-right">Total Cents</th>
+                  <th className="px-2 py-2 text-left">Description</th>
+                  <th className="px-2 py-2 text-right">Amount (₹)</th>
                 </tr>
               </thead>
               <tbody>
-                {lines.map((line, i) => (
+                {(documentData?.lines ?? computeLineAmounts(lines, Number(ratePerAcre) || 0, "service")).map(
+                  (line, i) => (
                   <tr key={`${line.farmerId}-${i}`} className={i % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}>
                     <td className="px-2 py-1.5">{i + 1}</td>
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
-                    <td className="px-2 py-1.5">{line.surveyNo}</td>
-                    <td className="px-2 py-1.5"><Input value={line.hobbli} onChange={(e) => updateLine(i, { hobbli: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.village} onChange={(e) => updateLine(i, { village: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.taluk} onChange={(e) => updateLine(i, { taluk: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.district} onChange={(e) => updateLine(i, { district: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.affidavitId} onChange={(e) => updateLine(i, { affidavitId: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.requestId} onChange={(e) => updateLine(i, { requestId: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input type="number" value={line.debitNote} onChange={(e) => updateLine(i, { debitNote: Number(e.target.value) || 0 })} className="h-8 text-right text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5"><Input value={line.remark} onChange={(e) => updateLine(i, { remark: e.target.value })} className="h-8 text-xs" disabled={isFinal} /></td>
-                    <td className="px-2 py-1.5 text-right">{line.acres ?? "—"}</td>
-                    <td className="px-2 py-1.5 text-right">{line.gunta ?? "—"}</td>
-                    <td className="px-2 py-1.5 text-right">
-                      {line.totalCents != null ? formatInvoiceTotalCents(line.totalCents) : "—"}
+                    <td className="px-2 py-1.5">
+                      <Input
+                        value={line.description}
+                        onChange={(e) => updateLine(i, { description: e.target.value })}
+                        className="h-8 text-xs"
+                        disabled={isFinal}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {formatInvoiceMoney(line.amount)}
                     </td>
                   </tr>
-                ))}
+                  ),
+                )}
               </tbody>
             </table>
           </div>
+          {documentData ? (
+            <p className="mt-3 text-right text-sm font-semibold text-[#111827]">
+              Grand total (incl. GST): ₹
+              {documentData.totals.grandTotal.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+          ) : null}
         </section>
       ) : null}
 
       <div className="sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
-        <Button type="button" variant="outline" onClick={() => setShowPreview(true)} disabled={!documentData}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!documentData}
+          onClick={() => setShowPreview(true)}
+        >
+          <Eye className="h-4 w-4" />
           Preview
         </Button>
-        <Button type="button" variant="outline" onClick={() => handleSave("DRAFT")} disabled={pending || isFinal}>
-          {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+        <Button
+          type="button"
+          size="sm"
+          disabled={!documentData}
+          onClick={() => {
+            if (!documentData) return;
+            void generateInvoicePdf(documentData);
+          }}
+        >
+          <Download className="h-4 w-4" />
+          Download PDF
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!documentData}
+          onClick={() => {
+            if (!documentData) return;
+            void printInvoicePdf(documentData);
+          }}
+        >
+          <Printer className="h-4 w-4" />
+          Print
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pending || isFinal}
+          onClick={() => handleSave("DRAFT")}
+        >
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save Draft
         </Button>
-        <Button type="button" onClick={() => handleSave("FINAL")} disabled={pending || isFinal}>
-          Save & Generate PDF
+        <Button type="button" size="sm" disabled={pending || isFinal} onClick={() => handleSave("FINAL")}>
+          Save & View
         </Button>
       </div>
 
-      <PreviewDialog
-        open={showPreview}
-        onOpenChange={setShowPreview}
-        title="Invoice Preview"
-      >
+      <PreviewDialog open={showPreview} onOpenChange={setShowPreview} title="Service Invoice Preview">
         {documentData ? <InvoiceDocumentPreview data={documentData} /> : null}
       </PreviewDialog>
     </div>

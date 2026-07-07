@@ -8,6 +8,8 @@ import {
 } from "@/lib/customer-display";
 import {
   computeFarmerDerivedFields,
+  formatTotalCents,
+  roundToThreeDecimals,
   roundToTwoDecimals,
   type FarmerDerivedFields,
 } from "@/lib/customer-computed-totals";
@@ -202,7 +204,13 @@ const COMPUTED_COLUMN_IDS = new Set<string>([
 ]);
 
 function computedColumnCell(row: CustomerListRow, field: keyof FarmerDerivedFields) {
-  return moneyCell(roundToTwoDecimals(farmerDerivedFromRow(row)[field]));
+  const value = farmerDerivedFromRow(row)[field];
+  if (field === "totalCents") {
+    const text = formatTotalCents(value);
+    if (!text) return amountCellSpan("—", "empty");
+    return amountCellSpan(text, "extent");
+  }
+  return moneyCell(roundToTwoDecimals(value));
 }
 
 /** Leaf column ids in Excel export order (derived from grouped headers). */
@@ -270,6 +278,9 @@ export function getExportCellValue(row: CustomerListRow, id: LeafColumnId): stri
   }
   if (COMPUTED_COLUMN_IDS.has(id)) {
     const derived = farmerDerivedFromRow(row);
+    if (id === "totalCents") {
+      return roundToThreeDecimals(derived.totalCents);
+    }
     return roundToTwoDecimals(derived[id as keyof FarmerDerivedFields]);
   }
   const v = row[id as keyof CustomerListRow];

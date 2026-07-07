@@ -2,7 +2,7 @@ import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
 
 import {
   computeFarmerDerivedFields,
-  roundToTwoDecimals,
+  roundToThreeDecimals,
 } from "@/lib/customer-computed-totals";
 import { lineAmountFromExtent } from "@/lib/invoice-calculations";
 
@@ -114,7 +114,7 @@ export function farmerToInvoiceLine(
     leaseExtentAcre: farmer.leaseExtentAcre,
     leaseExtentGunta: farmer.leaseExtentGunta,
   });
-  const totalCents = roundToTwoDecimals(derived.totalCents);
+  const totalCents = roundToThreeDecimals(derived.totalCents);
   const naParts: string[] = [];
   if (acres != null) naParts.push(`${acres} A`);
   if (gunta != null) naParts.push(`${gunta} G`);

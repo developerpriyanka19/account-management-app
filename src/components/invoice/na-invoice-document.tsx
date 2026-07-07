@@ -1,4 +1,4 @@
-import { formatInvoiceDecimal, formatInvoiceMoney } from "@/lib/invoice-calculations";
+import { formatInvoiceDecimal, formatInvoiceMoney, formatInvoiceTotalCents } from "@/lib/invoice-calculations";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
@@ -213,7 +213,7 @@ export function NaInvoiceDocument({ data }: Props) {
                   <td className={td}>{line.affidavitId || "—"}</td>
                   <td className={td}>{line.requestId || "—"}</td>
                   <td className={tdRight}>
-                    {line.totalCents != null ? formatInvoiceDecimal(line.totalCents) : "—"}
+                    {line.totalCents != null ? formatInvoiceTotalCents(line.totalCents) : "—"}
                   </td>
                   <td className={tdRight}>{formatInvoiceMoney(naLineAmount(line, rate))}</td>
                 </tr>

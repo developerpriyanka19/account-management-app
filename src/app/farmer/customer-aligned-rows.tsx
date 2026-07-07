@@ -10,6 +10,7 @@ import {
 import {
   computeFarmerDerivedFields,
   formatComputedTotal,
+  formatTotalCents,
   type FarmerDerivedFields,
 } from "@/lib/customer-computed-totals";
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
@@ -94,6 +95,20 @@ function derivedInputFromCustomer(customer: Customer) {
   };
 }
 
+function formatComputedFieldValue(
+  field: keyof FarmerDerivedFields,
+  value: number,
+  variant?: "money" | "extent" | "text",
+): string {
+  if (field === "totalCents") {
+    return formatTotalCents(value) || "—";
+  }
+  if (variant === "money") {
+    return formatAmount(value);
+  }
+  return formatComputedTotal(value) || "—";
+}
+
 function formatFieldValue(
   customer: Customer,
   name: string,
@@ -102,10 +117,11 @@ function formatFieldValue(
 ): string {
   if (COMPUTED_FIELD_SET.has(name) && derived) {
     const raw = derived[name as keyof FarmerDerivedFields];
-    if (variant === "money") {
-      return formatAmount(raw);
-    }
-    return formatComputedTotal(raw) || "—";
+    return formatComputedFieldValue(
+      name as keyof FarmerDerivedFields,
+      raw,
+      variant,
+    );
   }
   if (name === "leaseDeedGovtFee") {
     const k2 = k2ChallanFromCustomer(customer);
@@ -200,7 +216,9 @@ export function CustomerAlignedRows(props: Props) {
           const isComputed = row.computed === true;
           const computedValue =
             isComputed && derived
-              ? formatComputedTotal(derived[id as keyof FarmerDerivedFields])
+              ? id === "totalCents"
+                ? formatTotalCents(derived.totalCents)
+                : formatComputedTotal(derived[id as keyof FarmerDerivedFields])
               : "";
           const displayValue =
             props.mode === "display"
@@ -235,7 +253,7 @@ export function CustomerAlignedRows(props: Props) {
                           aria-readonly
                           title="Calculated automatically"
                         >
-                          {computedValue || "0.00"}
+                          {computedValue || (id === "totalCents" ? "0.000" : "0.00")}
                         </div>
                       </>
                     ) : row.inputType === "date" ? (

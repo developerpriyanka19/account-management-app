@@ -1,9 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  AlertTriangle,
   Building2,
   FileText,
+  Home,
   IndianRupee,
+  Landmark,
   LandPlot,
   MapPin,
   TrendingUp,
@@ -158,7 +159,7 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
 
   return (
     <section className="dashboard-summary-grid space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           icon={Users}
           iconClassName="bg-blue-50 text-blue-600"
@@ -170,15 +171,29 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
           icon={Building2}
           iconClassName="bg-emerald-50 text-emerald-600"
           value={formatDashboardCurrencyCompact(stats.totalGovtFee)}
-          title="Government Fee"
+          title="Total Govt Fee"
           subtitle="Overall collected"
         />
         <KpiCard
-          icon={AlertTriangle}
+          icon={Wallet}
           iconClassName="bg-amber-50 text-amber-600"
-          value={formatDashboardCurrencyCompact(stats.totalShortagePaid)}
-          title="Total Shortage Paid"
-          subtitle="Sum of shortage amount totals"
+          value={formatDashboardCurrencyCompact(stats.totalAesPaid)}
+          title="Total AES Paid"
+          subtitle="AES advance + shortage totals"
+        />
+        <KpiCard
+          icon={Landmark}
+          iconClassName="bg-blue-50 text-blue-600"
+          value={formatDashboardCurrencyCompact(stats.totalLoanDdFromCompany)}
+          title="Total Loan DD From Company"
+          subtitle="Bank Loan DD Amount"
+        />
+        <KpiCard
+          icon={Home}
+          iconClassName="bg-emerald-50 text-emerald-600"
+          value={formatDashboardCurrencyCompact(stats.totalRentDdFromCompany)}
+          title="Total Rent DD From Company"
+          subtitle="Rental DD Amount"
         />
         <KpiCard
           icon={IndianRupee}

@@ -8,12 +8,13 @@ type Props = {
   value: number | "";
   onChange: (id: number | "") => void;
   disabled?: boolean;
+  optional?: boolean;
 };
 
-export function BankAccountSelect({ banks, value, onChange, disabled }: Props) {
+export function BankAccountSelect({ banks, value, onChange, disabled, optional }: Props) {
   return (
     <div>
-      <Label>Bank Account *</Label>
+      <Label>Bank Account{optional ? "" : " *"}</Label>
       <select
         value={value === "" ? "" : String(value)}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : "")}

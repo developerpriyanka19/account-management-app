@@ -4,7 +4,7 @@ import {
   getInvoiceBuilderData,
   getServiceInvoiceById,
 } from "@/app/invoice/actions";
-import { InvoiceBuilder } from "@/components/invoice/invoice-builder";
+import { ServiceInvoiceForm } from "@/components/invoice/service-invoice-form";
 import { ToastProvider } from "@/components/customer/toast";
 import { invoiceRecordToDocument } from "@/lib/invoice-data";
 
@@ -31,9 +31,7 @@ export default async function CreateServiceInvoicePage({ searchParams }: Props) 
   return (
     <ToastProvider>
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <InvoiceBuilder
-          category="service"
-          title={existing ? "Edit Service Invoice" : "Service Invoice"}
+        <ServiceInvoiceForm
           customers={customers}
           farmers={farmers}
           banks={banks}

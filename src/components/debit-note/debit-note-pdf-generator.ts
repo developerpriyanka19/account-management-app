@@ -150,6 +150,7 @@ function drawAddressFooter(pdf: JsPDFType, pageNumber: number, pageCount: number
     contentWidth: pdfContentWidth(pageWidth),
     pageNumber,
     pageCount,
+    showPageNumbers: true,
   });
 }
 

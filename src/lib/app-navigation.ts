@@ -38,6 +38,7 @@ export const SIDEBAR_INVOICE_GROUP: SidebarNavGroup = {
   items: [
     { label: "NA Invoices", href: "/invoice/na" },
     { label: "Service Invoices", href: "/invoice/service" },
+    { label: "Quotation", href: "/invoice/quotation" },
     { label: "Customers", href: "/customers-management" },
     { label: "Bank Details", href: "/invoice/bank-details" },
   ],
@@ -84,6 +85,9 @@ export function isSidebarGroupActive(pathname: string, group: SidebarNavGroup): 
     return true;
   }
   if (group.id === "invoice" && pathname.startsWith("/invoice/bank-details")) {
+    return true;
+  }
+  if (group.id === "invoice" && pathname.startsWith("/invoice/quotation")) {
     return true;
   }
   if (

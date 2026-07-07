@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 export type FarmerDashboardStats = {
   totalFarmers: number;
   farmersAddedThisMonth: number;
-  totalShortagePaid: number;
+  totalAesPaid: number;
+  totalLoanDdFromCompany: number;
+  totalRentDdFromCompany: number;
   atlTotal: number;
   gpaPoaTotal: number;
   landConversion: number;
@@ -18,13 +20,15 @@ function sumOrZero(value: number | null | undefined): number {
 }
 
 /**
- * SUM per-farmer shortage:
- * COALESCE(shortageAmountTotal, cheque1 + cheque2 + cheque3)
+ * Total AES Paid =
+ * SUM(aesAdvanceChequeAmount)
+ * + SUM(COALESCE(shortageAmountTotal, cheque1 + cheque2 + cheque3))
  */
-async function sumTotalShortagePaid(): Promise<number> {
+async function sumTotalAesPaid(): Promise<number> {
   const [row] = await prisma.$queryRaw<[{ total: number | null }]>`
     SELECT SUM(
-      COALESCE(
+      COALESCE("aesAdvanceChequeAmount", 0)
+      + COALESCE(
         "shortageAmountTotal",
         COALESCE("shortageChequeAmount", 0)
         + COALESCE("shortageAmountSecondTime", 0)
@@ -42,14 +46,16 @@ export async function getFarmerDashboardStats(): Promise<FarmerDashboardStats> {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [totalFarmers, farmersAddedThisMonth, totalShortagePaid, sums] = await Promise.all([
+  const [totalFarmers, farmersAddedThisMonth, totalAesPaid, sums] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.count({
       where: { createdAt: { gte: monthStart } },
     }),
-    sumTotalShortagePaid(),
+    sumTotalAesPaid(),
     prisma.customer.aggregate({
       _sum: {
+        loanAmount: true,
+        leaseAmount: true,
         atlTotal: true,
         paoTotal: true,
         landConversion: true,
@@ -72,7 +78,9 @@ export async function getFarmerDashboardStats(): Promise<FarmerDashboardStats> {
   return {
     totalFarmers,
     farmersAddedThisMonth,
-    totalShortagePaid,
+    totalAesPaid,
+    totalLoanDdFromCompany: sumOrZero(s.loanAmount),
+    totalRentDdFromCompany: sumOrZero(s.leaseAmount),
     atlTotal,
     gpaPoaTotal,
     landConversion,

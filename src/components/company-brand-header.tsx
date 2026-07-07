@@ -11,6 +11,8 @@ type Props = {
   documentTitle: string;
   documentSubtitle?: string;
   compact?: boolean;
+  /** When false, only logo + company name + green line (quotation style). */
+  showDocumentTitle?: boolean;
 };
 
 /**
@@ -22,6 +24,7 @@ export function CompanyBrandHeader({
   documentTitle,
   documentSubtitle,
   compact = false,
+  showDocumentTitle = true,
 }: Props) {
   const logoW = compact ? INVOICE_LOGO.compactWidthPx : INVOICE_LOGO.widthPx;
   const logoH = invoiceLogoHeightPx(logoW);
@@ -69,12 +72,14 @@ export function CompanyBrandHeader({
           borderTopColor: COMPANY_BRAND_STYLE.dividerColor,
         }}
       />
-      <p
-        className={cn("mt-2 text-center font-bold uppercase tracking-wide", titleSize)}
-        style={{ color: COMPANY_BRAND_STYLE.titleColor }}
-      >
-        {documentTitle}
-      </p>
+      {showDocumentTitle ? (
+        <p
+          className={cn("mt-2 text-center font-bold uppercase tracking-wide", titleSize)}
+          style={{ color: COMPANY_BRAND_STYLE.titleColor }}
+        >
+          {documentTitle}
+        </p>
+      ) : null}
       {documentSubtitle ? (
         <p className="mt-1 text-center text-[11px] font-semibold text-[#374151]">
           {documentSubtitle}

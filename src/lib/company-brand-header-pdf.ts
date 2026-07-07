@@ -21,6 +21,12 @@ type DrawBrandHeaderOptions = {
   leftMargin: number;
   rightMargin: number;
   startY: number;
+  /** When false, only logo + company name + green line (quotation style). */
+  includeDocumentTitle?: boolean;
+  logoWidthMm?: number;
+  companyFontSize?: number;
+  headerRowHeightMm?: number;
+  afterLineGapMm?: number;
 };
 
 /**
@@ -36,10 +42,17 @@ export function drawCompanyBrandHeaderPdf({
   leftMargin,
   rightMargin,
   startY,
+  includeDocumentTitle = true,
+  logoWidthMm,
+  companyFontSize: companyFontSizeOverride,
+  headerRowHeightMm,
+  afterLineGapMm,
 }: DrawBrandHeaderOptions): number {
   const rightX = pageWidth - rightMargin;
-  const { logoWidth, gap, companyFontSize, titleFontSize, lineWidth, metadataMargin } =
-    INVOICE_LOGO_PDF_MM;
+  const { gap, titleFontSize, lineWidth, metadataMargin } = INVOICE_LOGO_PDF_MM;
+  const logoWidth = logoWidthMm ?? INVOICE_LOGO_PDF_MM.logoWidth;
+  const companyFontSize = companyFontSizeOverride ?? INVOICE_LOGO_PDF_MM.companyFontSize;
+  const headerRowHeight = headerRowHeightMm ?? INVOICE_LOGO_PDF_MM.headerRowHeight;
 
   const logoHeight = invoiceLogoHeightMm(logoWidth);
   pdf.addImage(logoDataUrl, "PNG", leftMargin, startY, logoWidth, logoHeight);
@@ -47,7 +60,7 @@ export function drawCompanyBrandHeaderPdf({
   const nameAreaLeft = leftMargin + logoWidth + gap;
   const nameAreaWidth = rightX - nameAreaLeft;
   const nameCenterX = nameAreaLeft + nameAreaWidth / 2;
-  const headerBlockHeight = Math.max(logoHeight, INVOICE_LOGO_PDF_MM.headerRowHeight);
+  const headerBlockHeight = Math.max(logoHeight, headerRowHeight);
   const logoCenterY = startY + logoHeight / 2;
 
   pdf.setFont(PDF_FONT, "bold");
@@ -62,6 +75,11 @@ export function drawCompanyBrandHeaderPdf({
   pdf.setDrawColor(...DIVIDER_GREEN);
   pdf.setLineWidth(lineWidth);
   pdf.line(leftMargin, y, rightX, y);
+
+  if (!includeDocumentTitle) {
+    pdf.setTextColor(0, 0, 0);
+    return y + (afterLineGapMm ?? 6);
+  }
 
   y += 4.5;
   pdf.setFont(PDF_FONT, "bold");

@@ -1,6 +1,7 @@
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
 import {
   computeFarmerDerivedFields,
+  roundToThreeDecimals,
   roundToTwoDecimals,
 } from "@/lib/customer-computed-totals";
 
@@ -219,7 +220,7 @@ export function validateCustomerForm(
       leaseExtentAcre: floats.leaseExtentAcre ?? null,
       leaseExtentGunta: floats.leaseExtentGunta ?? null,
       totalGunta: roundToTwoDecimals(derived.totalGunta),
-      totalCents: roundToTwoDecimals(derived.totalCents),
+      totalCents: roundToThreeDecimals(derived.totalCents),
       rentPerAcre: floats.rentPerAcre ?? null,
       noOfYears: floats.noOfYears ?? null,
       rentAmount: roundToTwoDecimals(derived.rentAmount),
