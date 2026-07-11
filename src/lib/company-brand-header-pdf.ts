@@ -23,6 +23,10 @@ type DrawBrandHeaderOptions = {
   startY: number;
   /** When false, only logo + company name + green line (quotation style). */
   includeDocumentTitle?: boolean;
+  /** When false, draw logo only (continuation pages for debit notes). */
+  includeCompanyName?: boolean;
+  /** When false, skip the green divider under the header. */
+  includeDivider?: boolean;
   logoWidthMm?: number;
   companyFontSize?: number;
   headerRowHeightMm?: number;
@@ -43,6 +47,8 @@ export function drawCompanyBrandHeaderPdf({
   rightMargin,
   startY,
   includeDocumentTitle = true,
+  includeCompanyName = true,
+  includeDivider = true,
   logoWidthMm,
   companyFontSize: companyFontSizeOverride,
   headerRowHeightMm,
@@ -57,24 +63,31 @@ export function drawCompanyBrandHeaderPdf({
   const logoHeight = invoiceLogoHeightMm(logoWidth);
   pdf.addImage(logoDataUrl, "PNG", leftMargin, startY, logoWidth, logoHeight);
 
-  const nameAreaLeft = leftMargin + logoWidth + gap;
-  const nameAreaWidth = rightX - nameAreaLeft;
-  const nameCenterX = nameAreaLeft + nameAreaWidth / 2;
-  const headerBlockHeight = Math.max(logoHeight, headerRowHeight);
-  const logoCenterY = startY + logoHeight / 2;
+  const headerBlockHeight = includeCompanyName
+    ? Math.max(logoHeight, headerRowHeight)
+    : logoHeight;
 
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setTextColor(...COMPANY_ORANGE);
-  pdf.setFontSize(companyFontSize);
-  pdf.text(COMPANY_INVOICE_HEADER.name, nameCenterX, logoCenterY + companyFontSize * 0.1, {
-    align: "center",
-    maxWidth: nameAreaWidth,
-  });
+  if (includeCompanyName) {
+    const nameAreaLeft = leftMargin + logoWidth + gap;
+    const nameAreaWidth = rightX - nameAreaLeft;
+    const nameCenterX = nameAreaLeft + nameAreaWidth / 2;
+    const logoCenterY = startY + logoHeight / 2;
+
+    pdf.setFont(PDF_FONT, "bold");
+    pdf.setTextColor(...COMPANY_ORANGE);
+    pdf.setFontSize(companyFontSize);
+    pdf.text(COMPANY_INVOICE_HEADER.name, nameCenterX, logoCenterY + companyFontSize * 0.1, {
+      align: "center",
+      maxWidth: nameAreaWidth,
+    });
+  }
 
   let y = startY + headerBlockHeight + 1.5;
-  pdf.setDrawColor(...DIVIDER_GREEN);
-  pdf.setLineWidth(lineWidth);
-  pdf.line(leftMargin, y, rightX, y);
+  if (includeDivider) {
+    pdf.setDrawColor(...DIVIDER_GREEN);
+    pdf.setLineWidth(lineWidth);
+    pdf.line(leftMargin, y, rightX, y);
+  }
 
   if (!includeDocumentTitle) {
     pdf.setTextColor(0, 0, 0);

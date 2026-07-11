@@ -4,6 +4,7 @@ import {
   roundToThreeDecimals,
   roundToTwoDecimals,
 } from "@/lib/customer-computed-totals";
+import { isValidDisplayDate, isValidStorageDate, toStorageDate } from "@/lib/date-format";
 
 export type CustomerFormFieldErrors = Record<string, string>;
 
@@ -16,16 +17,19 @@ export type CustomerFormState = {
 
 const REQUIRED = "This field is required.";
 const INVALID_NUMBER = "Enter a valid number.";
-const INVALID_DATE = "Use a valid date (YYYY-MM-DD).";
+const INVALID_DATE = "Use a valid date (DD/MM/YYYY).";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const LOCATION_REQUIRED_FIELDS = ["state", "district", "taluk", "hobbli", "village"] as const;
 
 const LAYOUT_FIELDS = CUSTOMER_FIELD_LAYOUT.filter(
   (r): r is Extract<(typeof CUSTOMER_FIELD_LAYOUT)[number], { row: "field" }> =>
     r.row === "field",
 );
 
-const ALL_FORM_KEYS = LAYOUT_FIELDS.map((r) => r.name);
+const ALL_FORM_KEYS = [
+  ...LOCATION_REQUIRED_FIELDS,
+  ...LAYOUT_FIELDS.map((r) => r.name),
+];
 
 const OPTIONAL_FLOAT_FIELDS = LAYOUT_FIELDS.filter(
   (r) => r.inputType === "number" && r.computed !== true,
@@ -67,11 +71,12 @@ function readOptionalDate(
 ): string | null {
   const t = raw.trim();
   if (t === "") return null;
-  if (!DATE_RE.test(t)) {
-    fieldErrors[field] = INVALID_DATE;
-    return null;
+  if (isValidStorageDate(t)) return t;
+  if (isValidDisplayDate(t)) {
+    return toStorageDate(t);
   }
-  return t;
+  fieldErrors[field] = INVALID_DATE;
+  return null;
 }
 
 export type ValidatedCustomerPayload = {
@@ -80,6 +85,11 @@ export type ValidatedCustomerPayload = {
   vendorCode: string;
   surveyNo: string;
   newSurveyNo: string | null;
+  state: string;
+  district: string;
+  taluk: string;
+  hobbli: string;
+  village: string;
   rtcExtentAcre: number | null;
   rtcExtentGunta: number | null;
   rtcAKharab: number | null;
@@ -153,6 +163,12 @@ export function validateCustomerForm(
   const values = collectStringValues(formData);
   const fieldErrors: CustomerFormFieldErrors = {};
 
+  for (const name of LOCATION_REQUIRED_FIELDS) {
+    if (!readTrimmed(formData, name)) {
+      fieldErrors[name] = REQUIRED;
+    }
+  }
+
   for (const name of REQUIRED_TEXT_FIELDS) {
     if (!readTrimmed(formData, name)) {
       fieldErrors[name] = REQUIRED;
@@ -162,6 +178,11 @@ export function validateCustomerForm(
   const farmerName = readTrimmed(formData, "farmerName");
   const vendorCode = readTrimmed(formData, "vendorCode");
   const surveyNo = readTrimmed(formData, "surveyNo");
+  const state = readTrimmed(formData, "state");
+  const district = readTrimmed(formData, "district");
+  const taluk = readTrimmed(formData, "taluk");
+  const hobbli = readTrimmed(formData, "hobbli");
+  const village = readTrimmed(formData, "village");
 
   const optionalTexts: Record<string, string | null> = {};
   for (const name of OPTIONAL_TEXT_FIELDS) {
@@ -211,6 +232,11 @@ export function validateCustomerForm(
       vendorCode,
       surveyNo,
       newSurveyNo: optionalTexts.newSurveyNo ?? null,
+      state,
+      district,
+      taluk,
+      hobbli,
+      village,
       rtcExtentAcre: floats.rtcExtentAcre ?? null,
       rtcExtentGunta: floats.rtcExtentGunta ?? null,
       rtcAKharab: floats.rtcAKharab ?? null,

@@ -52,6 +52,15 @@ export default async function DebitNoteViewPage({ params, searchParams }: Props)
           customerName={customerName}
           gstNumber={record.customer.gstNumber || ""}
           address={address}
+          addressLines={[
+            record.customer.buildingNumber,
+            record.customer.street,
+            record.customer.locality,
+            record.customer.village,
+            record.customer.district,
+            record.customer.state,
+            record.customer.pincode ? `PIN ${record.customer.pincode}` : null,
+          ].filter((v): v is string => Boolean(v?.trim()))}
           autoDownload={download === "1"}
           autoPrint={print === "1"}
         />

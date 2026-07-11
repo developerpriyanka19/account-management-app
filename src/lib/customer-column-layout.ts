@@ -115,7 +115,7 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     ],
   },
   {
-    label: "Shortage Amount Through Cheque One",
+    label: "AES Shortage Amount Through Cheque One",
     fields: [
       { id: "shortageChequeAmount", label: "Amount", inputType: "number", variant: "money" },
       { id: "shortageDate", label: "Date", inputType: "date" },
@@ -124,7 +124,7 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     ],
   },
   {
-    label: "Shortage Amount Through Cheque Second",
+    label: "AES Shortage Amount Through Cheque Two",
     fields: [
       { id: "shortageAmountSecondTime", label: "Amount", inputType: "number", variant: "money" },
       { id: "shortageSecondDate", label: "Date", inputType: "date" },
@@ -133,7 +133,7 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     ],
   },
   {
-    label: "Shortage Amount Through Cheque Third",
+    label: "AES Shortage Amount Through Cheque Three",
     fields: [
       { id: "shortageThirdChequeAmount", label: "Amount", inputType: "number", variant: "money" },
       { id: "shortageThirdDate", label: "Date", inputType: "date" },
@@ -142,11 +142,11 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     ],
   },
   {
-    label: "SHORTAGE AMOUNT TOTAL",
+    label: "Total AES Paid",
     fields: [
       {
         id: "shortageAmountTotal",
-        label: "SHORTAGE AMOUNT TOTAL",
+        label: "Total AES Paid",
         inputType: "number",
         variant: "money",
         computed: true,
@@ -163,20 +163,20 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     ],
   },
   {
-    label: "Rental DD From Company",
+    label: "Rental DD From Company 1",
     fields: [
       { id: "rentalDdDate", label: "Date", inputType: "date" },
       { id: "leaseAmount", label: "Amount", inputType: "number", variant: "money" },
-      { id: "rentalDdChequeNo", label: "Cheque No", inputType: "text" },
+      { id: "rentalDdChequeNo", label: "DD No", inputType: "text" },
       { id: "rentalDdBankName", label: "Bank Name", inputType: "text" },
     ],
   },
   {
-    label: "Rental DD From Company Part 1",
+    label: "Rental DD From Company 2",
     fields: [
       { id: "rentalDdPart1Date", label: "Date", inputType: "date" },
       { id: "rentalDdPart1Amount", label: "Amount", inputType: "number", variant: "money" },
-      { id: "rentalDdPart1ChequeNo", label: "Cheque No", inputType: "text" },
+      { id: "rentalDdPart1ChequeNo", label: "DD No", inputType: "text" },
       { id: "rentalDdPart1BankName", label: "Bank Name", inputType: "text" },
     ],
   },

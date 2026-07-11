@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import { Download, Eye, Loader2, Printer, Save } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -10,27 +9,32 @@ import { z } from "zod";
 import { saveInvoice } from "@/app/invoice/actions";
 import { BankAccountSelect } from "@/components/bank/bank-account-select";
 import { CustomerCombobox } from "@/components/invoice/customer-combobox";
-import { FarmerSearchList } from "@/components/invoice/farmer-search-list";
 import { InvoiceDocumentPreview } from "@/components/invoice/invoice-document-preview";
 import {
   generateInvoicePdf,
   printInvoicePdf,
 } from "@/components/invoice/invoice-pdf-generator";
+import { LocationFarmerSelector } from "@/components/shared/location-farmer-selector";
 import { useToast } from "@/components/customer/toast";
 import { PreviewDialog } from "@/components/preview/preview-dialog";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  amountToIndianWords,
-  computeInvoiceTotals,
-  computeLineAmounts,
+  formatInvoiceDecimal,
   formatInvoiceMoney,
   formatInvoiceNumber,
+  formatInvoiceTotalCents,
 } from "@/lib/invoice-calculations";
 import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
+import { todayStorageDate } from "@/lib/date-format";
+import type { DocumentLocation } from "@/lib/location-cascade";
 import {
+  DEFAULT_SERVICE_HSN_SAC_CODE,
   defaultSubtypeForCategory,
+  getServiceInvoiceSubtypeConfig,
+  normalizeServiceSubtype,
   SERVICE_INVOICE_SUBTYPES,
 } from "@/lib/invoice-config";
 import {
@@ -38,6 +42,11 @@ import {
   initialBankSelection,
   type BankDetailsOption,
 } from "@/lib/bank-details-types";
+import {
+  computeServiceLineAmounts,
+  formatServiceRatePerAcreDisplay,
+  prepareServiceInvoiceDocument,
+} from "@/lib/service-invoice-layout";
 import type {
   InvoiceBillingCustomerOption,
   InvoiceDocumentData,
@@ -50,11 +59,14 @@ const schema = z.object({
   customerId: z.number().int().positive("Customer is required"),
   invoiceNumber: z.string().trim().min(1, "Invoice number is required"),
   invoiceDate: z.string().min(1, "Invoice date is required"),
+  poNumber: z.string().trim().min(1, "P.O No is required"),
+  poDate: z.string().min(1, "P.O Date is required"),
+  hsnSacCode: z.string().trim().min(1, "HSN/SAC Code is required"),
   district: z.string().min(1, "District is required"),
   taluk: z.string().min(1, "Taluk is required"),
   village: z.string().min(1, "Village is required"),
-  hobbli: z.string().min(1, "Hobbli is required"),
-  state: z.string().optional(),
+  hobbli: z.string().min(1, "Hobli is required"),
+  state: z.string().min(1, "State is required"),
   notes: z.string().optional(),
 });
 
@@ -68,9 +80,8 @@ type Props = {
   existing?: InvoiceDocumentData | null;
 };
 
-function todayDate() {
-  return format(new Date(), "yyyy-MM-dd");
-}
+const selectClassName =
+  "mt-1 flex h-9 w-full rounded-md border border-[#E5E7EB] bg-white px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50";
 
 export function ServiceInvoiceForm({
   customers,
@@ -89,13 +100,17 @@ export function ServiceInvoiceForm({
   );
   const [lines, setLines] = useState<InvoiceLineInput[]>(existing?.lines ?? []);
   const [subType, setSubType] = useState(
-    existing?.subType ?? defaultSubtypeForCategory("service"),
+    normalizeServiceSubtype(existing?.subType ?? defaultSubtypeForCategory("service")),
   );
-  const [ratePerAcre, setRatePerAcre] = useState(
+  const initialRate =
     existing?.ratePerAcre && existing.ratePerAcre > 0
       ? String(existing.ratePerAcre)
-      : "500",
-  );
+      : String(
+          getServiceInvoiceSubtypeConfig(
+            existing?.subType ?? defaultSubtypeForCategory("service"),
+          ).ratePerAcre,
+        );
+  const [ratePerAcre, setRatePerAcre] = useState(initialRate);
   const [bankDetailsId, setBankDetailsId] = useState<number | "">(() =>
     initialBankSelection(existing?.bank, banks),
   );
@@ -103,9 +118,11 @@ export function ServiceInvoiceForm({
     resolver: zodResolver(schema),
     defaultValues: {
       customerId: existing?.customer.id ?? 0,
-      invoiceNumber:
-        existing?.invoiceNumber ?? formatInvoiceNumber("service", nextSequence),
-      invoiceDate: existing?.invoiceDate ?? todayDate(),
+      invoiceNumber: existing?.invoiceNumber ?? "",
+      invoiceDate: existing?.invoiceDate ?? todayStorageDate(),
+      poNumber: existing?.poNumber ?? "",
+      poDate: existing?.poDate ?? "",
+      hsnSacCode: existing?.hsnSacCode ?? DEFAULT_SERVICE_HSN_SAC_CODE,
       district: existing?.district ?? "",
       taluk: existing?.taluk ?? "",
       village: existing?.village ?? "",
@@ -115,69 +132,135 @@ export function ServiceInvoiceForm({
     },
   });
 
-  function syncLines(ids: number[]) {
-    const baseDistrict = form.getValues("district");
-    const baseTaluk = form.getValues("taluk");
-    const baseVillage = form.getValues("village");
-    const baseHobbli = form.getValues("hobbli");
-    const rate = Number(ratePerAcre) || 0;
-    const next = ids
-      .map((id) => farmers.find((f) => f.id === id))
-      .filter((f): f is InvoiceFarmerOption => Boolean(f))
-      .map((f) => {
-        const prior = lines.find((line) => line.farmerId === f.id);
-        const base = farmerToInvoiceLine(f, rate);
-        return {
-          ...base,
-          description: prior?.description ?? f.label,
-          farmerName: f.label,
-          district: baseDistrict,
-          taluk: baseTaluk,
-          village: baseVillage || base.village,
-          hobbli: baseHobbli,
-        };
-      });
-    setLines(next);
-  }
+  const formValues = form.watch();
+  const locationFilter: DocumentLocation = {
+    state: formValues.state ?? "",
+    district: formValues.district ?? "",
+    taluk: formValues.taluk ?? "",
+    hobbli: formValues.hobbli ?? "",
+    village: formValues.village ?? "",
+  };
 
-  function toggleFarmer(id: number) {
-    setSelectedFarmerIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      syncLines(next);
+  const locatableFarmers = useMemo(
+    () =>
+      farmers.map((f) => ({
+        id: f.id,
+        label: f.label,
+        surveyNo: f.surveyNo,
+        newSurveyNo: f.newSurveyNo,
+        vendorCode: f.vendorCode,
+        state: f.state,
+        district: f.district,
+        taluk: f.taluk,
+        hobbli: f.hobbli,
+        village: f.village,
+      })),
+    [farmers],
+  );
+
+  function syncLines(
+    ids: number[],
+    location: DocumentLocation = locationFilter,
+    overrides?: { subType?: string; rate?: number },
+  ) {
+    const activeSubType = overrides?.subType ?? subType;
+    const activeConfig = getServiceInvoiceSubtypeConfig(activeSubType);
+    const rate = overrides?.rate ?? (Number(ratePerAcre) || activeConfig.ratePerAcre);
+    setLines((prev) => {
+      const next = ids
+        .map((id) => farmers.find((f) => f.id === id))
+        .filter((f): f is InvoiceFarmerOption => Boolean(f))
+        .map((f) => {
+          const previous = prev.find((line) => line.farmerId === f.id);
+          const line = farmerToInvoiceLine(f, rate);
+          return {
+            ...line,
+            description: activeConfig.serviceName,
+            district: location.district,
+            taluk: location.taluk,
+            village: location.village,
+            hobbli: location.hobbli,
+            farmerName: f.label,
+            // Keep edited IDs on existing lines; new lines stay empty.
+            affidavitId: previous?.affidavitId ?? "",
+            requestId: previous?.requestId ?? "",
+            debitNote: previous?.debitNote ?? 0,
+            remark: previous?.remark ?? "",
+          };
+        });
       return next;
     });
   }
 
-  function updateLine(index: number, patch: Partial<InvoiceLineInput>) {
-    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+  function applyFarmerSelection(ids: number[], location: DocumentLocation) {
+    setSelectedFarmerIds(ids);
+    syncLines(ids, location);
   }
 
-  const formValues = form.watch();
+  function toggleFarmer(id: number) {
+    const next = selectedFarmerIds.includes(id)
+      ? selectedFarmerIds.filter((x) => x !== id)
+      : [...selectedFarmerIds, id];
+    applyFarmerSelection(next, locationFilter);
+  }
+
+  function setFarmerSelection(ids: number[]) {
+    applyFarmerSelection(ids, {
+      state: form.getValues("state"),
+      district: form.getValues("district"),
+      taluk: form.getValues("taluk"),
+      hobbli: form.getValues("hobbli"),
+      village: form.getValues("village"),
+    });
+  }
+
+  function handleLocationUpdate(next: DocumentLocation) {
+    form.setValue("state", next.state, { shouldValidate: true });
+    form.setValue("district", next.district, { shouldValidate: true });
+    form.setValue("taluk", next.taluk, { shouldValidate: true });
+    form.setValue("hobbli", next.hobbli, { shouldValidate: true });
+    form.setValue("village", next.village, { shouldValidate: true });
+  }
+
+  function handleSubTypeChange(nextSubType: string) {
+    const normalized = normalizeServiceSubtype(nextSubType);
+    setSubType(normalized);
+    const config = getServiceInvoiceSubtypeConfig(normalized);
+    setRatePerAcre(String(config.ratePerAcre));
+    if (selectedFarmerIds.length > 0) {
+      syncLines(selectedFarmerIds, locationFilter, {
+        subType: normalized,
+        rate: config.ratePerAcre,
+      });
+    }
+  }
 
   function buildDocumentData(
     statusOverride?: string,
     values: FormValues = form.getValues(),
   ): InvoiceDocumentData | null {
     const customer = customers.find((c) => c.id === values.customerId);
-    if (!customer || lines.length === 0) return null;
-    const rate = Number(ratePerAcre) || 0;
-    const computedLines = computeLineAmounts(lines, rate, "service");
-    const totals = computeInvoiceTotals(computedLines);
-    return {
+    if (!customer || lines.length === 0 || !subType.trim()) return null;
+    const config = getServiceInvoiceSubtypeConfig(subType);
+    const rate = Number(ratePerAcre) || config.ratePerAcre;
+    const computedLines = computeServiceLineAmounts(lines, rate, subType);
+    return prepareServiceInvoiceDocument({
       id: existing?.id,
       invoiceType: "service",
       subType,
       invoiceNumber: values.invoiceNumber.trim(),
       invoiceDate: values.invoiceDate,
+      poNumber: values.poNumber.trim(),
+      poDate: values.poDate,
       district: values.district,
       taluk: values.taluk,
       village: values.village,
       hobbli: values.hobbli,
-      state: values.state ?? "",
+      state: values.state,
       status: statusOverride ?? existing?.status?.toUpperCase() ?? "DRAFT",
       ratePerAcre: rate,
+      hsnSacCode: values.hsnSacCode.trim(),
       notes: values.notes ?? "",
-      totalAmountWords: amountToIndianWords(totals.grandTotal),
       customer: gstCustomerToInvoiceCustomer({
         id: customer.id,
         companyName: customer.companyName,
@@ -194,17 +277,18 @@ export function ServiceInvoiceForm({
         panNumber: customer.panNumber,
       }),
       lines: computedLines,
-      totals,
+      totals: { subtotal: 0, sgst: 0, cgst: 0, grandTotal: 0 },
       pdfUrl: existing?.pdfUrl,
-      bank: bankFromSelection(bankDetailsId, banks) ?? existing?.bank ?? {
-        bankDetailsId: null,
-        bankName: "",
-        accountHolderName: "",
-        accountNumber: "",
-        ifscCode: "",
-        branchName: "",
-      },
-    };
+      bank: bankFromSelection(bankDetailsId, banks) ??
+        existing?.bank ?? {
+          bankDetailsId: null,
+          bankName: "",
+          accountHolderName: "",
+          accountNumber: "",
+          ifscCode: "",
+          branchName: "",
+        },
+    });
   }
 
   const documentData = useMemo(
@@ -224,23 +308,26 @@ export function ServiceInvoiceForm({
     ],
   );
 
+  const subtypeConfig = getServiceInvoiceSubtypeConfig(subType);
+  const displayRate = Number(ratePerAcre) || subtypeConfig.ratePerAcre;
+  const displayLines =
+    documentData?.lines ?? computeServiceLineAmounts(lines, displayRate, subType);
+  const rateLabel = formatServiceRatePerAcreDisplay(displayRate);
+  const hsnSacCode = formValues.hsnSacCode?.trim() ?? "";
+
   function handleCustomerChange(customer: InvoiceBillingCustomerOption | null) {
     if (!customer) {
       form.setValue("customerId", 0, { shouldValidate: true });
       return;
     }
     form.setValue("customerId", customer.id, { shouldValidate: true });
-    form.setValue("district", customer.district ?? "");
-    form.setValue("taluk", customer.taluk ?? "");
-    form.setValue("village", customer.village ?? "");
-    form.setValue("hobbli", customer.hobbli ?? "");
-    form.setValue("state", customer.state ?? "");
-    if (selectedFarmerIds.length > 0) {
-      syncLines(selectedFarmerIds);
-    }
   }
 
   function handleSave(status: "DRAFT" | "FINAL") {
+    if (!subType.trim()) {
+      toast.error("Invoice Sub-Type is required.");
+      return;
+    }
     const parsed = schema.safeParse(form.getValues());
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Please fill required fields.");
@@ -265,7 +352,7 @@ export function ServiceInvoiceForm({
         }
         toast.success(status === "DRAFT" ? "Draft saved." : "Invoice saved and PDF ready.");
         if (status === "FINAL") {
-          router.push(`/invoice/${result.id}`);
+          router.push(`/invoice/service/view/${result.id}`);
         } else {
           router.push("/invoice/service");
         }
@@ -275,7 +362,7 @@ export function ServiceInvoiceForm({
     });
   }
 
-  const maxDate = todayDate();
+  const maxDate = todayStorageDate();
 
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-4">
@@ -284,7 +371,7 @@ export function ServiceInvoiceForm({
           {existing ? "Edit Service Invoice" : "New Service Invoice"}
         </h1>
         <p className="text-sm text-[#6B7280]">
-          Enter invoice details, select farmers, and set line amounts manually.
+          Enter invoice number and details manually. Preview opens in modal.
         </p>
       </header>
 
@@ -292,12 +379,30 @@ export function ServiceInvoiceForm({
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <Label>Invoice Number</Label>
-            <Input
-              {...form.register("invoiceNumber")}
-              placeholder="Enter invoice number"
-              className="mt-1"
-              disabled={isFinal}
-            />
+            <div className="mt-1 flex gap-2">
+              <Input
+                {...form.register("invoiceNumber")}
+                placeholder="Enter invoice number"
+                className="flex-1"
+                disabled={isFinal}
+              />
+              {!existing && !isFinal ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() =>
+                    form.setValue(
+                      "invoiceNumber",
+                      formatInvoiceNumber("service", nextSequence),
+                      { shouldValidate: true },
+                    )
+                  }
+                >
+                  Suggest
+                </Button>
+              ) : null}
+            </div>
             {form.formState.errors.invoiceNumber ? (
               <p className="mt-1 text-xs text-red-600">
                 {form.formState.errors.invoiceNumber.message}
@@ -306,21 +411,25 @@ export function ServiceInvoiceForm({
           </div>
           <div>
             <Label>Invoice Date</Label>
-            <Input
-              type="date"
-              max={maxDate}
-              {...form.register("invoiceDate")}
-              className="mt-1"
-              disabled={isFinal}
-            />
+            <div className="mt-1">
+              <DateInput
+                value={form.watch("invoiceDate")}
+                onChange={(value) =>
+                  form.setValue("invoiceDate", value, { shouldValidate: true })
+                }
+                maxStorageDate={maxDate}
+                disabled={isFinal}
+                aria-label="Invoice date"
+              />
+            </div>
           </div>
           <div>
             <Label>Invoice Sub-Type</Label>
             <select
-              className="mt-1 flex h-9 w-full rounded-md border border-[#E5E7EB] px-3 text-sm"
+              className={selectClassName}
               value={subType}
               disabled={isFinal}
-              onChange={(e) => setSubType(e.target.value)}
+              onChange={(e) => handleSubTypeChange(e.target.value)}
             >
               {SERVICE_INVOICE_SUBTYPES.map((t) => (
                 <option key={t} value={t}>
@@ -328,6 +437,53 @@ export function ServiceInvoiceForm({
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <Label>P.O No</Label>
+            <Input
+              {...form.register("poNumber")}
+              placeholder="Enter P.O number"
+              className="mt-1"
+              disabled={isFinal}
+            />
+            {form.formState.errors.poNumber ? (
+              <p className="mt-1 text-xs text-red-600">
+                {form.formState.errors.poNumber.message}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <Label>P.O Date</Label>
+            <div className="mt-1">
+              <DateInput
+                value={form.watch("poDate")}
+                onChange={(value) =>
+                  form.setValue("poDate", value, { shouldValidate: true })
+                }
+                maxStorageDate={maxDate}
+                disabled={isFinal}
+                aria-label="P.O date"
+              />
+            </div>
+            {form.formState.errors.poDate ? (
+              <p className="mt-1 text-xs text-red-600">
+                {form.formState.errors.poDate.message}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <Label>HSN/SAC Code</Label>
+            <Input
+              {...form.register("hsnSacCode")}
+              placeholder={DEFAULT_SERVICE_HSN_SAC_CODE}
+              className="mt-1"
+              disabled={isFinal}
+            />
+            {form.formState.errors.hsnSacCode ? (
+              <p className="mt-1 text-xs text-red-600">
+                {form.formState.errors.hsnSacCode.message}
+              </p>
+            ) : null}
           </div>
           <div>
             <Label>Rate per Acre (₹)</Label>
@@ -340,7 +496,13 @@ export function ServiceInvoiceForm({
               onChange={(e) => {
                 setRatePerAcre(e.target.value);
                 if (selectedFarmerIds.length > 0) {
-                  setTimeout(() => syncLines(selectedFarmerIds), 0);
+                  setTimeout(
+                    () =>
+                      syncLines(selectedFarmerIds, locationFilter, {
+                        rate: Number(e.target.value) || subtypeConfig.ratePerAcre,
+                      }),
+                    0,
+                  );
                 }
               }}
             />
@@ -363,86 +525,102 @@ export function ServiceInvoiceForm({
               disabled={isFinal}
             />
           </div>
-          <div>
-            <Label>Hobli</Label>
-            <Input className="mt-1" {...form.register("hobbli")} disabled={isFinal} />
-          </div>
-          <div>
-            <Label>Village</Label>
-            <Input className="mt-1" {...form.register("village")} disabled={isFinal} />
-          </div>
-          <div>
-            <Label>Taluk</Label>
-            <Input className="mt-1" {...form.register("taluk")} disabled={isFinal} />
-          </div>
-          <div>
-            <Label>District</Label>
-            <Input className="mt-1" {...form.register("district")} disabled={isFinal} />
-          </div>
-          <div>
-            <Label>State</Label>
-            <Input className="mt-1" {...form.register("state")} disabled={isFinal} />
-          </div>
         </div>
       </section>
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-[#111827]">Farmers</h2>
-        <p className="mt-1 text-xs text-[#6B7280]">
-          Search by farmer name, survey number, or village. Selected farmers stay checked while you
-          search.
-        </p>
-        <FarmerSearchList
-          farmers={farmers}
+        <LocationFarmerSelector
+          farmers={locatableFarmers}
+          location={locationFilter}
+          onLocationChange={handleLocationUpdate}
           selectedIds={selectedFarmerIds}
           onToggle={toggleFarmer}
+          onSetSelectedIds={setFarmerSelection}
           disabled={isFinal}
+          errors={{
+            state: form.formState.errors.state?.message,
+            district: form.formState.errors.district?.message,
+            taluk: form.formState.errors.taluk?.message,
+            hobbli: form.formState.errors.hobbli?.message,
+            village: form.formState.errors.village?.message,
+          }}
         />
       </section>
 
       {lines.length > 0 ? (
         <section className="rounded-lg border border-[#D1D5DB] bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-[#111827]">Line Items</h2>
+          <p className="mt-1 text-xs text-[#6B7280]">
+            Service: {subtypeConfig.serviceName} · {rateLabel}
+          </p>
           <div className="mt-3 overflow-x-auto rounded border border-[#E5E7EB]">
-            <table className="min-w-[720px] w-full text-xs">
+            <table className="min-w-[900px] w-full text-xs">
               <thead className="bg-[#F9FAFB]">
                 <tr>
-                  <th className="px-2 py-2 text-left">Sl No</th>
-                  <th className="px-2 py-2 text-left">Farmer Name</th>
-                  <th className="px-2 py-2 text-left">Description</th>
-                  <th className="px-2 py-2 text-right">Amount (₹)</th>
+                  <th className="px-2 py-2 text-left" rowSpan={2}>
+                    SL NO
+                  </th>
+                  <th className="px-2 py-2 text-left" rowSpan={2}>
+                    Name Of Farmers
+                  </th>
+                  <th className="px-2 py-2 text-left" rowSpan={2}>
+                    HSN/SAC Code
+                  </th>
+                  <th className="px-2 py-2 text-left" rowSpan={2}>
+                    Sy No
+                  </th>
+                  <th className="px-2 py-2 text-right" rowSpan={2}>
+                    Acres
+                  </th>
+                  <th className="px-2 py-2 text-right" rowSpan={2}>
+                    Guntas
+                  </th>
+                  <th className="px-2 py-2 text-right" rowSpan={2}>
+                    Total Cents
+                  </th>
+                  <th className="px-2 py-2 text-center">{subtypeConfig.serviceName}</th>
+                </tr>
+                <tr>
+                  <th className="px-2 py-2 text-center">{rateLabel}</th>
                 </tr>
               </thead>
               <tbody>
-                {(documentData?.lines ?? computeLineAmounts(lines, Number(ratePerAcre) || 0, "service")).map(
-                  (line, i) => (
-                  <tr key={`${line.farmerId}-${i}`} className={i % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}>
+                {displayLines.map((line, i) => (
+                  <tr
+                    key={`${line.farmerId}-${i}`}
+                    className={i % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}
+                  >
                     <td className="px-2 py-1.5">{i + 1}</td>
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
-                    <td className="px-2 py-1.5">
-                      <Input
-                        value={line.description}
-                        onChange={(e) => updateLine(i, { description: e.target.value })}
-                        className="h-8 text-xs"
-                        disabled={isFinal}
-                      />
+                    <td className="px-2 py-1.5">{hsnSacCode || "—"}</td>
+                    <td className="px-2 py-1.5">{line.surveyNo || "—"}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {formatInvoiceDecimal(line.acres)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {formatInvoiceDecimal(line.gunta)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {formatInvoiceTotalCents(line.totalCents)}
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       {formatInvoiceMoney(line.amount)}
                     </td>
                   </tr>
-                  ),
-                )}
+                ))}
               </tbody>
             </table>
           </div>
           {documentData ? (
-            <p className="mt-3 text-right text-sm font-semibold text-[#111827]">
-              Grand total (incl. GST): ₹
-              {documentData.totals.grandTotal.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-              })}
-            </p>
+            <div className="mt-3 space-y-1 text-right text-sm">
+              <p>Sub Total: {formatInvoiceMoney(documentData.totals.subtotal)}</p>
+              <p>SGST @ 9%: {formatInvoiceMoney(documentData.totals.sgst)}</p>
+              <p>CGST @ 9%: {formatInvoiceMoney(documentData.totals.cgst)}</p>
+              <p className="font-semibold text-[#111827]">
+                Grand Total: {formatInvoiceMoney(documentData.totals.grandTotal)}
+              </p>
+              <p className="text-xs text-[#6B7280]">{documentData.totalAmountWords}</p>
+            </div>
           ) : null}
         </section>
       ) : null}
@@ -452,7 +630,7 @@ export function ServiceInvoiceForm({
           type="button"
           variant="outline"
           size="sm"
-          disabled={!documentData}
+          disabled={!documentData || !documentData.hsnSacCode?.trim()}
           onClick={() => setShowPreview(true)}
         >
           <Eye className="h-4 w-4" />
@@ -461,7 +639,7 @@ export function ServiceInvoiceForm({
         <Button
           type="button"
           size="sm"
-          disabled={!documentData}
+          disabled={!documentData || !documentData.hsnSacCode?.trim()}
           onClick={() => {
             if (!documentData) return;
             void generateInvoicePdf(documentData);
@@ -474,7 +652,7 @@ export function ServiceInvoiceForm({
           type="button"
           variant="outline"
           size="sm"
-          disabled={!documentData}
+          disabled={!documentData || !documentData.hsnSacCode?.trim()}
           onClick={() => {
             if (!documentData) return;
             void printInvoicePdf(documentData);
@@ -493,8 +671,13 @@ export function ServiceInvoiceForm({
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save Draft
         </Button>
-        <Button type="button" size="sm" disabled={pending || isFinal} onClick={() => handleSave("FINAL")}>
-          Save & View
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending || isFinal}
+          onClick={() => handleSave("FINAL")}
+        >
+          Save & Generate PDF
         </Button>
       </div>
 

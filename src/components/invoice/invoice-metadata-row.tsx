@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   invoiceNumber: string;
   invoiceDate: string;
+  poNumber?: string;
+  poDate?: string;
   compact?: boolean;
   className?: string;
 };
@@ -11,9 +13,13 @@ type Props = {
 export function InvoiceMetadataRow({
   invoiceNumber,
   invoiceDate,
+  poNumber,
+  poDate,
   compact = false,
   className,
 }: Props) {
+  const hasPo = Boolean(poNumber?.trim() || poDate?.trim());
+
   return (
     <div
       className={cn(
@@ -31,11 +37,25 @@ export function InvoiceMetadataRow({
           <span className="font-semibold text-[#6B7280]">GST: </span>
           {COMPANY_INVOICE_HEADER.gstin}
         </p>
+        {hasPo && poNumber?.trim() ? (
+          <p>
+            <span className="font-semibold text-[#6B7280]">P.O No: </span>
+            {poNumber.trim()}
+          </p>
+        ) : null}
       </div>
-      <p>
-        <span className="font-semibold text-[#6B7280]">Date: </span>
-        {invoiceDate}
-      </p>
+      <div className="space-y-0.5 text-right">
+        <p>
+          <span className="font-semibold text-[#6B7280]">Date: </span>
+          {invoiceDate}
+        </p>
+        {hasPo && poDate?.trim() ? (
+          <p>
+            <span className="font-semibold text-[#6B7280]">P.O Date: </span>
+            {poDate.trim()}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

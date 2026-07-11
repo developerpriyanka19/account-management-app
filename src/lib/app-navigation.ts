@@ -51,6 +51,7 @@ export const SIDEBAR_DEBIT_NOTE_GROUP: SidebarNavGroup = {
   items: [
     { label: "Land Conversion", href: "/debit-note/land-conversion" },
     { label: "ATL and POA/GPA", href: "/debit-note/atl-poa-gpa" },
+    { label: "Lease Deed Execution", href: "/debit-note/lease-deed-execution" },
   ],
 };
 

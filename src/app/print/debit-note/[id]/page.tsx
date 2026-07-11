@@ -22,15 +22,19 @@ export default async function PrintDebitNotePage({ params, searchParams }: PageP
     record.customer.companyName?.trim() ||
     `${record.customer.firstName} ${record.customer.lastName}`.trim() ||
     "—";
-  const address = [
-    record.customer.companyAddress,
+  const addressLines = [
     record.customer.buildingNumber,
     record.customer.street,
     record.customer.locality,
     record.customer.village,
     record.customer.district,
     record.customer.state,
-    record.customer.pincode,
+    record.customer.pincode ? `PIN ${record.customer.pincode}` : null,
+  ].filter((v): v is string => Boolean(v?.trim()));
+
+  const address = [
+    record.customer.companyAddress,
+    ...addressLines,
   ]
     .filter(Boolean)
     .join(", ");
@@ -39,6 +43,7 @@ export default async function PrintDebitNotePage({ params, searchParams }: PageP
     customerName,
     gstNumber: record.customer.gstNumber || "",
     address,
+    addressLines,
   };
 
   const exportAction = download === "1" || action === "download" ? "download" : "open";

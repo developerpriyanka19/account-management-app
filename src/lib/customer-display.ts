@@ -1,3 +1,5 @@
+import { formatDateOrDash } from "@/lib/date-format";
+
 export function formatAmount(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("en-IN", {
@@ -27,15 +29,7 @@ export function formatDateTime(value: Date): string {
   }).format(value);
 }
 
-/** Display stored date strings (YYYY-MM-DD or legacy text). */
+/** Display stored date strings as DD/MM/YYYY (or dash). */
 export function formatOptionalDate(value: string | null | undefined): string {
-  const t = value?.trim();
-  if (!t) return "—";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
-    const d = new Date(`${t}T12:00:00`);
-    if (!Number.isNaN(d.getTime())) {
-      return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(d);
-    }
-  }
-  return t;
+  return formatDateOrDash(value);
 }

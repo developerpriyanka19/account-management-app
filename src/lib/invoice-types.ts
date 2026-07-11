@@ -53,6 +53,11 @@ export type InvoiceFarmerOption = {
   leaseExtentAcre: number | null;
   leaseExtentGunta: number | null;
   totalCents: number | null;
+  state?: string | null;
+  district?: string | null;
+  taluk?: string | null;
+  hobbli?: string | null;
+  village?: string | null;
 };
 
 export type InvoiceLineInput = {
@@ -81,6 +86,8 @@ export type InvoiceDocumentData = {
   subType: string;
   invoiceNumber: string;
   invoiceDate: string;
+  poNumber?: string;
+  poDate?: string;
   district: string;
   taluk: string;
   village: string;
@@ -88,6 +95,7 @@ export type InvoiceDocumentData = {
   state: string;
   status: string;
   ratePerAcre: number;
+  hsnSacCode?: string;
   notes: string;
   totalAmountWords?: string;
   pdfUrl?: string;
@@ -132,7 +140,7 @@ export function farmerToInvoiceLine(
     gunta,
     totalCents,
     affidavitId: "",
-    requestId: farmer.vendorCode?.trim() || "",
+    requestId: "",
     debitNote: 0,
     remark: "",
     amount:

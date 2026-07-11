@@ -3,8 +3,7 @@ import { getDebitNoteBuilderData, getDebitNoteById } from "@/actions/debit-note-
 import { ToastProvider } from "@/components/customer/toast";
 import { DebitNoteBuilder } from "@/components/debit-note/debit-note-builder";
 import { debitNoteRecordToPayload } from "@/lib/debit-note-data";
-import { debitNoteListPath } from "@/lib/debit-note-routes";
-import { DebitNoteType } from "@/lib/debit-note-types";
+import { debitNoteDocumentTitle, debitNoteListPath } from "@/lib/debit-note-routes";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -22,14 +21,13 @@ export default async function EditDebitNotePage({ params }: Props) {
 
   const existing = debitNoteRecordToPayload(record);
   const { customers, farmers, banks } = await getDebitNoteBuilderData();
-  const isLand = existing.type === DebitNoteType.LAND_CONVERSION;
 
   return (
     <ToastProvider>
       <div className="px-4 py-6 sm:px-6 lg:px-8">
         <DebitNoteBuilder
           type={existing.type}
-          title={isLand ? "Land Conversion Debit Note" : "ATL and POA/GPA Debit Note"}
+          title={debitNoteDocumentTitle(existing.type)}
           nextNumber={existing.debitNoteNo}
           listHref={debitNoteListPath(existing.type)}
           customers={customers}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import type { DebitNoteListSortField } from "@/actions/debit-note-actions";
 import type { DebitNoteCustomerOption } from "@/lib/debit-note-types";
 
@@ -90,17 +91,15 @@ export function DebitNoteListControls({
         </Button>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input
-          type="date"
+        <DateInput
           value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
+          onChange={(value) => setDateFrom(value)}
           className="w-full sm:max-w-[160px]"
           aria-label="Date from"
         />
-        <Input
-          type="date"
+        <DateInput
           value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
+          onChange={(value) => setDateTo(value)}
           className="w-full sm:max-w-[160px]"
           aria-label="Date to"
         />

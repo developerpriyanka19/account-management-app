@@ -544,7 +544,7 @@ export function buildCustomerTableColumns(
     }, { subHeader: null }),
     {
       id: "shortageOnce",
-      header: "Shortage Amount Through Cheque One",
+      header: "AES Shortage Amount Through Cheque One",
       columns: [
         {
           id: "shortageChequeAmount",
@@ -579,7 +579,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "shortageSecond",
-      header: "Shortage Amount Through Cheque Second",
+      header: "AES Shortage Amount Through Cheque Two",
       columns: [
         {
           id: "shortageAmountSecondTime",
@@ -614,7 +614,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "shortageThird",
-      header: "Shortage Amount Through Cheque Third",
+      header: "AES Shortage Amount Through Cheque Three",
       columns: [
         {
           id: "shortageThirdChequeAmount",
@@ -649,10 +649,10 @@ export function buildCustomerTableColumns(
     },
     columnGroup(
       "shortageAmountTotalGroup",
-      "SHORTAGE AMOUNT TOTAL",
+      "Total AES Paid",
       {
         id: "shortageAmountTotal",
-        header: "SHORTAGE AMOUNT TOTAL",
+        header: "Total AES Paid",
         cell: ({ row }) => computedColumnCell(row.original, "shortageAmountTotal"),
         size: 140,
         minSize: 120,
@@ -696,7 +696,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "rentalDd",
-      header: "Rental DD From Company",
+      header: "Rental DD From Company 1",
       columns: [
         {
           id: "rentalDdDate",
@@ -716,7 +716,7 @@ export function buildCustomerTableColumns(
         {
           id: "rentalDdChequeNo",
           accessorKey: "rentalDdChequeNo",
-          header: "Cheque No",
+          header: "DD No",
           cell: ({ getValue }) => textCell(getValue() as string),
           size: 90,
         },
@@ -731,7 +731,7 @@ export function buildCustomerTableColumns(
     },
     {
       id: "rentalDdPart1",
-      header: "Rental DD From Company Part 1",
+      header: "Rental DD From Company 2",
       columns: [
         {
           id: "rentalDdPart1Date",
@@ -751,7 +751,7 @@ export function buildCustomerTableColumns(
         {
           id: "rentalDdPart1ChequeNo",
           accessorKey: "rentalDdPart1ChequeNo",
-          header: "Cheque No",
+          header: "DD No",
           cell: ({ getValue }) => textCell(getValue() as string),
           size: 90,
         },

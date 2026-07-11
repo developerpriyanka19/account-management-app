@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import { Download, Loader2, Plus, Printer, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CustomerCombobox } from "@/components/invoice/customer-combobox";
@@ -12,9 +11,11 @@ import {
 import { useToast } from "@/components/customer/toast";
 import { PreviewDialog } from "@/components/preview/preview-dialog";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatInvoiceMoney } from "@/lib/invoice-calculations";
+import { todayStorageDate } from "@/lib/date-format";
 import type { InvoiceBillingCustomerOption } from "@/lib/invoice-types";
 import {
   buildQuotationDocument,
@@ -31,17 +32,13 @@ type Props = {
   customers: InvoiceBillingCustomerOption[];
 };
 
-function todayDate() {
-  return format(new Date(), "yyyy-MM-dd");
-}
-
 export function QuotationForm({ customers }: Props) {
   const toast = useToast();
   const [showPreview, setShowPreview] = useState(false);
   const [pending, setPending] = useState(false);
   const [form, setForm] = useState<QuotationFormInput>({
-    refNo: suggestQuotationRefNo(),
-    quotationDate: todayDate(),
+    refNo: "",
+    quotationDate: todayStorageDate(),
     customerId: "",
     subject: "",
     items: [createEmptyQuotationItem()],
@@ -136,20 +133,32 @@ export function QuotationForm({ customers }: Props) {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <Label>Quotation Date</Label>
-            <Input
-              type="date"
-              className="mt-1"
-              value={form.quotationDate}
-              onChange={(e) => updateField("quotationDate", e.target.value)}
-            />
+            <div className="mt-1">
+              <DateInput
+                value={form.quotationDate}
+                onChange={(value) => updateField("quotationDate", value)}
+                aria-label="Quotation date"
+              />
+            </div>
           </div>
           <div>
             <Label>Ref. No.</Label>
-            <Input
-              className="mt-1"
-              value={form.refNo}
-              onChange={(e) => updateField("refNo", e.target.value)}
-            />
+            <div className="mt-1 flex gap-2">
+              <Input
+                className="flex-1"
+                value={form.refNo}
+                onChange={(e) => updateField("refNo", e.target.value)}
+                placeholder="Enter quotation number"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => updateField("refNo", suggestQuotationRefNo())}
+              >
+                Suggest
+              </Button>
+            </div>
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <Label>Customer</Label>

@@ -40,15 +40,19 @@ export function drawCompanyDocumentFooterPdf({
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(5.5);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(COMPANY_INVOICE_HEADER.footerAddress, pageWidth / 2, footerY - 0.5, {
+  pdf.text(COMPANY_INVOICE_HEADER.footerAddress, pageWidth / 2, footerY - 3.2, {
     align: "center",
     maxWidth: contentWidth,
+  });
+  pdf.setFontSize(6.5);
+  pdf.text(COMPANY_INVOICE_HEADER.phone, pageWidth / 2, footerY + 0.8, {
+    align: "center",
   });
 
   if (showPageNumbers && pageCount > 1) {
     pdf.setFontSize(5);
     pdf.setTextColor(100, 100, 100);
-    pdf.text(`Page ${pageNumber} of ${pageCount}`, pageWidth - PDF_MARGIN.right, footerY - 0.5, {
+    pdf.text(`Page ${pageNumber} of ${pageCount}`, pageWidth - PDF_MARGIN.right, footerY + 0.8, {
       align: "right",
     });
     pdf.setTextColor(0, 0, 0);

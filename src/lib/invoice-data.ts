@@ -1,6 +1,7 @@
 import type { Invoice, InvoiceItem, GstCustomer } from "@prisma/client";
 import { snapshotFromRecord } from "@/lib/bank-details-types";
 import { gstCustomerToInvoiceCustomer } from "@/lib/invoice-customer-format";
+import { normalizeNaSubtype, normalizeServiceSubtype } from "@/lib/invoice-config";
 import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types";
 import {
   computeInvoiceTotals,
@@ -50,13 +51,20 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
       : lines;
 
   const totals = computeInvoiceTotals(normalizedLines);
+  const invoiceType = record.invoiceType as "na" | "service";
+  const subType =
+    invoiceType === "na"
+      ? normalizeNaSubtype(record.subType)
+      : normalizeServiceSubtype(record.subType);
 
   return {
     id: record.id,
-    invoiceType: record.invoiceType as "na" | "service",
-    subType: record.subType,
+    invoiceType,
+    subType,
     invoiceNumber: record.invoiceNumber,
     invoiceDate: record.invoiceDate,
+    poNumber: (record as { poNumber?: string | null }).poNumber ?? "",
+    poDate: (record as { poDate?: string | null }).poDate ?? "",
     district: (record as { district?: string | null }).district ?? "",
     taluk: (record as { taluk?: string | null }).taluk ?? "",
     village: (record as { village?: string | null }).village ?? "",
@@ -64,6 +72,7 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     state: (record as { state?: string | null }).state ?? "",
     status: record.status,
     ratePerAcre: record.ratePerAcre ?? 0,
+    hsnSacCode: (record as { hsnSacCode?: string | null }).hsnSacCode ?? "",
     notes: record.notes ?? "",
     totalAmountWords: (record as { totalAmountWords?: string | null }).totalAmountWords ?? undefined,
     pdfUrl: (record as { pdfUrl?: string | null }).pdfUrl ?? undefined,

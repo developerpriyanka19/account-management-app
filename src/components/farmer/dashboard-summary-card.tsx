@@ -20,7 +20,7 @@ import type { FarmerDashboardStats } from "@/lib/farmer-dashboard-stats";
 import { cn } from "@/lib/utils";
 
 const CARD_BASE =
-  "dashboard-card group relative flex flex-col rounded-2xl border border-slate-100 bg-white/70 p-5 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg";
+  "dashboard-card group relative flex h-full flex-col rounded-xl border border-slate-100 bg-white/70 px-3.5 py-3 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
 
 type KpiCardProps = {
   icon: LucideIcon;
@@ -45,31 +45,31 @@ function KpiCard({
 
   return (
     <article className={cn(CARD_BASE, className)}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
             iconClassName,
           )}
         >
-          <Icon className="h-5 w-5" aria-hidden />
+          <Icon className="h-4 w-4" aria-hidden />
         </div>
         {progressPct != null ? (
-          <span className="text-xs font-medium tabular-nums text-slate-400">
+          <span className="text-[10px] font-medium tabular-nums text-slate-400">
             {Math.round(progressPct)}%
           </span>
         ) : null}
       </div>
       <p
-        className="dashboard-card-value mt-4 text-2xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-3xl"
+        className="dashboard-card-value mt-2 text-lg font-bold tabular-nums tracking-tight text-slate-900 sm:text-xl"
         aria-label={`${title}: ${value}`}
       >
         {value}
       </p>
-      <p className="mt-1 text-sm font-medium text-slate-600">{title}</p>
-      {subtitle ? <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p> : null}
+      <p className="mt-0.5 text-xs font-medium leading-snug text-slate-600">{title}</p>
+      {subtitle ? <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{subtitle}</p> : null}
       {progressPct != null ? (
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100">
           <div
             className="h-full rounded-full bg-[#2563EB] transition-all duration-500"
             style={{ width: `${progressPct}%` }}
@@ -102,27 +102,27 @@ function NaBreakdownCard({
   return (
     <article className={cn(CARD_BASE, "hover:translate-y-0", className)}>
       <div className="flex items-center gap-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-          <TrendingUp className="h-5 w-5" aria-hidden />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+          <TrendingUp className="h-4 w-4" aria-hidden />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">NA Breakdown</h2>
-          <p className="text-xs text-slate-400">Non-agricultural fee components</p>
+          <h2 className="text-xs font-semibold text-slate-900">NA Breakdown</h2>
+          <p className="text-[11px] text-slate-400">Non-agricultural fee components</p>
         </div>
       </div>
-      <div className="mt-5 space-y-0">
+      <div className="mt-3 space-y-0">
         {rows.map((row, index) => {
           const Icon = row.icon;
           const isSmall = Math.abs(row.value) < 100_000;
           return (
             <div key={row.label}>
               {index > 0 ? <hr className="border-slate-100" /> : null}
-              <div className="flex items-center justify-between gap-4 py-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-                  <span className="text-sm text-slate-600">{row.label}</span>
+              <div className="flex items-center justify-between gap-3 py-1.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                  <span className="text-xs text-slate-600">{row.label}</span>
                 </div>
-                <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-900">
                   {isSmall
                     ? formatDashboardCurrency(row.value)
                     : formatDashboardCurrencyCompact(row.value)}
@@ -132,9 +132,9 @@ function NaBreakdownCard({
           );
         })}
         <hr className="border-slate-200" />
-        <div className="flex items-center justify-between gap-4 pt-3">
-          <span className="text-sm font-semibold uppercase tracking-wide text-slate-700">Total</span>
-          <span className="text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">
+        <div className="flex items-center justify-between gap-3 pt-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">Total</span>
+          <span className="text-base font-bold tabular-nums text-slate-900 sm:text-lg">
             {formatDashboardCurrencyCompact(stats.naTotal)}
           </span>
         </div>
@@ -158,8 +158,8 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
       : "Registered farmers";
 
   return (
-    <section className="dashboard-summary-grid space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <section className="dashboard-summary-grid space-y-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard
           icon={Users}
           iconClassName="bg-blue-50 text-blue-600"
@@ -179,7 +179,7 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
           iconClassName="bg-amber-50 text-amber-600"
           value={formatDashboardCurrencyCompact(stats.totalAesPaid)}
           title="Total AES Paid"
-          subtitle="AES advance + shortage totals"
+          subtitle="Advance + shortage cheques"
         />
         <KpiCard
           icon={Landmark}
@@ -204,7 +204,7 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           icon={Wallet}
           iconClassName="bg-blue-50 text-blue-600"
@@ -221,9 +221,8 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
           subtitle="Power of Attorney fees"
           progress={gpaShare}
         />
+        <NaBreakdownCard stats={stats} />
       </div>
-
-      <NaBreakdownCard stats={stats} />
     </section>
   );
 }
@@ -240,8 +239,8 @@ export function DashboardSummaryCard({
 }) {
   return (
     <article className={cn(CARD_BASE, className)}>
-      <p className="text-sm font-medium text-slate-500">{title}</p>
-      <p className="dashboard-card-value mt-3 text-2xl font-bold tabular-nums text-slate-900">
+      <p className="text-xs font-medium text-slate-500">{title}</p>
+      <p className="dashboard-card-value mt-2 text-lg font-bold tabular-nums text-slate-900">
         {value}
       </p>
     </article>

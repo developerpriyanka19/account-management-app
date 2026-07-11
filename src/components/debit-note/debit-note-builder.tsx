@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Printer, Save, X } from "lucide-react";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Dialog,
   DialogContent,
@@ -16,12 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BankAccountSelect } from "@/components/bank/bank-account-select";
-import { saveDebitNote } from "@/actions/debit-note-actions";
+import { LocationFarmerSelector } from "@/components/shared/location-farmer-selector";
+import { saveDebitNote, getNextDebitNoteNumber } from "@/actions/debit-note-actions";
 import {
   generateDebitNotePdf,
   printDebitNotePdf,
 } from "@/components/debit-note/debit-note-pdf-generator";
-import { DebitNoteTemplate } from "@/components/debit-note/debit-note-template";
+import { DebitNotePdfPreview } from "@/components/debit-note/debit-note-pdf-preview";
 import { PreviewDialog } from "@/components/preview/preview-dialog";
 import type {
   AtlPoaRow,
@@ -30,7 +32,13 @@ import type {
   DebitNotePayload,
   LandConversionRow,
 } from "@/lib/debit-note-types";
-import { DebitNoteType } from "@/lib/debit-note-types";
+import { DebitNoteType, isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import { todayStorageDate } from "@/lib/date-format";
+import {
+  type DocumentLocation,
+  type LocationField,
+  validateDocumentLocation,
+} from "@/lib/location-cascade";
 import {
   bankFromSelection,
   initialBankSelection,
@@ -66,20 +74,26 @@ function toNumber(v: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function buildCustomerAddress(customer: DebitNoteCustomerOption | undefined) {
-  if (!customer) return "";
+function buildCustomerAddressLines(customer: DebitNoteCustomerOption | undefined): string[] {
+  if (!customer) return [];
   return [
-    customer.companyAddress,
     customer.buildingNumber,
     customer.street,
     customer.locality,
     customer.village,
     customer.district,
     customer.state,
-    customer.pincode,
-  ]
-    .filter(Boolean)
-    .join(", ");
+    customer.pincode ? `PIN ${customer.pincode}` : null,
+  ].filter((v): v is string => Boolean(v?.trim()));
+}
+
+function buildCustomerAddress(customer: DebitNoteCustomerOption | undefined) {
+  if (!customer) return "";
+  const lines = [
+    customer.companyAddress,
+    ...buildCustomerAddressLines(customer),
+  ].filter(Boolean);
+  return lines.join(", ");
 }
 
 export function DebitNoteBuilder({
@@ -101,8 +115,9 @@ export function DebitNoteBuilder({
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [customerHighlight, setCustomerHighlight] = useState(0);
-  const [debitNoteNo, setDebitNoteNo] = useState(existing?.debitNoteNo ?? nextNumber);
-  const [date, setDate] = useState(existing?.date ?? new Date().toISOString().slice(0, 10));
+  const [debitNoteNo, setDebitNoteNo] = useState(existing?.debitNoteNo ?? "");
+  const [date, setDate] = useState(existing?.date ?? todayStorageDate());
+  const [state, setState] = useState(existing?.state ?? "");
   const [district, setDistrict] = useState(existing?.district ?? "");
   const [taluk, setTaluk] = useState(existing?.taluk ?? "");
   const [village, setVillage] = useState(existing?.village ?? "");
@@ -112,16 +127,40 @@ export function DebitNoteBuilder({
     initialBankSelection(existing?.bank, banks),
   );
   const [rows, setRows] = useState<(LandConversionRow | AtlPoaRow)[]>(existing?.rows ?? []);
-  const [farmerSearch, setFarmerSearch] = useState("");
-  const [showFarmerList, setShowFarmerList] = useState(false);
   const [pendingFocusRow, setPendingFocusRow] = useState<number | null>(null);
   const [removeRowIndex, setRemoveRowIndex] = useState<number | null>(null);
+  const [locationErrors, setLocationErrors] = useState<
+    Partial<Record<LocationField, string>>
+  >({});
+  const [farmerError, setFarmerError] = useState("");
   const customerBoxRef = useRef<HTMLDivElement>(null);
-  const farmerBoxRef = useRef<HTMLDivElement>(null);
+
+  const location: DocumentLocation = useMemo(
+    () => ({ state, district, taluk, hobbli, village }),
+    [state, district, taluk, hobbli, village],
+  );
 
   const selectedFarmerIds = useMemo(
-    () => new Set(rows.map((r) => r.farmerId).filter((id): id is number => id != null)),
+    () =>
+      rows
+        .map((r) => r.farmerId)
+        .filter((id): id is number => id != null),
     [rows],
+  );
+
+  const locatableFarmers = useMemo(
+    () =>
+      farmers.map((f) => ({
+        id: f.id,
+        label: f.farmerName,
+        surveyNo: f.surveyNo,
+        state: f.state,
+        district: f.district,
+        taluk: f.taluk,
+        hobbli: f.hobbli,
+        village: f.village,
+      })),
+    [farmers],
   );
 
   const customer = useMemo(
@@ -134,15 +173,6 @@ export function DebitNoteBuilder({
     const gst = subtotal * 0;
     return { subtotal, gst, total: subtotal + gst };
   }, [rows]);
-
-  const filteredFarmers = useMemo(() => {
-    const q = farmerSearch.trim().toLowerCase();
-    const available = farmers.filter((f) => !selectedFarmerIds.has(f.id));
-    if (!q) return available.slice(0, 25);
-    return available
-      .filter((f) => f.farmerName.toLowerCase().includes(q))
-      .slice(0, 25);
-  }, [farmers, farmerSearch, selectedFarmerIds]);
 
   const filteredCustomers = useMemo(() => {
     const q = customerSearch.trim().toLowerCase();
@@ -160,9 +190,6 @@ export function DebitNoteBuilder({
     function onPointerDown(e: MouseEvent) {
       if (!customerBoxRef.current?.contains(e.target as Node)) {
         setShowCustomerList(false);
-      }
-      if (!farmerBoxRef.current?.contains(e.target as Node)) {
-        setShowFarmerList(false);
       }
     }
     document.addEventListener("mousedown", onPointerDown);
@@ -188,6 +215,7 @@ export function DebitNoteBuilder({
       customerId,
       debitNoteNo,
       date,
+      state,
       district,
       taluk,
       village,
@@ -207,27 +235,33 @@ export function DebitNoteBuilder({
         branchName: "",
       },
     };
-  }, [debitNoteId, type, customerId, debitNoteNo, date, district, taluk, village, hobbli, remarks, totals, rows, bankDetailsId, banks, existing?.bank]);
+  }, [debitNoteId, type, customerId, debitNoteNo, date, state, district, taluk, village, hobbli, remarks, totals, rows, bankDetailsId, banks, existing?.bank]);
 
   const pdfCtx = useMemo(
     () => ({
-      customerName: customer?.label || "",
+      customerName:
+        customer?.companyName?.trim() ||
+        customer?.label ||
+        "",
       gstNumber: customer?.gstNumber || "",
       address: buildCustomerAddress(customer),
+      addressLines: buildCustomerAddressLines(customer),
     }),
     [customer],
   );
 
-  function addRowFromFarmer(farmerId: number) {
-    const f = farmers.find((row) => row.id === farmerId);
-    if (!f) return;
-    if (type === DebitNoteType.LAND_CONVERSION) {
-      const row: LandConversionRow = {
+  function createRowFromFarmer(f: DebitNoteFarmerOption): LandConversionRow | AtlPoaRow {
+    if (isLandConversionStyleDebitNote(type)) {
+      return {
         farmerId: f.id,
         farmerName: f.farmerName,
         surveyNo: f.surveyNo || "",
         acres: f.leaseExtentAcre ?? f.rtcExtentAcre ?? null,
         guntas: f.leaseExtentGunta ?? f.rtcExtentGunta ?? null,
+        rtcAcre: f.rtcExtentAcre,
+        rtcGunta: f.rtcExtentGunta,
+        leaseAcre: f.leaseExtentAcre,
+        leaseGunta: f.leaseExtentGunta,
         landConversionChallanRefNo: "",
         landConversionFee: 0,
         podiChallanRefNo: "",
@@ -237,12 +271,8 @@ export function DebitNoteBuilder({
         total: 0,
         remarks: "",
       };
-      setRows((prev) => [...prev, row]);
-      setFarmerSearch("");
-      setShowFarmerList(false);
-      return;
     }
-    const row: AtlPoaRow = {
+    return {
       farmerId: f.id,
       farmerName: f.farmerName,
       surveyNo: f.surveyNo || "",
@@ -260,38 +290,87 @@ export function DebitNoteBuilder({
       total: 0,
       remarks: "",
     };
+  }
+
+  function syncRowsFromSelection(ids: number[]) {
+    setFarmerError("");
     setRows((prev) => {
-      const next = [...prev, row];
-      setPendingFocusRow(next.length - 1);
+      const byFarmer = new Map(
+        prev
+          .filter((r) => r.farmerId != null)
+          .map((r) => [r.farmerId as number, r]),
+      );
+      const next: (LandConversionRow | AtlPoaRow)[] = [];
+      for (const id of ids) {
+        const existingRow = byFarmer.get(id);
+        if (existingRow) {
+          next.push(existingRow);
+          continue;
+        }
+        const farmer = farmers.find((f) => f.id === id);
+        if (farmer) next.push(createRowFromFarmer(farmer));
+      }
+      if (
+        !isLandConversionStyleDebitNote(type) &&
+        next.length > prev.length
+      ) {
+        setPendingFocusRow(next.length - 1);
+      }
       return next;
     });
-    setFarmerSearch("");
-    setShowFarmerList(false);
+  }
+
+  function toggleFarmer(id: number) {
+    const next = selectedFarmerIds.includes(id)
+      ? selectedFarmerIds.filter((x) => x !== id)
+      : [...selectedFarmerIds, id];
+    syncRowsFromSelection(next);
+  }
+
+  function handleLocationUpdate(next: DocumentLocation) {
+    setState(next.state);
+    setDistrict(next.district);
+    setTaluk(next.taluk);
+    setHobbli(next.hobbli);
+    setVillage(next.village);
+    setLocationErrors((prev) => {
+      const cleared = { ...prev };
+      delete cleared.state;
+      delete cleared.district;
+      delete cleared.taluk;
+      delete cleared.hobbli;
+      delete cleared.village;
+      return cleared;
+    });
   }
 
   function selectCustomer(nextId: number) {
     setCustomerId(nextId);
-    const selected = customers.find((c) => c.id === nextId);
-    if (selected) {
-      setDistrict(selected.district ?? "");
-      setTaluk(selected.taluk ?? selected.locality ?? "");
-      setVillage(selected.village ?? "");
-      setHobbli(selected.hobbli ?? selected.street ?? "");
-      setCustomerSearch("");
-    }
+    setCustomerSearch("");
     setShowCustomerList(false);
-  }
-
-  function toggleFarmerSelection(farmerId: number, checked: boolean) {
-    if (!checked) return;
-    if (selectedFarmerIds.has(farmerId)) return;
-    addRowFromFarmer(farmerId);
   }
 
   function confirmRemoveFarmer() {
     if (removeRowIndex == null) return;
     setRows((prev) => prev.filter((_, i) => i !== removeRowIndex));
     setRemoveRowIndex(null);
+  }
+
+  function validateLocationAndFarmers(): boolean {
+    const locErrs = validateDocumentLocation(location);
+    setLocationErrors(locErrs);
+    const hasLocErr = Object.keys(locErrs).length > 0;
+    if (hasLocErr) {
+      toast.error("Select a complete location before continuing.");
+      return false;
+    }
+    if (selectedFarmerIds.length === 0) {
+      setFarmerError("Select at least one farmer.");
+      toast.error("Select at least one farmer.");
+      return false;
+    }
+    setFarmerError("");
+    return true;
   }
 
   function farmerNameDisplay(name: string) {
@@ -347,6 +426,7 @@ export function DebitNoteBuilder({
       toast.error("Select customer and add rows.");
       return;
     }
+    if (!validateLocationAndFarmers()) return;
     if (!payload.bank.bankDetailsId) {
       toast.error("Select a bank account.");
       return;
@@ -373,11 +453,38 @@ export function DebitNoteBuilder({
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <Label>Debit Note Number</Label>
-            <Input value={debitNoteNo} onChange={(e) => setDebitNoteNo(e.target.value)} className="mt-1" />
+            <div className="mt-1 flex gap-2">
+              <Input
+                value={debitNoteNo}
+                onChange={(e) => setDebitNoteNo(e.target.value)}
+                placeholder="Enter debit note number"
+                className="flex-1"
+              />
+              {!existing ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => {
+                    void getNextDebitNoteNumber(type)
+                      .then((suggested) => setDebitNoteNo(suggested))
+                      .catch(() => setDebitNoteNo(nextNumber));
+                  }}
+                >
+                  Suggest
+                </Button>
+              ) : null}
+            </div>
           </div>
           <div>
             <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1" />
+            <div className="mt-1">
+              <DateInput
+                value={date}
+                onChange={(value) => setDate(value)}
+                aria-label="Debit note date"
+              />
+            </div>
           </div>
           <div className="lg:col-span-2">
             <Label>Customer</Label>
@@ -435,10 +542,6 @@ export function DebitNoteBuilder({
               ) : null}
             </div>
           </div>
-          <div><Label>District</Label><Input value={district} onChange={(e) => setDistrict(e.target.value)} className="mt-1" /></div>
-          <div><Label>Taluk</Label><Input value={taluk} onChange={(e) => setTaluk(e.target.value)} className="mt-1" /></div>
-          <div><Label>Village</Label><Input value={village} onChange={(e) => setVillage(e.target.value)} className="mt-1" /></div>
-          <div><Label>Hobli</Label><Input value={hobbli} onChange={(e) => setHobbli(e.target.value)} className="mt-1" /></div>
           <div className="md:col-span-2 lg:col-span-4">
             <BankAccountSelect
               banks={banks}
@@ -460,69 +563,21 @@ export function DebitNoteBuilder({
       </section>
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4">
-        <div className="relative z-[50] mb-3">
-          <Label>Add Farmer Row</Label>
-          <div ref={farmerBoxRef} className="relative mt-1 w-full max-w-[620px]">
-            <Input
-              value={farmerSearch}
-              onChange={(e) => {
-                setFarmerSearch(e.target.value);
-                setShowFarmerList(true);
-              }}
-              onFocus={() => setShowFarmerList(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setShowFarmerList(false);
-                }
-              }}
-              placeholder="Search farmer name..."
-            />
-            {showFarmerList ? (
-              <div
-                className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 flex max-h-[260px] flex-col overflow-hidden rounded-lg border border-[#D1D5DB] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-                role="listbox"
-                aria-label="Farmer search results"
-              >
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  {filteredFarmers.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-[#6B7280]">No farmers found.</p>
-                  ) : (
-                    filteredFarmers.map((f) => (
-                      <label
-                        key={f.id}
-                        className="flex cursor-pointer items-center gap-2 border-b border-[#F3F4F6] px-3 py-2 text-xs hover:bg-[#F9FAFB]"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-3.5 w-3.5 rounded border-[#D1D5DB]"
-                          checked={false}
-                          onChange={(e) => toggleFarmerSelection(f.id, e.target.checked)}
-                        />
-                        <span>
-                          <span className="font-medium">{f.farmerName}</span>
-                          <span className="ml-1 text-[#6B7280]">- {f.surveyNo || "—"}</span>
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-                <div className="sticky bottom-0 shrink-0 border-t border-[#E5E7EB] bg-white px-2.5 py-2.5 text-right">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowFarmerList(false)}
-                  >
-                    Done
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <LocationFarmerSelector
+          farmers={locatableFarmers}
+          location={location}
+          onLocationChange={handleLocationUpdate}
+          selectedIds={selectedFarmerIds}
+          onToggle={toggleFarmer}
+          onSetSelectedIds={syncRowsFromSelection}
+          errors={locationErrors}
+          farmerError={farmerError}
+        />
+      </section>
 
+      <section className="rounded-lg border border-[#D1D5DB] bg-white p-4">
         <div className="relative z-0 max-h-[65vh] overflow-auto rounded border border-[#E5E7EB]">
-          {type === DebitNoteType.LAND_CONVERSION ? (
+          {isLandConversionStyleDebitNote(type) ? (
             <table
               className="border-separate border-spacing-0 text-xs"
               style={{ minWidth: `${1700 + DN_ACTION_COL_W}px` }}
@@ -698,7 +753,14 @@ export function DebitNoteBuilder({
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input data-focus-field="atl" data-row-index={i} type="number" value={r.atlCharges} onChange={(e) => updateAtlRow(i, { atlCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.poaCharges} onChange={(e) => updateAtlRow(i, { poaCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.chequeNo} onChange={(e) => updateAtlRow(i, { chequeNo: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="date" value={r.chequeDate} onChange={(e) => updateAtlRow(i, { chequeDate: e.target.value })} className="h-8" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <DateInput
+                          value={r.chequeDate}
+                          onChange={(value) => updateAtlRow(i, { chequeDate: value })}
+                          className="h-8"
+                          aria-label="Cheque date"
+                        />
+                      </td>
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.chequeAmount} onChange={(e) => updateAtlRow(i, { chequeAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.bankName} onChange={(e) => updateAtlRow(i, { bankName: e.target.value })} className="h-8" /></td>
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.cashAmount} onChange={(e) => updateAtlRow(i, { cashAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
@@ -768,12 +830,24 @@ export function DebitNoteBuilder({
       </section>
 
       <div className="top-actions no-print sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg">
-        <Button type="button" variant="outline" onClick={() => setShowPreview(true)} disabled={!payload}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            if (!validateLocationAndFarmers()) return;
+            setShowPreview(true);
+          }}
+          disabled={!payload}
+        >
           <Eye className="h-4 w-4" /> Preview
         </Button>
         <Button
           type="button"
-          onClick={() => payload && void generateDebitNotePdf(payload, pdfCtx)}
+          onClick={() => {
+            if (!payload) return;
+            if (!validateLocationAndFarmers()) return;
+            void generateDebitNotePdf(payload, pdfCtx);
+          }}
           disabled={!payload}
         >
           <Download className="h-4 w-4" /> Download PDF
@@ -781,7 +855,11 @@ export function DebitNoteBuilder({
         <Button
           type="button"
           variant="outline"
-          onClick={() => payload && void printDebitNotePdf(payload, pdfCtx)}
+          onClick={() => {
+            if (!payload) return;
+            if (!validateLocationAndFarmers()) return;
+            void printDebitNotePdf(payload, pdfCtx);
+          }}
           disabled={!payload}
         >
           <Printer className="h-4 w-4" /> Open PDF to Print
@@ -819,14 +897,7 @@ export function DebitNoteBuilder({
         title="Debit Note Preview"
         className="bg-[#F3F4F6]"
       >
-        {payload ? (
-          <DebitNoteTemplate
-            data={payload}
-            customerName={pdfCtx.customerName}
-            gstNumber={pdfCtx.gstNumber}
-            address={pdfCtx.address}
-          />
-        ) : null}
+        {payload ? <DebitNotePdfPreview data={payload} ctx={pdfCtx} /> : null}
       </PreviewDialog>
     </div>
   );

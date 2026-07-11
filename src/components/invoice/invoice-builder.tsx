@@ -13,6 +13,7 @@ import {
 import { PreviewPanel } from "@/components/preview/preview-panel";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -294,12 +295,14 @@ export function InvoiceBuilder({
             </div>
             <div>
               <Label>Invoice date</Label>
-              <Input
-                type="date"
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
-                className="mt-1 h-9"
-              />
+              <div className="mt-1">
+                <DateInput
+                  value={invoiceDate}
+                  onChange={(value) => setInvoiceDate(value)}
+                  className="h-9"
+                  aria-label="Invoice date"
+                />
+              </div>
             </div>
             {category === "na" ? (
               <div>

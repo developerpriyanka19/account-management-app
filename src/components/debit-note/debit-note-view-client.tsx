@@ -6,7 +6,7 @@ import {
   generateDebitNotePdf,
   printDebitNotePdf,
 } from "@/components/debit-note/debit-note-pdf-generator";
-import { DebitNoteTemplate } from "@/components/debit-note/debit-note-template";
+import { DebitNotePdfPreview } from "@/components/debit-note/debit-note-pdf-preview";
 import { Button } from "@/components/ui/button";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 
@@ -15,6 +15,7 @@ type Props = {
   customerName: string;
   gstNumber: string;
   address: string;
+  addressLines?: string[];
   autoDownload?: boolean;
   autoPrint?: boolean;
 };
@@ -24,12 +25,13 @@ export function DebitNoteViewClient({
   customerName,
   gstNumber,
   address,
+  addressLines,
   autoDownload = false,
   autoPrint = false,
 }: Props) {
   const ctx = useMemo(
-    () => ({ customerName, gstNumber, address }),
-    [customerName, gstNumber, address],
+    () => ({ customerName, gstNumber, address, addressLines }),
+    [customerName, gstNumber, address, addressLines],
   );
 
   useEffect(() => {
@@ -71,14 +73,7 @@ export function DebitNoteViewClient({
           Open PDF to Print
         </Button>
       </div>
-      <div className="no-print">
-        <DebitNoteTemplate
-          data={document}
-          customerName={customerName}
-          gstNumber={gstNumber}
-          address={address}
-        />
-      </div>
+      <DebitNotePdfPreview data={document} ctx={ctx} />
     </div>
   );
 }

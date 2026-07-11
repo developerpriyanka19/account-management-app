@@ -17,6 +17,11 @@ export function k2ChallanFromCustomer(customer: Customer): string {
 /** String defaults for every customer form field (edit / error replay). */
 export function customerToFormValues(customer: Customer): Record<string, string> {
   return {
+    state: customer.state ?? "",
+    district: customer.district ?? "",
+    taluk: customer.taluk ?? "",
+    hobbli: customer.hobbli ?? "",
+    village: customer.village ?? "",
     farmerName: customer.farmerName ?? "",
     changedFarmerName: customer.changedFarmerName ?? "",
     vendorCode: customer.vendorCode ?? "",
@@ -82,5 +87,13 @@ export function customerToFormValues(customer: Customer): Record<string, string>
 }
 
 export function emptyCustomerFormValues(): Record<string, string> {
-  return Object.fromEntries(CUSTOMER_FORM_FIELD_NAMES.map((k) => [k, ""]));
+  const keys = [
+    "state",
+    "district",
+    "taluk",
+    "hobbli",
+    "village",
+    ...CUSTOMER_FORM_FIELD_NAMES,
+  ];
+  return Object.fromEntries(keys.map((k) => [k, ""]));
 }

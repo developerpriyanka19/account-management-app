@@ -16,6 +16,7 @@ import {
 import { CUSTOMER_FIELD_LAYOUT } from "@/lib/customer-field-layout";
 import { k2ChallanFromCustomer } from "@/lib/customer-serialize";
 import type { CustomerFormFieldErrors } from "@/lib/customer-form-validation";
+import { DateInput } from "@/components/ui/date-input";
 
 const inputClass =
   "block w-full rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition placeholder:text-[#6B7280] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20";
@@ -257,12 +258,11 @@ export function CustomerAlignedRows(props: Props) {
                         </div>
                       </>
                     ) : row.inputType === "date" ? (
-                      <input
+                      <DateInput
                         id={id}
                         name={id}
-                        type="date"
                         defaultValue={formValues[id] ?? ""}
-                        onChange={(ev) => updateField(id, ev.target.value)}
+                        onChange={(iso) => updateField(id, iso)}
                         className={inputClass}
                       />
                     ) : row.inputType === "number" ? (

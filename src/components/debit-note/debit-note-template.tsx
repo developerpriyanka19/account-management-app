@@ -3,7 +3,7 @@ import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { PdfPage } from "@/components/pdf/pdf-page";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
-import { DebitNoteType } from "@/lib/debit-note-types";
+import { isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
 
 type Props = {
   data: DebitNotePayload;
@@ -121,7 +121,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
   const totalGunta = rows.reduce((s, r) => s + (r.guntas || 0), 0);
   const headerProps = { data, customerName, gstNumber, address };
 
-  if (data.type === DebitNoteType.LAND_CONVERSION) {
+  if (isLandConversionStyleDebitNote(data.type)) {
     const detailPages = chunkRows(rows, 14);
     const hasDetail = detailPages.some((page) => page.length > 0);
 

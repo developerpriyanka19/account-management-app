@@ -3,6 +3,7 @@ import {
   toFiniteNumber,
   type InvoiceTotals,
 } from "@/lib/invoice-calculations";
+import { toDisplayDate } from "@/lib/date-format";
 import { resolveCustomerCompanyName } from "@/lib/invoice-customer-format";
 import type { InvoiceBillingCustomerOption } from "@/lib/invoice-types";
 import type { QuotationDocument, QuotationFormInput, QuotationItem } from "@/lib/quotation-types";
@@ -112,7 +113,5 @@ export function suggestQuotationRefNo(date = new Date()): string {
 }
 
 export function formatQuotationDateDisplay(isoDate: string): string {
-  const parts = isoDate.split("-");
-  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  return isoDate;
+  return toDisplayDate(isoDate) || isoDate;
 }

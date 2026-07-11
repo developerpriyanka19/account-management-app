@@ -3,9 +3,9 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { getDatabaseUrl } from "@/lib/database-url";
 
 /** Bump when Prisma schema changes so dev HMR does not keep a stale client. */
-const PRISMA_CLIENT_GENERATION = "20260610120000_farmer_dd_and_balance_rent_fields";
+const PRISMA_CLIENT_GENERATION = "20260711180000_debit_note_state";
 
-/** Customer columns added in 20260610120000_farmer_dd_and_balance_rent_fields. */
+/** Customer columns that must exist in the generated client. */
 const REQUIRED_CUSTOMER_FIELDS = [
   "bankLoanDdDate",
   "bankLoanDdNo",
@@ -14,6 +14,11 @@ const REQUIRED_CUSTOMER_FIELDS = [
   "rentalDdChequeNo",
   "rentalDdBankName",
   "balanceRentChequeNo",
+  "state",
+  "district",
+  "taluk",
+  "hobbli",
+  "village",
 ] as const;
 
 const globalForPrisma = globalThis as unknown as {

@@ -12,6 +12,7 @@ type DebitNoteContext = {
   customerName: string;
   gstNumber: string;
   address: string;
+  addressLines?: string[];
 };
 
 type Props = {

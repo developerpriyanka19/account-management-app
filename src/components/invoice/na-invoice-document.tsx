@@ -4,6 +4,7 @@ import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { PdfPage } from "@/components/pdf/pdf-page";
 import { COMPANY_INVOICE_HEADER, getNaInvoiceSubtypeConfig } from "@/lib/invoice-config";
+import { toDisplayDate } from "@/lib/date-format";
 import { InvoiceBrandHeader } from "./invoice-brand-header";
 import { InvoiceMetadataRow } from "./invoice-metadata-row";
 import {
@@ -11,6 +12,7 @@ import {
   naInvoiceAmountInWords,
   naLineAmount,
   prepareNaInvoiceDocument,
+  resolveNaHsnSacCode,
   resolveNaRatePerAcre,
 } from "@/lib/na-invoice-layout";
 import {
@@ -30,12 +32,6 @@ const td =
   "border border-black px-0.5 py-0.5 align-middle text-[7px] leading-tight text-black break-words bg-white";
 const tdNum = `${td} text-center tabular-nums`;
 const tdRight = `${td} text-right tabular-nums`;
-
-function formatDisplayDate(isoDate: string): string {
-  const parts = isoDate.split("-");
-  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  return isoDate;
-}
 
 function BillToBlock({ data }: { data: InvoiceDocumentData }) {
   const lines = buildBillToLines(data.customer);
@@ -74,6 +70,7 @@ export function NaInvoiceDocument({ data }: Props) {
   const config = getNaInvoiceSubtypeConfig(prepared.subType);
   const rate = resolveNaRatePerAcre(prepared);
   const rateLabel = formatRatePerAcreDisplay(rate);
+  const hsn = resolveNaHsnSacCode(prepared);
   const rows = prepared.lines;
   const amountWords = naInvoiceAmountInWords(prepared);
   const { totals } = prepared;
@@ -85,6 +82,7 @@ export function NaInvoiceDocument({ data }: Props) {
     state: prepared.state?.trim() ?? "",
   };
   const locationItems = invoiceLocationEntries(location);
+  const poDateDisplay = toDisplayDate(prepared.poDate) || "";
 
   return (
     <PdfPage
@@ -94,10 +92,12 @@ export function NaInvoiceDocument({ data }: Props) {
       header={
         <>
           <header className="border-b border-[#9ACA66] pb-2">
-            <InvoiceBrandHeader />
+            <InvoiceBrandHeader documentTitle="NA INVOICE" />
             <InvoiceMetadataRow
               invoiceNumber={prepared.invoiceNumber}
-              invoiceDate={formatDisplayDate(prepared.invoiceDate)}
+              invoiceDate={toDisplayDate(prepared.invoiceDate) || prepared.invoiceDate}
+              poNumber={prepared.poNumber}
+              poDate={poDateDisplay}
               className="text-[8px]"
             />
           </header>
@@ -154,7 +154,7 @@ export function NaInvoiceDocument({ data }: Props) {
           <thead>
             <tr>
               <th colSpan={10} className={`${th} py-1.5 text-[16px] font-bold`}>
-                NA INVOICE FORMAT
+                NA INVOICE
               </th>
             </tr>
             <tr>
@@ -202,7 +202,7 @@ export function NaInvoiceDocument({ data }: Props) {
                 <tr key={`${line.farmerId ?? "x"}-${index}`}>
                   <td className={tdNum}>{index + 1}</td>
                   <td className={td}>{line.farmerName || line.description || "—"}</td>
-                  <td className={tdNum}>{config.hsnSaacCode}</td>
+                  <td className={tdNum}>{hsn || "—"}</td>
                   <td className={td}>{line.surveyNo || "—"}</td>
                   <td className={tdNum}>
                     {line.acres != null ? formatInvoiceDecimal(line.acres) : "—"}

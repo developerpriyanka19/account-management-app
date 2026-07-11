@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { cellText, formatDateTime } from "@/lib/customer-display";
 import { getCompanyPrintTitle } from "@/lib/company-print";
 import { FarmerDebitNotesDisplay } from "@/components/farmer/farmer-debit-notes-display";
+import { FarmerLocationFields } from "@/components/farmer/farmer-location-fields";
 import { fetchFarmerDebitNotesForCustomer } from "@/lib/farmer-debit-note-queries";
 import { CustomerAlignedRows } from "../customer-aligned-rows";
 import { CustomerDetailToolbar } from "./customer-detail-toolbar";
@@ -72,6 +73,18 @@ export default async function CustomerDetailPage({ params }: PageProps) {
         </header>
 
         <div className="flex flex-col gap-4">
+          <CustomersContentCard>
+            <FarmerLocationFields
+              mode="display"
+              displayValues={{
+                state: customer.state,
+                district: customer.district,
+                taluk: customer.taluk,
+                hobbli: customer.hobbli,
+                village: customer.village,
+              }}
+            />
+          </CustomersContentCard>
           <CustomersContentCard>
             <CustomerAlignedRows mode="display" customer={customer} />
           </CustomersContentCard>

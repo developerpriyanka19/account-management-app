@@ -5,9 +5,9 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
-import type { InvoiceFarmerOption } from "@/lib/invoice-types";
+import type { LocatableFarmer } from "@/lib/location-cascade";
 
-function farmerHaystack(f: InvoiceFarmerOption): string {
+function farmerHaystack(f: LocatableFarmer): string {
   return [f.label, f.surveyNo, f.newSurveyNo, f.vendorCode]
     .filter(Boolean)
     .join(" ")
@@ -15,13 +15,22 @@ function farmerHaystack(f: InvoiceFarmerOption): string {
 }
 
 type Props = {
-  farmers: InvoiceFarmerOption[];
+  farmers: LocatableFarmer[];
   selectedIds: number[];
   onToggle: (id: number) => void;
+  onSetSelectedIds?: (ids: number[]) => void;
   disabled?: boolean;
+  emptyMessage?: string;
 };
 
-export function FarmerSearchList({ farmers, selectedIds, onToggle, disabled }: Props) {
+export function FarmerSearchList({
+  farmers,
+  selectedIds,
+  onToggle,
+  onSetSelectedIds,
+  disabled,
+  emptyMessage = "No farmers found",
+}: Props) {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 300);
 
@@ -31,7 +40,15 @@ export function FarmerSearchList({ farmers, selectedIds, onToggle, disabled }: P
     return farmers.filter((f) => farmerHaystack(f).includes(q));
   }, [farmers, debouncedQuery]);
 
+  const allFarmerIds = useMemo(() => farmers.map((f) => f.id), [farmers]);
+  const allSelected =
+    allFarmerIds.length > 0 && allFarmerIds.every((id) => selectedIds.includes(id));
   const selectedCount = selectedIds.length;
+
+  function toggleSelectAll() {
+    if (!onSetSelectedIds || disabled) return;
+    onSetSelectedIds(allSelected ? [] : allFarmerIds);
+  }
 
   return (
     <div className="mt-3 flex flex-col">
@@ -60,12 +77,32 @@ export function FarmerSearchList({ farmers, selectedIds, onToggle, disabled }: P
         role="listbox"
         aria-multiselectable
       >
+        <li role="option" aria-selected={allSelected}>
+          <label
+            className={cn(
+              "flex cursor-pointer items-center gap-3 rounded-md border border-transparent px-2.5 py-2 font-medium transition-colors",
+              allSelected && "border-[#BFDBFE] bg-[#EFF6FF]",
+              !allSelected && "hover:border-[#E5E7EB] hover:bg-[#F9FAFB]",
+              disabled && "cursor-not-allowed opacity-60",
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={allSelected}
+              disabled={disabled || farmers.length === 0}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 shrink-0 rounded border-[#D1D5DB] text-[#2563EB] focus:ring-[#2563EB]"
+            />
+            <span className="text-sm text-[#111827]">Select All</span>
+          </label>
+        </li>
+
         {filtered.length === 0 ? (
-          <li className="px-3 py-8 text-center text-sm text-[#6B7280]">No farmers found</li>
+          <li className="px-3 py-8 text-center text-sm text-[#6B7280]">{emptyMessage}</li>
         ) : (
           filtered.map((f) => {
             const checked = selectedIds.includes(f.id);
-            const villageHint = f.newSurveyNo?.trim();
+            const surveyHint = f.surveyNo?.trim();
             return (
               <li key={f.id} role="option" aria-selected={checked}>
                 <label
@@ -86,8 +123,7 @@ export function FarmerSearchList({ farmers, selectedIds, onToggle, disabled }: P
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-[#111827]">{f.label}</span>
                     <span className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-[#6B7280]">
-                      {f.surveyNo ? <span>Survey: {f.surveyNo}</span> : null}
-                      {villageHint ? <span>Village: {villageHint}</span> : null}
+                      {surveyHint ? <span>Survey: {surveyHint}</span> : null}
                     </span>
                   </span>
                 </label>

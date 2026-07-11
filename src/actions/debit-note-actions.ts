@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { debitNoteListPath } from "@/lib/debit-note-routes";
 import type { DebitNotePayload, DebitNoteType } from "@/lib/debit-note-types";
-import { DebitNoteType as DNType, normalizeDebitNoteType } from "@/lib/debit-note-types";
+import { DebitNoteType as DNType, isLandConversionStyleDebitNote, normalizeDebitNoteType } from "@/lib/debit-note-types";
 import { resolveBankSnapshotForSave } from "@/actions/bank-details-actions";
 import { bankSnapshotToPrismaFields } from "@/lib/bank-details-types";
 
@@ -43,6 +43,11 @@ export async function getDebitNoteBuilderData() {
         rtcExtentGunta: true,
         leaseExtentAcre: true,
         leaseExtentGunta: true,
+        state: true,
+        district: true,
+        taluk: true,
+        hobbli: true,
+        village: true,
       },
     }),
     getActiveBankOptions(),
@@ -75,6 +80,11 @@ export async function getDebitNoteBuilderData() {
         rtcExtentGunta: f.rtcExtentGunta,
         leaseExtentAcre: f.leaseExtentAcre,
         leaseExtentGunta: f.leaseExtentGunta,
+        state: f.state,
+        district: f.district,
+        taluk: f.taluk,
+        hobbli: f.hobbli,
+        village: f.village,
       })),
     banks,
   };
@@ -86,7 +96,12 @@ export async function getDebitNoteCustomerOptions() {
 }
 
 export async function getNextDebitNoteNumber(type: DebitNoteType): Promise<string> {
-  const prefix = type === DNType.LAND_CONVERSION ? "DNL" : "DAP";
+  const prefix =
+    type === DNType.LAND_CONVERSION
+      ? "DNL"
+      : type === DNType.LEASE_DEED_EXECUTION
+        ? "DLE"
+        : "DAP";
   const count = await prisma.debitNote.count({ where: { type } });
   return `${prefix}-${String(count + 1).padStart(4, "0")}`;
 }
@@ -128,6 +143,7 @@ export async function saveDebitNote(
       customerId: payload.customerId,
       debitNoteNo: payload.debitNoteNo.trim(),
       date: payload.date,
+      state: payload.state || null,
       district: payload.district || null,
       taluk: payload.taluk || null,
       village: payload.village || null,
@@ -148,10 +164,14 @@ export async function saveDebitNote(
         remarks: row.remarks || null,
         total: row.total || 0,
       };
-      if (payload.type === DNType.LAND_CONVERSION) {
+      if (isLandConversionStyleDebitNote(payload.type)) {
         const r = row as {
           acres: number | null;
           guntas: number | null;
+          rtcAcre?: number | null;
+          rtcGunta?: number | null;
+          leaseAcre?: number | null;
+          leaseGunta?: number | null;
           landConversionFee: number;
           podiFee: number;
           recoveryFee: number;
@@ -163,6 +183,10 @@ export async function saveDebitNote(
           ...common,
           acres: r.acres,
           guntas: r.guntas,
+          rtcAcre: r.rtcAcre ?? null,
+          rtcGunta: r.rtcGunta ?? null,
+          leaseAcre: r.leaseAcre ?? null,
+          leaseGunta: r.leaseGunta ?? null,
           landConversionChallanRefNo: r.landConversionChallanRefNo || null,
           landConversionFee: r.landConversionFee || 0,
           podiChallanRefNo: r.podiChallanRefNo || null,

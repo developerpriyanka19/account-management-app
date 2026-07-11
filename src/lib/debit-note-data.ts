@@ -1,6 +1,9 @@
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 import { snapshotFromRecord } from "@/lib/bank-details-types";
-import { normalizeDebitNoteType, DebitNoteType } from "@/lib/debit-note-types";
+import {
+  isLandConversionStyleDebitNote,
+  normalizeDebitNoteType,
+} from "@/lib/debit-note-types";
 
 type DebitNoteRecord = {
   id: number;
@@ -8,6 +11,7 @@ type DebitNoteRecord = {
   customerId: number;
   debitNoteNo: string;
   date: string;
+  state?: string | null;
   district: string | null;
   taluk: string | null;
   village: string | null;
@@ -53,41 +57,44 @@ type DebitNoteRecord = {
 
 export function debitNoteRecordToPayload(record: DebitNoteRecord): DebitNotePayload {
   const type = normalizeDebitNoteType(record.type);
-  const rows =
-    type === DebitNoteType.LAND_CONVERSION
-      ? record.items.map((item) => ({
-          farmerId: item.farmerId,
-          farmerName: item.farmerName ?? "",
-          surveyNo: item.surveyNo ?? "",
-          acres: item.acres,
-          guntas: item.guntas,
-          landConversionChallanRefNo: item.landConversionChallanRefNo ?? "",
-          landConversionFee: item.landConversionFee ?? 0,
-          podiChallanRefNo: item.podiChallanRefNo ?? "",
-          podiFee: item.podiFee ?? 0,
-          recoveryChallanRefNo: item.recoveryChallanRefNo ?? "",
-          recoveryFee: item.recoveryFee ?? 0,
-          total: item.total ?? 0,
-          remarks: item.remarks ?? "",
-        }))
-      : record.items.map((item) => ({
-          farmerId: item.farmerId,
-          farmerName: item.farmerName ?? "",
-          surveyNo: item.surveyNo ?? "",
-          rtcAcre: item.rtcAcre,
-          rtcGunta: item.rtcGunta,
-          leaseAcre: item.leaseAcre,
-          leaseGunta: item.leaseGunta,
-          atlCharges: item.atlCharges ?? 0,
-          poaCharges: item.poaCharges ?? 0,
-          chequeNo: item.chequePart1No ?? "",
-          chequeDate: item.chequePart1Date ?? "",
-          chequeAmount: item.chequePart1Amount ?? 0,
-          bankName: item.chequePart1BankName ?? "",
-          cashAmount: item.cashAmount ?? 0,
-          total: item.total ?? 0,
-          remarks: item.remarks ?? "",
-        }));
+  const rows = isLandConversionStyleDebitNote(type)
+    ? record.items.map((item) => ({
+        farmerId: item.farmerId,
+        farmerName: item.farmerName ?? "",
+        surveyNo: item.surveyNo ?? "",
+        acres: item.acres,
+        guntas: item.guntas,
+        rtcAcre: item.rtcAcre,
+        rtcGunta: item.rtcGunta,
+        leaseAcre: item.leaseAcre,
+        leaseGunta: item.leaseGunta,
+        landConversionChallanRefNo: item.landConversionChallanRefNo ?? "",
+        landConversionFee: item.landConversionFee ?? 0,
+        podiChallanRefNo: item.podiChallanRefNo ?? "",
+        podiFee: item.podiFee ?? 0,
+        recoveryChallanRefNo: item.recoveryChallanRefNo ?? "",
+        recoveryFee: item.recoveryFee ?? 0,
+        total: item.total ?? 0,
+        remarks: item.remarks ?? "",
+      }))
+    : record.items.map((item) => ({
+        farmerId: item.farmerId,
+        farmerName: item.farmerName ?? "",
+        surveyNo: item.surveyNo ?? "",
+        rtcAcre: item.rtcAcre,
+        rtcGunta: item.rtcGunta,
+        leaseAcre: item.leaseAcre,
+        leaseGunta: item.leaseGunta,
+        atlCharges: item.atlCharges ?? 0,
+        poaCharges: item.poaCharges ?? 0,
+        chequeNo: item.chequePart1No ?? "",
+        chequeDate: item.chequePart1Date ?? "",
+        chequeAmount: item.chequePart1Amount ?? 0,
+        bankName: item.chequePart1BankName ?? "",
+        cashAmount: item.cashAmount ?? 0,
+        total: item.total ?? 0,
+        remarks: item.remarks ?? "",
+      }));
 
   return {
     id: record.id,
@@ -95,6 +102,7 @@ export function debitNoteRecordToPayload(record: DebitNoteRecord): DebitNotePayl
     customerId: record.customerId,
     debitNoteNo: record.debitNoteNo,
     date: record.date,
+    state: record.state ?? "",
     district: record.district ?? "",
     taluk: record.taluk ?? "",
     village: record.village ?? "",

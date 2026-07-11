@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   useReactTable,
   type Column,
   type ColumnDef,
@@ -277,10 +276,9 @@ function getBodyCellStyles(
 
 type Props = {
   customers: CustomerListRow[];
-  nameFilter: string;
 };
 
-export function FarmerTable({ customers, nameFilter }: Props) {
+export function FarmerTable({ customers }: Props) {
   const router = useRouter();
 
   const actionsColumn: ColumnDef<CustomerListRow> = useMemo(
@@ -337,18 +335,8 @@ export function FarmerTable({ customers, nameFilter }: Props) {
     columns,
     state: {
       columnPinning,
-      globalFilter: nameFilter,
-    },
-    globalFilterFn: (row, _columnId, filterValue: string) => {
-      const q = String(filterValue ?? "")
-        .trim()
-        .toLowerCase();
-      if (!q) return true;
-      const name = row.original.farmerName?.trim().toLowerCase() ?? "";
-      return name.includes(q);
     },
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     enableColumnPinning: true,
   });
 

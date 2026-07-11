@@ -19,6 +19,13 @@ model Customer {
   surveyNo          String?
   newSurveyNo       String?
 
+  // --- Location (farmer master; required on create/edit form) ---
+  state    String?
+  district String?
+  taluk    String?
+  hobbli   String?
+  village  String?
+
   // --- RTC ---
   rtcExtentAcre  Float?
   rtcExtentGunta Float?
@@ -172,6 +179,8 @@ model Invoice {
   customerId    Int
   invoiceNumber String   @unique
   invoiceDate   String // YYYY-MM-DD
+  poNumber      String?
+  poDate        String? // YYYY-MM-DD
   district      String?
   taluk         String?
   village       String?
@@ -185,6 +194,7 @@ model Invoice {
   grandTotal    Float    @default(0)
   totalAmountWords String?
   pdfUrl        String?
+  hsnSacCode          String?
   notes         String?
   bankDetailsId Int?
   bankName          String?
@@ -229,10 +239,11 @@ model InvoiceItem {
 
 model DebitNote {
   id            Int      @id @default(autoincrement())
-  type          String   // "LAND_CONVERSION" | "ATL_POA"
+  type          String   // "LAND_CONVERSION" | "ATL_POA" | "LEASE_DEED_EXECUTION"
   customerId    Int
   debitNoteNo   String   @unique
   date          String // YYYY-MM-DD
+  state         String?
   district      String?
   taluk         String?
   village       String?

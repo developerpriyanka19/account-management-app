@@ -77,26 +77,46 @@ export type ShortageTotalsInput = {
   shortageChequeAmount?: string | number | null;
   shortageAmountSecondTime?: string | number | null;
   shortageThirdChequeAmount?: string | number | null;
+  aesAdvanceChequeAmount?: string | number | null;
 };
 
-/** Sum of first, second, and third shortage cheque amounts (empty = 0). */
+/**
+ * Total AES Paid =
+ * AES Shortage Cheque One + Two + Three + AES Advance Per Acre Cheque Amount
+ * (null / empty / invalid → 0).
+ */
 export function computeShortageAmountTotal(input: ShortageTotalsInput): number {
   return (
     parseAsZero(input.shortageChequeAmount) +
     parseAsZero(input.shortageAmountSecondTime) +
-    parseAsZero(input.shortageThirdChequeAmount)
+    parseAsZero(input.shortageThirdChequeAmount) +
+    parseAsZero(input.aesAdvanceChequeAmount)
   );
+}
+
+/** Alias for Total AES Paid — same formula as computeShortageAmountTotal. */
+export function computeTotalAesPaid(input: ShortageTotalsInput): number {
+  return computeShortageAmountTotal(input);
 }
 
 export type ResolvedShortageInput = ShortageTotalsInput & {
   shortageAmountTotal?: string | number | null;
 };
 
-/** Use stored total when present; otherwise sum the three cheque amounts. */
+/**
+ * Prefer recomputing Total AES Paid from source amounts.
+ * Falls back to stored total only when all source fields are empty.
+ */
 export function resolveShortageAmountTotal(input: ResolvedShortageInput): number {
+  const hasSource =
+    input.shortageChequeAmount != null ||
+    input.shortageAmountSecondTime != null ||
+    input.shortageThirdChequeAmount != null ||
+    input.aesAdvanceChequeAmount != null;
+  if (hasSource) return computeShortageAmountTotal(input);
   const stored = parseOptionalNumber(input.shortageAmountTotal);
   if (stored != null) return stored;
-  return computeShortageAmountTotal(input);
+  return 0;
 }
 
 /** Lease Deed K2 Challan = Stamp Duty + Reg Charges */

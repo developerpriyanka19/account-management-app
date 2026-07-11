@@ -21,19 +21,20 @@ function sumOrZero(value: number | null | undefined): number {
 
 /**
  * Total AES Paid =
- * SUM(aesAdvanceChequeAmount)
- * + SUM(COALESCE(shortageAmountTotal, cheque1 + cheque2 + cheque3))
+ * SUM(
+ *   AES Shortage Cheque One
+ *   + AES Shortage Cheque Two
+ *   + AES Shortage Cheque Three
+ *   + AES Advance Per Acre Cheque Amount
+ * )
  */
 async function sumTotalAesPaid(): Promise<number> {
   const [row] = await prisma.$queryRaw<[{ total: number | null }]>`
     SELECT SUM(
-      COALESCE("aesAdvanceChequeAmount", 0)
-      + COALESCE(
-        "shortageAmountTotal",
-        COALESCE("shortageChequeAmount", 0)
-        + COALESCE("shortageAmountSecondTime", 0)
-        + COALESCE("shortageThirdChequeAmount", 0)
-      )
+      COALESCE("shortageChequeAmount", 0)
+      + COALESCE("shortageAmountSecondTime", 0)
+      + COALESCE("shortageThirdChequeAmount", 0)
+      + COALESCE("aesAdvanceChequeAmount", 0)
     )::double precision AS total
     FROM "Customer"
   `;

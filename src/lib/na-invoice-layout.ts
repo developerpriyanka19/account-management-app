@@ -65,7 +65,6 @@ export function naLineAmount(line: InvoiceLineInput, ratePerAcre: number): numbe
 
 export function prepareNaInvoiceDocument(document: InvoiceDocumentData): InvoiceDocumentData {
   const rate = resolveNaRatePerAcre(document);
-  const config = getNaInvoiceSubtypeConfig(document.subType);
   const lines = document.lines.map((line) => ({
     ...line,
     amount: naLineAmount(line, rate),
@@ -80,15 +79,19 @@ export function prepareNaInvoiceDocument(document: InvoiceDocumentData): Invoice
   };
 }
 
+export function resolveNaHsnSacCode(document: InvoiceDocumentData): string {
+  return document.hsnSacCode?.trim() ?? "";
+}
+
 export function buildNaInvoiceTableBody(document: InvoiceDocumentData): string[][] {
   const prepared = prepareNaInvoiceDocument(document);
   const rate = prepared.ratePerAcre;
-  const hsn = getNaInvoiceSubtypeConfig(prepared.subType).hsnSaacCode;
+  const hsn = resolveNaHsnSacCode(prepared);
 
   return prepared.lines.map((line, index) => [
     String(index + 1),
     line.farmerName || line.description || "—",
-    hsn,
+    hsn || "—",
     line.surveyNo || "—",
     line.acres != null ? formatInvoiceDecimal(line.acres) : "—",
     line.gunta != null ? formatInvoiceDecimal(line.gunta) : "—",
@@ -107,7 +110,7 @@ export function buildNaInvoiceTableHead(document: InvoiceDocumentData): RowInput
 
   const titleRow: CellDef[] = [
     {
-      content: "NA INVOICE FORMAT",
+      content: "NA INVOICE",
       colSpan: NA_INVOICE_COLUMN_COUNT,
       styles: { halign: "center", fontSize: 16, fontStyle: "bold", fillColor: [255, 255, 255] },
     },

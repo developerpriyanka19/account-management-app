@@ -6,9 +6,6 @@ import type { jsPDF as JsPDFType } from "jspdf";
 import { drawCompanyBrandHeaderPdf } from "@/lib/company-brand-header-pdf";
 import { drawCompanyDocumentFooterPdf } from "@/lib/company-document-footer-pdf";
 import {
-  closingBlockHeight,
-  drawClosingSection,
-  drawFootersOnAllPages,
   ensureVerticalSpace,
   PDF_A4_LANDSCAPE,
   PDF_A4_PORTRAIT,
@@ -16,17 +13,42 @@ import {
   PDF_MARGIN,
   PDF_TABLE_BOTTOM_MARGIN,
   pdfContentWidth,
+  drawFootersOnAllPages,
 } from "@/lib/company-document-pdf-shared";
+import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
+import { toDisplayDate } from "@/lib/date-format";
 import type {
   AtlPoaRow,
   DebitNotePayload,
   LandConversionRow,
 } from "@/lib/debit-note-types";
-import { DebitNoteType } from "@/lib/debit-note-types";
+import { DebitNoteType, isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
 
 type JsPdfWithAutoTable = JsPDFType & { lastAutoTable?: { finalY: number } };
 
-const TEXT_LINE_H = 3.5;
+export type DebitNotePdfContext = {
+  customerName: string;
+  gstNumber: string;
+  address: string;
+  addressLines?: string[];
+};
+
+function debitNotePurposeTitle(type: DebitNoteType, village: string): string {
+  const place = village?.trim() || "—";
+  switch (type) {
+    case DebitNoteType.LEASE_DEED_EXECUTION:
+      return `Reimbursement of amount ${place} Farmers Lease Deeds Registration Fee and Stamp Duty Charges.`;
+    case DebitNoteType.ATL_POA:
+      return `Reimbursement of amount ${place} Farmers ATL and POA/GPA Charges.`;
+    case DebitNoteType.LAND_CONVERSION:
+    default:
+      return `Reimbursement of ${place} Land Conversions Fee, Podi Fee and Other Recoveries Fee`;
+  }
+}
+
+function locationLine(data: DebitNotePayload): string {
+  return `DISTRICT: ${(data.district || "—").toUpperCase()}, TALUK: ${(data.taluk || "—").toUpperCase()}, HOBLI: ${(data.hobbli || "—").toUpperCase()} AND VILLAGE ${(data.village || "—").toUpperCase()}`;
+}
 
 let logoDataUrlPromise: Promise<string> | null = null;
 
@@ -49,9 +71,13 @@ function loadLogoDataUrl(): Promise<string> {
 
 function formatPdfMoney(value: number): string {
   return new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value || 0);
+}
+
+function formatPdfRupee(value: number): string {
+  return `₹ ${formatPdfMoney(value)}`;
 }
 
 function formatPdfNum(value: number | null | undefined): string {
@@ -62,78 +88,14 @@ function formatPdfNum(value: number | null | undefined): string {
   }).format(value);
 }
 
-type DebitNoteContext = {
-  customerName: string;
-  gstNumber: string;
-  address: string;
-};
-
-function drawBrandHeader(
-  pdf: JsPDFType,
-  logoDataUrl: string,
-  pageWidth: number,
-  startY: number = PDF_MARGIN.top,
-): number {
-  return drawCompanyBrandHeaderPdf({
-    pdf,
-    logoDataUrl,
-    documentTitle: "DEBIT NOTE",
-    pageWidth,
-    leftMargin: PDF_MARGIN.left,
-    rightMargin: PDF_MARGIN.right,
-    startY,
-  });
-}
-
-function drawDebitMeta(
-  pdf: JsPDFType,
-  data: DebitNotePayload,
-  ctx: DebitNoteContext,
-  pageWidth: number,
-  startY: number,
-): number {
-  const leftX = PDF_MARGIN.left;
-  const rightX = pageWidth - PDF_MARGIN.right;
-  const contentW = pdfContentWidth(pageWidth);
-  let y = startY;
-
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.setFontSize(7);
-  pdf.text(`Debit Note No: ${data.debitNoteNo}`, leftX, y);
-  pdf.text(`Date: ${data.date}`, rightX, y, { align: "right" });
-  y += 3.5;
-  pdf.text(`Customer Name: ${ctx.customerName || "—"}`, leftX, y, { maxWidth: contentW * 0.55 });
-  y += 3.5;
-  pdf.text(`GST: ${ctx.gstNumber || "—"}`, leftX, y);
-  y += 3.5;
-  pdf.text(`Address: ${ctx.address || "—"}`, leftX, y, { maxWidth: contentW });
-  y += 4;
-
-  const colW = contentW / 4;
-  const loc = [
-    `Hobli: ${data.hobbli || "—"}`,
-    `Village: ${data.village || "—"}`,
-    `Taluk: ${data.taluk || "—"}`,
-    `District: ${data.district || "—"}`,
-  ];
-  loc.forEach((text, i) => {
-    pdf.text(text, leftX + colW * i, y, { maxWidth: colW - 2 });
-  });
-  y += 4;
-
-  pdf.setLineWidth(0.2);
-  pdf.line(leftX, y, rightX, y);
-  return y + 4;
-}
-
 function tableBaseStyles(fontSize: number) {
   return {
     font: PDF_FONT,
     fontSize,
-    cellPadding: 1,
+    cellPadding: 1.4,
     overflow: "linebreak" as const,
     valign: "middle" as const,
-    lineWidth: 0.1,
+    lineWidth: 0.2,
     lineColor: [0, 0, 0] as [number, number, number],
     fillColor: [255, 255, 255] as [number, number, number],
     fontStyle: "normal" as const,
@@ -150,34 +112,133 @@ function drawAddressFooter(pdf: JsPDFType, pageNumber: number, pageCount: number
     contentWidth: pdfContentWidth(pageWidth),
     pageNumber,
     pageCount,
-    showPageNumbers: true,
+    showPageNumbers: pageCount > 1,
   });
 }
 
-function remarksHeight(pdf: JsPDFType, remarks: string | null | undefined, maxWidth: number): number {
-  const text = remarks?.trim();
-  if (!text) return 0;
-  return 4 + pdf.splitTextToSize(text, maxWidth).length * TEXT_LINE_H + 2;
-}
-
-function drawRemarks(
+function drawPage1Header(
   pdf: JsPDFType,
-  remarks: string | null | undefined,
-  startY: number,
-  maxWidth: number,
+  logoDataUrl: string,
+  pageWidth: number,
 ): number {
-  const text = remarks?.trim();
-  if (!text) return startY;
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.setFontSize(7);
-  pdf.text("Remark:", PDF_MARGIN.left, startY);
-  const lines = pdf.splitTextToSize(text, maxWidth);
-  pdf.text(lines, PDF_MARGIN.left, startY + 3.5);
-  return startY + 3.5 + lines.length * TEXT_LINE_H + 2;
+  return drawCompanyBrandHeaderPdf({
+    pdf,
+    logoDataUrl,
+    documentTitle: "",
+    pageWidth,
+    leftMargin: PDF_MARGIN.left,
+    rightMargin: PDF_MARGIN.right,
+    startY: PDF_MARGIN.top,
+    includeDocumentTitle: false,
+    includeCompanyName: true,
+    afterLineGapMm: 5,
+  });
 }
 
-function finishDebitNotePdf(pdf: JsPDFType, contentEndY: number, pageWidth: number, data: DebitNotePayload) {
-  drawClosingSection(pdf, pageWidth, contentEndY, data.bank);
+function drawContinuationLogoHeader(
+  pdf: JsPDFType,
+  logoDataUrl: string,
+  pageWidth: number,
+): number {
+  return drawCompanyBrandHeaderPdf({
+    pdf,
+    logoDataUrl,
+    documentTitle: "",
+    pageWidth,
+    leftMargin: PDF_MARGIN.left,
+    rightMargin: PDF_MARGIN.right,
+    startY: PDF_MARGIN.top,
+    includeDocumentTitle: false,
+    includeCompanyName: false,
+    includeDivider: false,
+    afterLineGapMm: 8,
+  });
+}
+
+function drawDebitNotePage1Intro(
+  pdf: JsPDFType,
+  data: DebitNotePayload,
+  ctx: DebitNotePdfContext,
+  pageWidth: number,
+  startY: number,
+  options?: { showRefNo?: boolean },
+): number {
+  const leftX = PDF_MARGIN.left;
+  const rightX = pageWidth - PDF_MARGIN.right;
+  const contentW = pdfContentWidth(pageWidth);
+  let y = startY;
+  const displayDate = toDisplayDate(data.date) || data.date;
+  const purpose = debitNotePurposeTitle(data.type, data.village);
+
+  if (options?.showRefNo !== false) {
+    pdf.setFont(PDF_FONT, "normal");
+    pdf.setFontSize(9);
+    pdf.text("Ref. No.", leftX, y);
+    pdf.text(`Date : ${displayDate}`, rightX, y, { align: "right" });
+    y += 7;
+  }
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(14);
+  pdf.text("DEBIT NOTE", pageWidth / 2, y, { align: "center" });
+  y += 7;
+
+  pdf.setFontSize(10);
+  const purposeLines = pdf.splitTextToSize(purpose, contentW);
+  pdf.text(purposeLines, pageWidth / 2, y, { align: "center" });
+  y += purposeLines.length * 5 + 3;
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(9);
+  const locLines = pdf.splitTextToSize(locationLine(data), contentW);
+  pdf.text(locLines, pageWidth / 2, y, { align: "center" });
+  y += locLines.length * 4.5 + 5;
+
+  pdf.setFont(PDF_FONT, "normal");
+  pdf.setFontSize(9);
+  pdf.text(`Debit Note No: ${data.debitNoteNo}`, leftX, y);
+  pdf.text(displayDate, rightX, y, { align: "right" });
+  y += 7;
+
+  pdf.text("To,", leftX, y);
+  y += 5;
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(10);
+  pdf.text((ctx.customerName || "—").toUpperCase(), leftX, y);
+  y += 5;
+
+  pdf.setFont(PDF_FONT, "normal");
+  pdf.setFontSize(9);
+  const addressLines =
+    ctx.addressLines && ctx.addressLines.length > 0
+      ? ctx.addressLines
+      : (ctx.address || "—").split(",").map((s) => s.trim()).filter(Boolean);
+  for (const line of addressLines) {
+    pdf.text(line, leftX, y);
+    y += 4.2;
+  }
+  y += 6;
+
+  return y;
+}
+
+function drawSignatureBlock(
+  pdf: JsPDFType,
+  pageWidth: number,
+  startY: number,
+): number {
+  const rightX = pageWidth - PDF_MARGIN.right;
+  let y = startY + 8;
+  pdf.setFont(PDF_FONT, "normal");
+  pdf.setFontSize(9);
+  pdf.text(`For ${COMPANY_INVOICE_HEADER.signatureName}`, rightX, y, { align: "right" });
+  y += 16;
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.text("Proprietor", rightX, y, { align: "right" });
+  return y + 4;
+}
+
+function finishDebitNotePages(pdf: JsPDFType) {
   drawFootersOnAllPages(pdf, (pageNumber, pageCount) => {
     drawAddressFooter(pdf, pageNumber, pageCount);
   });
@@ -185,7 +246,7 @@ function finishDebitNotePdf(pdf: JsPDFType, contentEndY: number, pageWidth: numb
 
 async function generateLandConversionDebitNotePdf(
   data: DebitNotePayload,
-  ctx: DebitNoteContext,
+  ctx: DebitNotePdfContext,
   logoDataUrl: string,
 ): Promise<JsPDFType> {
   const rows = data.rows as LandConversionRow[];
@@ -195,6 +256,7 @@ async function generateLandConversionDebitNotePdf(
   const totalAcre = rows.reduce((s, r) => s + (r.acres || 0), 0);
   const totalGunta = rows.reduce((s, r) => s + (r.guntas || 0), 0);
   const hasDetail = rows.length > 0;
+  const purpose = debitNotePurposeTitle(data.type, data.village);
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -205,8 +267,8 @@ async function generateLandConversionDebitNotePdf(
   const pageW = PDF_A4_PORTRAIT.width;
   const contentW = pdfContentWidth(pageW);
 
-  let y = drawBrandHeader(pdf, logoDataUrl, pageW);
-  y = drawDebitMeta(pdf, data, ctx, pageW, y);
+  let y = drawPage1Header(pdf, logoDataUrl, pageW);
+  y = drawDebitNotePage1Intro(pdf, data, ctx, pageW, y);
 
   autoTable(pdf, {
     startY: y,
@@ -216,51 +278,70 @@ async function generateLandConversionDebitNotePdf(
       bottom: PDF_TABLE_BOTTOM_MARGIN,
     },
     tableWidth: contentW,
-    head: [["Sl No", "Description", "Amount"]],
-    body: [
-      ["1", "Total Amount of Land Conversion Fee", formatPdfMoney(totalLc)],
-      ["2", "Total Amount of Podi Fee", formatPdfMoney(totalPodi)],
-      ["3", "Total Amount of Other Recoveries Fee", formatPdfMoney(totalRecovery)],
-    ],
-    foot: [
+    head: [
       [
-        { content: "", colSpan: 1 },
-        { content: "Grand Total", styles: { halign: "center", fontStyle: "bold" } },
         {
-          content: formatPdfMoney(data.total),
+          content: `Debit Note: ${purpose}`,
+          colSpan: 3,
+          styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+        },
+      ],
+      [
+        { content: "SL. No", styles: { halign: "center", fontStyle: "bold" } },
+        {
+          content: "Executed of Land Conversions Fee, Podi Fee and Other Recoveries Fee",
+          styles: { halign: "center", fontStyle: "bold" },
+        },
+        { content: "Amount", styles: { halign: "center", fontStyle: "bold" } },
+      ],
+    ],
+    body: [
+      ["1", "Total Amount of Land Conversions Fee", formatPdfRupee(totalLc)],
+      ["2", "Total Amount of Podi Fee", formatPdfRupee(totalPodi)],
+      ["3", "Total Amount of Other Recoveries Fee", formatPdfRupee(totalRecovery)],
+      [
+        { content: "", styles: { fontStyle: "bold" } },
+        { content: "Total Amount", styles: { halign: "center", fontStyle: "bold" } },
+        {
+          content: `Rs ${formatPdfMoney(data.total)}/-`,
           styles: { halign: "right", fontStyle: "bold" },
         },
       ],
     ],
-    styles: tableBaseStyles(8),
-    headStyles: { fontStyle: "bold", halign: "center" },
+    styles: tableBaseStyles(9),
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
     columnStyles: {
-      0: { cellWidth: 14, halign: "center" },
-      1: { cellWidth: contentW - 50 },
-      2: { cellWidth: 36, halign: "right" },
+      0: { cellWidth: 18, halign: "center" },
+      1: { cellWidth: contentW - 55 },
+      2: { cellWidth: 37, halign: "right" },
     },
     theme: "grid",
-    rowPageBreak: "auto",
+    rowPageBreak: "avoid",
   });
 
-  y = (pdf.lastAutoTable?.finalY ?? y) + 4;
+  y = (pdf.lastAutoTable?.finalY ?? y) + 10;
+  y = ensureVerticalSpace(pdf, y, 30);
+  drawSignatureBlock(pdf, pageW, y);
 
   if (!hasDetail) {
-    const remarksH = remarksHeight(pdf, data.remarks, contentW);
-    y = ensureVerticalSpace(pdf, y, remarksH + closingBlockHeight(data.bank));
-    y = drawRemarks(pdf, data.remarks, y, contentW);
-    finishDebitNotePdf(pdf, y, pageW, data);
+    finishDebitNotePages(pdf);
     return pdf;
-  }
-
-  if (data.remarks?.trim()) {
-    y = drawRemarks(pdf, data.remarks, y, contentW);
   }
 
   pdf.addPage("a4", "landscape");
   const landW = PDF_A4_LANDSCAPE.width;
   const landContentW = pdfContentWidth(landW);
-  let ly = drawBrandHeader(pdf, logoDataUrl, landW);
+  let ly = drawContinuationLogoHeader(pdf, logoDataUrl, landW);
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(10);
+  const purposeLines = pdf.splitTextToSize(purpose, landContentW);
+  pdf.text(purposeLines, landW / 2, ly, { align: "center" });
+  ly += purposeLines.length * 5 + 3;
+  pdf.setFontSize(9);
+  const locLines = pdf.splitTextToSize(locationLine(data), landContentW);
+  pdf.text(locLines, landW / 2, ly, { align: "center" });
+  ly += locLines.length * 4.5 + 4;
 
   const detailBody = rows.map((r, i) => [
     String(i + 1),
@@ -278,8 +359,8 @@ async function generateLandConversionDebitNotePdf(
 
   detailBody.push([
     "",
+    { content: "Totals", styles: { fontStyle: "bold", halign: "right" } } as unknown as string,
     "",
-    "Totals",
     formatPdfNum(totalAcre),
     formatPdfNum(totalGunta),
     "",
@@ -300,7 +381,7 @@ async function generateLandConversionDebitNotePdf(
     },
     didDrawPage: (hook) => {
       if (hook.pageNumber > 1) {
-        drawBrandHeader(pdf, logoDataUrl, landW, PDF_MARGIN.top);
+        drawContinuationLogoHeader(pdf, logoDataUrl, landW);
       }
     },
     tableWidth: landContentW,
@@ -321,14 +402,14 @@ async function generateLandConversionDebitNotePdf(
     ],
     body: detailBody,
     styles: tableBaseStyles(6),
-    headStyles: { fontStyle: "bold", fontSize: 5.5, halign: "center" },
+    headStyles: { fontStyle: "bold", fontSize: 5.5, halign: "center", fillColor: [255, 255, 255], textColor: [0, 0, 0] },
     bodyStyles: { fontSize: 6 },
     columnStyles: {
       0: { cellWidth: 8, halign: "center" },
       1: { cellWidth: 22 },
-      2: { cellWidth: 14 },
-      3: { cellWidth: 14, halign: "right" },
-      4: { cellWidth: 12, halign: "right" },
+      2: { cellWidth: 14, halign: "center" },
+      3: { cellWidth: 14, halign: "center" },
+      4: { cellWidth: 12, halign: "center" },
       5: { cellWidth: 28 },
       6: { cellWidth: 16, halign: "right" },
       7: { cellWidth: 22 },
@@ -338,34 +419,32 @@ async function generateLandConversionDebitNotePdf(
     },
     theme: "grid",
     showHead: "everyPage",
-    rowPageBreak: "auto",
+    rowPageBreak: "avoid",
   });
 
-  let endY = (pdf.lastAutoTable?.finalY ?? ly) + 4;
-  const closingNeed = 6 + closingBlockHeight(data.bank);
-  endY = ensureVerticalSpace(pdf, endY, closingNeed);
-
+  let endY = (pdf.lastAutoTable?.finalY ?? ly) + 6;
+  endY = ensureVerticalSpace(pdf, endY, 28);
   pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(8);
-  pdf.text(`Grand Total: ${formatPdfMoney(data.total)}`, landW - PDF_MARGIN.right, endY, {
-    align: "right",
-  });
-  endY += 6;
-
-  finishDebitNotePdf(pdf, endY, landW, data);
+  pdf.setFontSize(9);
+  pdf.text(
+    `TOTAL AMOUNT Rs ${formatPdfMoney(data.total)}/-`,
+    landW - PDF_MARGIN.right,
+    endY,
+    { align: "right" },
+  );
+  drawSignatureBlock(pdf, landW, endY + 2);
+  finishDebitNotePages(pdf);
   return pdf;
 }
 
-async function generateAtlPoaDebitNotePdf(
+async function generateLeaseDeedExecutionDebitNotePdf(
   data: DebitNotePayload,
-  ctx: DebitNoteContext,
+  ctx: DebitNotePdfContext,
   logoDataUrl: string,
 ): Promise<JsPDFType> {
-  const rows = data.rows as AtlPoaRow[];
-  const totalAtl = rows.reduce((s, r) => s + (r.atlCharges || 0), 0);
-  const totalPoa = rows.reduce((s, r) => s + (r.poaCharges || 0), 0);
-  const totalCheque = rows.reduce((s, r) => s + (r.chequeAmount || 0), 0);
-  const totalCash = rows.reduce((s, r) => s + (r.cashAmount || 0), 0);
+  const rows = data.rows as LandConversionRow[];
+  const totalFee = rows.reduce((s, r) => s + (r.landConversionFee || 0) + (r.podiFee || 0) + (r.recoveryFee || 0), 0);
+  const purpose = debitNotePurposeTitle(data.type, data.village);
   const hasDetail = rows.length > 0;
 
   const pdf = new jsPDF({
@@ -377,8 +456,8 @@ async function generateAtlPoaDebitNotePdf(
   const pageW = PDF_A4_PORTRAIT.width;
   const contentW = pdfContentWidth(pageW);
 
-  let y = drawBrandHeader(pdf, logoDataUrl, pageW);
-  y = drawDebitMeta(pdf, data, ctx, pageW, y);
+  let y = drawPage1Header(pdf, logoDataUrl, pageW);
+  y = drawDebitNotePage1Intro(pdf, data, ctx, pageW, y);
 
   autoTable(pdf, {
     startY: y,
@@ -388,50 +467,273 @@ async function generateAtlPoaDebitNotePdf(
       bottom: PDF_TABLE_BOTTOM_MARGIN,
     },
     tableWidth: contentW,
-    head: [["SL No", "Executed of ATL & POA (GPA)", "Amount"]],
-    body: [
-      ["1", "Total Amount of ATL", formatPdfMoney(totalAtl)],
-      ["2", "Total Amount of POA OR GPA", formatPdfMoney(totalPoa)],
-      ["3", "AES Pay To Farmers Cheque And Cash", formatPdfMoney(totalCheque + totalCash)],
-    ],
-    foot: [
+    head: [
       [
-        { content: "", colSpan: 1 },
-        { content: "TOTAL AMOUNT", styles: { halign: "center", fontStyle: "bold" } },
         {
-          content: formatPdfMoney(data.total),
+          content: `Debit Note: ${purpose}`,
+          colSpan: 3,
+          styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+        },
+      ],
+      [
+        { content: "SL. No", styles: { halign: "center", fontStyle: "bold" } },
+        {
+          content: "Executed of Lease Deeds",
+          styles: { halign: "center", fontStyle: "bold" },
+        },
+        { content: "Amount", styles: { halign: "center", fontStyle: "bold" } },
+      ],
+    ],
+    body: [
+      ["1", "Total Amount of Lease Deeds", formatPdfRupee(totalFee || data.total)],
+      [
+        { content: "", styles: { fontStyle: "bold" } },
+        { content: "Total Amount", styles: { halign: "center", fontStyle: "bold" } },
+        {
+          content: `Rs ${formatPdfMoney(totalFee || data.total)}/-`,
           styles: { halign: "right", fontStyle: "bold" },
         },
       ],
     ],
-    styles: tableBaseStyles(8),
-    headStyles: { fontStyle: "bold", halign: "center" },
+    styles: tableBaseStyles(9),
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
     columnStyles: {
-      0: { cellWidth: 14, halign: "center" },
-      1: { cellWidth: contentW - 50 },
-      2: { cellWidth: 36, halign: "right" },
+      0: { cellWidth: 18, halign: "center" },
+      1: { cellWidth: contentW - 55 },
+      2: { cellWidth: 37, halign: "right" },
     },
     theme: "grid",
-    rowPageBreak: "auto",
+    rowPageBreak: "avoid",
   });
 
-  y = (pdf.lastAutoTable?.finalY ?? y) + 4;
+  y = (pdf.lastAutoTable?.finalY ?? y) + 10;
+  y = ensureVerticalSpace(pdf, y, 30);
+  drawSignatureBlock(pdf, pageW, y);
 
   if (!hasDetail) {
-    const remarksH = remarksHeight(pdf, data.remarks, contentW);
-    y = ensureVerticalSpace(pdf, y, remarksH + closingBlockHeight(data.bank));
-    y = drawRemarks(pdf, data.remarks, y, contentW);
-    finishDebitNotePdf(pdf, y, pageW, data);
+    finishDebitNotePages(pdf);
     return pdf;
   }
 
-  if (data.remarks?.trim()) {
-    y = drawRemarks(pdf, data.remarks, y, contentW);
+  pdf.addPage("a4", "portrait");
+  let py = drawContinuationLogoHeader(pdf, logoDataUrl, pageW);
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(10);
+  const purposeLines = pdf.splitTextToSize(purpose, contentW);
+  pdf.text(purposeLines, pageW / 2, py, { align: "center" });
+  py += purposeLines.length * 5 + 3;
+  pdf.setFontSize(9);
+  const locLines = pdf.splitTextToSize(locationLine(data), contentW);
+  pdf.text(locLines, pageW / 2, py, { align: "center" });
+  py += locLines.length * 4.5 + 4;
+
+  const sumRtcAcre = rows.reduce((s, r) => s + (r.rtcAcre ?? r.acres ?? 0), 0);
+  const sumRtcGunta = rows.reduce((s, r) => s + (r.rtcGunta ?? r.guntas ?? 0), 0);
+  const sumLeaseAcre = rows.reduce((s, r) => s + (r.leaseAcre ?? r.acres ?? 0), 0);
+  const sumLeaseGunta = rows.reduce((s, r) => s + (r.leaseGunta ?? r.guntas ?? 0), 0);
+
+  const detailBody = rows.map((r, i) => {
+    const fee = (r.landConversionFee || 0) + (r.podiFee || 0) + (r.recoveryFee || 0);
+    return [
+      String(i + 1),
+      r.farmerName || "—",
+      r.surveyNo || "—",
+      formatPdfNum(r.rtcAcre ?? r.acres),
+      formatPdfNum(r.rtcGunta ?? r.guntas),
+      formatPdfNum(r.leaseAcre ?? r.acres),
+      formatPdfNum(r.leaseGunta ?? r.guntas),
+      formatPdfMoney(fee),
+    ];
+  });
+
+  detailBody.push([
+    "",
+    { content: "Totals", styles: { fontStyle: "bold", halign: "right" } } as unknown as string,
+    "",
+    formatPdfNum(sumRtcAcre),
+    formatPdfNum(sumRtcGunta),
+    formatPdfNum(sumLeaseAcre),
+    formatPdfNum(sumLeaseGunta),
+    formatPdfMoney(totalFee || data.total),
+  ]);
+
+  autoTable(pdf, {
+    startY: py,
+    margin: {
+      left: PDF_MARGIN.left,
+      right: PDF_MARGIN.right,
+      top: 36,
+      bottom: PDF_TABLE_BOTTOM_MARGIN + 4,
+    },
+    didDrawPage: (hook) => {
+      if (hook.pageNumber > 1) {
+        let hy = drawContinuationLogoHeader(pdf, logoDataUrl, pageW);
+        pdf.setFont(PDF_FONT, "bold");
+        pdf.setFontSize(9);
+        const pLines = pdf.splitTextToSize(purpose, contentW);
+        pdf.text(pLines, pageW / 2, hy, { align: "center" });
+        hy += pLines.length * 4.5 + 2;
+        const lLines = pdf.splitTextToSize(locationLine(data), contentW);
+        pdf.text(lLines, pageW / 2, hy, { align: "center" });
+      }
+    },
+    tableWidth: contentW,
+    head: [
+      [
+        { content: "Sl. No", rowSpan: 2 },
+        { content: "Name of the Farmers", rowSpan: 2 },
+        { content: "Survey No", rowSpan: 2 },
+        { content: "RTC Extent", colSpan: 2 },
+        { content: "Lease Extent", colSpan: 2 },
+        { content: "Lease Deeds Challan Government Fees", rowSpan: 2 },
+      ],
+      ["Acres", "Guntas", "Acres", "Guntas"],
+    ],
+    body: detailBody,
+    styles: tableBaseStyles(8),
+    headStyles: {
+      fontStyle: "bold",
+      fontSize: 7,
+      halign: "center",
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      valign: "middle",
+    },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      0: { cellWidth: 12, halign: "center" },
+      1: { cellWidth: contentW - 108, halign: "left" },
+      2: { cellWidth: 22, halign: "center" },
+      3: { cellWidth: 14, halign: "center" },
+      4: { cellWidth: 14, halign: "center" },
+      5: { cellWidth: 14, halign: "center" },
+      6: { cellWidth: 14, halign: "center" },
+      7: { cellWidth: 18, halign: "right" },
+    },
+    theme: "grid",
+    showHead: "everyPage",
+    rowPageBreak: "avoid",
+  });
+
+  let endY = (pdf.lastAutoTable?.finalY ?? py) + 4;
+  const summaryText = `TOTAL LEASE LAND EXTENSION ${formatPdfNum(sumLeaseAcre)} ACRES ${formatPdfNum(sumLeaseGunta)} GUNTAS AND TOTAL AMOUNT ${formatPdfMoney(totalFee || data.total)}/-`;
+  const summaryNeed = 10 + 28;
+  endY = ensureVerticalSpace(pdf, endY, summaryNeed);
+
+  autoTable(pdf, {
+    startY: endY,
+    margin: {
+      left: PDF_MARGIN.left,
+      right: PDF_MARGIN.right,
+      bottom: PDF_TABLE_BOTTOM_MARGIN,
+    },
+    tableWidth: contentW,
+    body: [[{ content: summaryText, styles: { fontStyle: "bold", halign: "center", fontSize: 8 } }]],
+    styles: tableBaseStyles(8),
+    theme: "grid",
+    rowPageBreak: "avoid",
+  });
+
+  endY = (pdf.lastAutoTable?.finalY ?? endY) + 4;
+  endY = ensureVerticalSpace(pdf, endY, 28);
+  drawSignatureBlock(pdf, pageW, endY);
+  finishDebitNotePages(pdf);
+  return pdf;
+}
+
+async function generateAtlPoaDebitNotePdf(
+  data: DebitNotePayload,
+  ctx: DebitNotePdfContext,
+  logoDataUrl: string,
+): Promise<JsPDFType> {
+  const rows = data.rows as AtlPoaRow[];
+  const totalAtl = rows.reduce((s, r) => s + (r.atlCharges || 0), 0);
+  const totalPoa = rows.reduce((s, r) => s + (r.poaCharges || 0), 0);
+  const totalCheque = rows.reduce((s, r) => s + (r.chequeAmount || 0), 0);
+  const totalCash = rows.reduce((s, r) => s + (r.cashAmount || 0), 0);
+  const hasDetail = rows.length > 0;
+  const purpose = debitNotePurposeTitle(data.type, data.village);
+
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  }) as JsPdfWithAutoTable;
+
+  const pageW = PDF_A4_PORTRAIT.width;
+  const contentW = pdfContentWidth(pageW);
+
+  let y = drawPage1Header(pdf, logoDataUrl, pageW);
+  y = drawDebitNotePage1Intro(pdf, data, ctx, pageW, y);
+
+  autoTable(pdf, {
+    startY: y,
+    margin: {
+      left: PDF_MARGIN.left,
+      right: PDF_MARGIN.right,
+      bottom: PDF_TABLE_BOTTOM_MARGIN,
+    },
+    tableWidth: contentW,
+    head: [
+      [
+        {
+          content: `Debit Note: ${purpose}`,
+          colSpan: 3,
+          styles: {halign: "center", fontStyle: "bold", fontSize: 8 },
+        },
+      ],
+      [
+        { content: "SL. No", styles: {halign: "center", fontStyle: "bold" } },
+        {
+          content: "Executed of ATL & POA (GPA)",
+          styles: {halign: "center", fontStyle: "bold" },
+        },
+        { content: "Amount", styles: {halign: "center", fontStyle: "bold" } },
+      ],
+    ],
+    body: [
+      ["1", "Total Amount of ATL", formatPdfRupee(totalAtl)],
+      ["2", "Total Amount of POA OR GPA", formatPdfRupee(totalPoa)],
+      ["3", "AES Pay To Farmers Cheque And Cash", formatPdfRupee(totalCheque + totalCash)],
+      [
+        { content: "", styles: { fontStyle: "bold" } },
+        { content: "Total Amount", styles: {halign: "center", fontStyle: "bold" } },
+        {
+          content: `Rs ${formatPdfMoney(data.total)}/-`,
+          styles: {halign: "right", fontStyle: "bold" },
+        },
+      ],
+    ],
+    styles: tableBaseStyles(9),
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+    columnStyles: {
+      0: { cellWidth: 18,halign: "center" },
+      1: { cellWidth: contentW - 55 },
+      2: { cellWidth: 37,halign: "right" },
+    },
+    theme: "grid",
+    rowPageBreak: "avoid",
+  });
+
+  y = (pdf.lastAutoTable?.finalY ?? y) + 10;
+  y = ensureVerticalSpace(pdf, y, 30);
+  drawSignatureBlock(pdf, pageW, y);
+
+  if (!hasDetail) {
+    finishDebitNotePages(pdf);
+    return pdf;
   }
 
   pdf.addPage("a4", "landscape");
   const landW = PDF_A4_LANDSCAPE.width;
-  let ly = drawBrandHeader(pdf, logoDataUrl, landW);
+  let ly = drawContinuationLogoHeader(pdf, logoDataUrl, landW);
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(10);
+  const purposeLines = pdf.splitTextToSize(purpose, pdfContentWidth(landW));
+  pdf.text(purposeLines, landW / 2, ly, { align: "center" });
+  ly += purposeLines.length * 5 + 3;
 
   const detailBody = rows.map((r, i) => [
     String(i + 1),
@@ -444,7 +746,7 @@ async function generateAtlPoaDebitNotePdf(
     formatPdfMoney(r.atlCharges || 0),
     formatPdfMoney(r.poaCharges || 0),
     r.chequeNo || "—",
-    r.chequeDate || "—",
+    toDisplayDate(r.chequeDate) || r.chequeDate || "—",
     formatPdfMoney(r.chequeAmount || 0),
     r.bankName || "—",
     formatPdfMoney(r.cashAmount || 0),
@@ -482,7 +784,7 @@ async function generateAtlPoaDebitNotePdf(
     },
     didDrawPage: (hook) => {
       if (hook.pageNumber > 1) {
-        drawBrandHeader(pdf, logoDataUrl, landW, PDF_MARGIN.top);
+        drawContinuationLogoHeader(pdf, logoDataUrl, landW);
       }
     },
     tableWidth: pdfContentWidth(landW),
@@ -501,34 +803,40 @@ async function generateAtlPoaDebitNotePdf(
     ],
     body: detailBody,
     styles: tableBaseStyles(5.5),
-    headStyles: { fontStyle: "bold", fontSize: 5, halign: "center" },
+    headStyles: {
+      fontStyle: "bold",
+      fontSize: 5,
+     halign: "center",
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+    },
     bodyStyles: { fontSize: 5.5 },
     theme: "grid",
     showHead: "everyPage",
-    rowPageBreak: "auto",
+    rowPageBreak: "avoid",
   });
 
   let endY = (pdf.lastAutoTable?.finalY ?? ly) + 4;
-  const closingNeed = 6 + closingBlockHeight(data.bank);
-  endY = ensureVerticalSpace(pdf, endY, closingNeed);
-
+  endY = ensureVerticalSpace(pdf, endY, 28);
   pdf.setFont(PDF_FONT, "bold");
   pdf.setFontSize(8);
-  pdf.text(`TOTAL AMOUNT: ${formatPdfMoney(data.total)}`, landW - PDF_MARGIN.right, endY, {
+  pdf.text(`TOTAL AMOUNT: Rs ${formatPdfMoney(data.total)}/-`, landW - PDF_MARGIN.right, endY, {
     align: "right",
   });
-  endY += 6;
-
-  finishDebitNotePdf(pdf, endY, landW, data);
+  drawSignatureBlock(pdf, landW, endY + 2);
+  finishDebitNotePages(pdf);
   return pdf;
 }
 
 export async function buildDebitNotePdf(
   data: DebitNotePayload,
-  ctx: DebitNoteContext,
+  ctx: DebitNotePdfContext,
 ): Promise<JsPDFType> {
   const logoDataUrl = await loadLogoDataUrl();
-  if (data.type === DebitNoteType.LAND_CONVERSION) {
+  if (data.type === DebitNoteType.LEASE_DEED_EXECUTION) {
+    return generateLeaseDeedExecutionDebitNotePdf(data, ctx, logoDataUrl);
+  }
+  if (isLandConversionStyleDebitNote(data.type)) {
     return generateLandConversionDebitNotePdf(data, ctx, logoDataUrl);
   }
   return generateAtlPoaDebitNotePdf(data, ctx, logoDataUrl);
@@ -536,7 +844,7 @@ export async function buildDebitNotePdf(
 
 export async function getDebitNotePdfBlob(
   data: DebitNotePayload,
-  ctx: DebitNoteContext,
+  ctx: DebitNotePdfContext,
 ): Promise<Blob> {
   const pdf = await buildDebitNotePdf(data, ctx);
   return pdf.output("blob");
@@ -544,7 +852,7 @@ export async function getDebitNotePdfBlob(
 
 export async function generateDebitNotePdf(
   data: DebitNotePayload,
-  ctx: DebitNoteContext,
+  ctx: DebitNotePdfContext,
 ): Promise<void> {
   const pdf = await buildDebitNotePdf(data, ctx);
   pdf.save(`${data.debitNoteNo || "debit-note"}.pdf`);
@@ -552,7 +860,7 @@ export async function generateDebitNotePdf(
 
 export async function printDebitNotePdf(
   data: DebitNotePayload,
-  ctx: DebitNoteContext,
+  ctx: DebitNotePdfContext,
 ): Promise<void> {
   const { openPdfBlobInNewTab } = await import("@/lib/pdf-print");
   const blob = await getDebitNotePdfBlob(data, ctx);

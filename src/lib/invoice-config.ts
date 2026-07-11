@@ -2,19 +2,20 @@
 
 export const NA_INVOICE_SUBTYPES = [
   "NA Final Order",
-  "Filing NA Application",
+  "Filling NA Application",
   "Tahsildar Completion",
   "Assistant Commissioner",
   "Deputy Commissioner",
 ] as const;
 
 export const SERVICE_INVOICE_SUBTYPES = [
-  "Mutation Record",
+  "Mutation Records",
   "Lease Deed",
   "Survey Boundary",
   "ATL & GPA",
   "Due Diligence",
   "COD",
+  "Survey Order",
 ] as const;
 
 export type NaInvoiceSubtype = (typeof NA_INVOICE_SUBTYPES)[number];
@@ -25,44 +26,101 @@ export type InvoiceCategory = "na" | "service";
 export type NaInvoiceSubtypeConfig = {
   amountColumnTitle: string;
   defaultRatePerAcre: number;
-  hsnSaacCode: string;
 };
 
-/** NA invoice PDF table — dynamic amount column, rate, and HSN per subtype. */
+/** Service invoice sub-type — add new services here only; PDF template reads these values. */
+export type ServiceInvoiceSubtypeConfig = {
+  serviceName: string;
+  ratePerAcre: number;
+};
+
+export const DEFAULT_SERVICE_HSN_SAC_CODE = "998314" as const;
+
+/** Map legacy subtype labels to current display keys. */
+export function normalizeNaSubtype(subType: string): string {
+  if (subType === "Filing NA Application") return "Filling NA Application";
+  return subType;
+}
+
+/** Map legacy service subtype labels to current display keys. */
+export function normalizeServiceSubtype(subType: string): string {
+  if (subType === "Mutation Record") return "Mutation Records";
+  if (subType === "Service Charges") return "Survey Order";
+  return subType;
+}
+
+/** NA invoice PDF table — dynamic amount column and default rate per subtype. */
 export const NA_INVOICE_SUBTYPE_CONFIG: Record<string, NaInvoiceSubtypeConfig> = {
   "Deputy Commissioner": {
     amountColumnTitle: "Deputy Comm.Office Completion",
     defaultRatePerAcre: 20_000,
-    hsnSaacCode: "998314",
   },
   "Assistant Commissioner": {
     amountColumnTitle: "Assist Comm.Office Completion",
     defaultRatePerAcre: 30_000,
-    hsnSaacCode: "998314",
   },
   "NA Final Order": {
     amountColumnTitle: "NA Final Order Receipt",
     defaultRatePerAcre: 10_000,
-    hsnSaacCode: "998314",
   },
-  "Filing NA Application": {
-    amountColumnTitle: "Filing NA Application",
+  "Filling NA Application": {
+    amountColumnTitle: "Filling NA Application",
     defaultRatePerAcre: 15_000,
-    hsnSaacCode: "998314",
   },
   "Tahsildar Completion": {
     amountColumnTitle: "NA Application completion at Tahsildar office",
     defaultRatePerAcre: 12_000,
-    hsnSaacCode: "998314",
+  },
+};
+
+/** Service invoice — service name and rate per acre for the shared PDF template. */
+export const SERVICE_INVOICE_SUBTYPE_CONFIG: Record<string, ServiceInvoiceSubtypeConfig> = {
+  "Mutation Records": {
+    serviceName: "Mutation Record Infavor of Company",
+    ratePerAcre: 25_000,
+  },
+  "Lease Deed": {
+    serviceName: "Execution Of Lease Deed",
+    ratePerAcre: 25_000,
+  },
+  "Survey Boundary": {
+    serviceName: "Execution Of Survey & Boundary Marking Per Acres",
+    ratePerAcre: 25_000,
+  },
+  "ATL & GPA": {
+    serviceName: "Execution Of ATL and GPA",
+    ratePerAcre: 25_000,
+  },
+  "Due Diligence": {
+    serviceName: "Land Due Diligence DD & Requisition Completion Of Any Documents",
+    ratePerAcre: 25_000,
+  },
+  COD: {
+    serviceName: "Within 30 Days COD",
+    ratePerAcre: 25_000,
+  },
+  "Survey Order": {
+    serviceName: "Execution Of Survey Order",
+    ratePerAcre: 25_000,
   },
 };
 
 export function getNaInvoiceSubtypeConfig(subType: string): NaInvoiceSubtypeConfig {
+  const key = normalizeNaSubtype(subType);
   return (
-    NA_INVOICE_SUBTYPE_CONFIG[subType] ?? {
-      amountColumnTitle: subType || "Amount",
+    NA_INVOICE_SUBTYPE_CONFIG[key] ?? {
+      amountColumnTitle: key || "Amount",
       defaultRatePerAcre: 10_000,
-      hsnSaacCode: "998314",
+    }
+  );
+}
+
+export function getServiceInvoiceSubtypeConfig(subType: string): ServiceInvoiceSubtypeConfig {
+  const key = normalizeServiceSubtype(subType);
+  return (
+    SERVICE_INVOICE_SUBTYPE_CONFIG[key] ?? {
+      serviceName: key || "Service",
+      ratePerAcre: 25_000,
     }
   );
 }
@@ -81,8 +139,8 @@ export const COMPANY_INVOICE_HEADER = {
   gstin: "29AIJPJ5095P1ZC",
   signatureName: "Apoorva Energy Solutions",
   footerAddress:
-    "No 15 & 18 Riddi Siddi Complex, 2nd Floor Opp Giants School, Chaitanya Colony, R N Shetty Road, Hubli - 580030",
-  phone: "Mobile: +91-9160 37152",
+    "Shop No - 15 and 18 Second Floor Shriya Riddhi Siddhi Chaitanya Colony Opp Giants School R.N. Shetty Road HUBBALLI 580030",
+  phone: "Mobile : +91-9916037152",
 } as const;
 
 /** Brand header colors and typography (screen + PDF). */

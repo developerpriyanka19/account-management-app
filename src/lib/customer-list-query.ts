@@ -73,8 +73,16 @@ export const CUSTOMER_LIST_SELECT = {
   notes: true,
 } as const;
 
+/** Case-insensitive search across farmer name and survey number (all pages). */
 export function customerListWhere(query: string): Prisma.CustomerWhereInput | undefined {
   const q = query.trim();
   if (!q) return undefined;
-  return { farmerName: { contains: q, mode: "insensitive" } };
+  return {
+    OR: [
+      { farmerName: { contains: q, mode: "insensitive" } },
+      { surveyNo: { contains: q, mode: "insensitive" } },
+      { newSurveyNo: { contains: q, mode: "insensitive" } },
+      { changedFarmerName: { contains: q, mode: "insensitive" } },
+    ],
+  };
 }

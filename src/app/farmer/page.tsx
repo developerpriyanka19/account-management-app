@@ -2,6 +2,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Users } from "lucide-react";
 import { DashboardSummaryGrid } from "@/components/farmer/dashboard-summary-card";
+import {
+  FarmerListing,
+  FarmerListingToolbar,
+} from "@/components/farmer/farmer-listing";
 import { formatDashboardMonthYear } from "@/lib/dashboard-format";
 import { getFarmerDashboardStats } from "@/lib/farmer-dashboard-stats";
 import {
@@ -10,7 +14,6 @@ import {
   customerListWhere,
 } from "@/lib/customer-list-query";
 import { prisma } from "@/lib/prisma";
-import { CustomersListing } from "./customers-listing";
 import { CustomersTableSkeleton } from "./customers-table-skeleton";
 
 type PageProps = {
@@ -22,11 +25,11 @@ function EmptyState({ query }: { query: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-6 py-14 text-center shadow-sm backdrop-blur-sm">
       <h2 className="text-lg font-semibold text-slate-900">
-        {hasQuery ? "No matches found" : "No farmers yet"}
+        {hasQuery ? "No farmers found" : "No farmers yet"}
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
         {hasQuery
-          ? "Try a different search term or clear filters."
+          ? "Try a different farmer name or survey number, or clear the search."
           : "Add your first farmer record to get started."}
       </p>
       <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row">
@@ -39,9 +42,10 @@ function EmptyState({ query }: { query: string }) {
         {hasQuery ? (
           <Link
             href="/farmer"
+            scroll={false}
             className="inline-flex h-[42px] items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
-            Clear filters
+            Clear search
           </Link>
         ) : null}
       </div>
@@ -49,14 +53,9 @@ function EmptyState({ query }: { query: string }) {
   );
 }
 
-async function CustomersContent({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; page?: string }>;
-}) {
+async function resolveListMeta(searchParams: Promise<{ q?: string; page?: string }>) {
   const { q, page: pageRaw } = await searchParams;
   const query = (q ?? "").trim();
-
   const where = customerListWhere(query);
 
   const [countAll, totalFiltered] = await Promise.all([
@@ -66,42 +65,54 @@ async function CustomersContent({
 
   const totalPages = Math.max(1, Math.ceil(totalFiltered / CUSTOMERS_PAGE_SIZE));
   const rawPage = Number(pageRaw);
-  const pageNum =
-    Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
+  const pageNum = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
   const page = Math.min(pageNum, totalPages);
+  const start = totalFiltered === 0 ? 0 : (page - 1) * CUSTOMERS_PAGE_SIZE + 1;
+  const end = Math.min(page * CUSTOMERS_PAGE_SIZE, totalFiltered);
+
+  return { query, where, countAll, totalFiltered, totalPages, page, start, end };
+}
+
+async function CustomersTableContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
+  const meta = await resolveListMeta(searchParams);
+
+  if (meta.totalFiltered === 0) {
+    return <EmptyState query={meta.query} />;
+  }
 
   const customers = await prisma.customer.findMany({
-    where,
+    where: meta.where,
     orderBy: { id: "asc" },
-    skip: (page - 1) * CUSTOMERS_PAGE_SIZE,
+    skip: (meta.page - 1) * CUSTOMERS_PAGE_SIZE,
     take: CUSTOMERS_PAGE_SIZE,
     select: CUSTOMER_LIST_SELECT,
   });
 
-  const start = totalFiltered === 0 ? 0 : (page - 1) * CUSTOMERS_PAGE_SIZE + 1;
-  const end = Math.min(page * CUSTOMERS_PAGE_SIZE, totalFiltered);
-
-  if (totalFiltered === 0) {
-    return <EmptyState query={query} />;
-  }
-
   return (
-    <CustomersListing
+    <FarmerListing
+      tableOnly
       customers={customers}
-      totalFiltered={totalFiltered}
-      totalAll={countAll}
-      query={query}
-      page={page}
-      totalPages={totalPages}
-      start={start}
-      end={end}
+      totalFiltered={meta.totalFiltered}
+      totalAll={meta.countAll}
+      query={meta.query}
+      page={meta.page}
+      totalPages={meta.totalPages}
+      start={meta.start}
+      end={meta.end}
       pageSize={CUSTOMERS_PAGE_SIZE}
     />
   );
 }
 
 export default async function CustomersPage({ searchParams }: PageProps) {
-  const stats = await getFarmerDashboardStats();
+  const [stats, meta] = await Promise.all([
+    getFarmerDashboardStats(),
+    resolveListMeta(searchParams),
+  ]);
   const monthYear = formatDashboardMonthYear();
 
   return (
@@ -127,9 +138,21 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
       <DashboardSummaryGrid stats={stats} />
 
-      <Suspense fallback={<CustomersTableSkeleton />}>
-        <CustomersContent searchParams={searchParams} />
-      </Suspense>
+      <div className="flex flex-col gap-4">
+        {/* Outside Suspense — keeps focus and avoids scroll jump while typing */}
+        <FarmerListingToolbar
+          query={meta.query}
+          totalFiltered={meta.totalFiltered}
+          totalAll={meta.countAll}
+          start={meta.start}
+          end={meta.end}
+          pageSize={CUSTOMERS_PAGE_SIZE}
+        />
+
+        <Suspense fallback={<CustomersTableSkeleton />}>
+          <CustomersTableContent searchParams={searchParams} />
+        </Suspense>
+      </div>
     </div>
   );
 }

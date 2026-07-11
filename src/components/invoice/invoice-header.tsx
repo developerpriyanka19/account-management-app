@@ -39,10 +39,12 @@ export function InvoiceHeader({ data, compact = false }: Props) {
           : "border-b-2 border-[#9ACA66] pb-3"
       }
     >
-      <InvoiceBrandHeader compact={isService} />
+      <InvoiceBrandHeader compact={isService} documentTitle={isService ? "SERVICE INVOICE" : "NA INVOICE"} />
       <InvoiceMetadataRow
         invoiceNumber={data.invoiceNumber}
         invoiceDate={data.invoiceDate}
+        poNumber={data.poNumber}
+        poDate={data.poDate}
         compact={isService}
       />
 
