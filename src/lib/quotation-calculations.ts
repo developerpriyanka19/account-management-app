@@ -4,7 +4,10 @@ import {
   type InvoiceTotals,
 } from "@/lib/invoice-calculations";
 import { toDisplayDate } from "@/lib/date-format";
-import { resolveCustomerCompanyName } from "@/lib/invoice-customer-format";
+import {
+  formatNaturalCustomerAddressLines,
+  resolveCustomerCompanyName,
+} from "@/lib/invoice-customer-format";
 import type { InvoiceBillingCustomerOption } from "@/lib/invoice-types";
 import type { QuotationDocument, QuotationFormInput, QuotationItem } from "@/lib/quotation-types";
 
@@ -29,19 +32,18 @@ export function computeQuotationTotals(items: QuotationItem[]): InvoiceTotals {
 }
 
 export function formatQuotationCustomerAddress(customer: InvoiceBillingCustomerOption): string {
-  if (customer.companyAddress?.trim()) {
-    return customer.companyAddress.trim();
-  }
-  return [
-    customer.buildingNumber,
-    customer.street,
-    customer.locality,
-    customer.village,
-    customer.district,
-  ]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(", ");
+  return formatNaturalCustomerAddressLines({
+    buildingNumber: customer.buildingNumber ?? "",
+    street: customer.street ?? "",
+    locality: customer.locality ?? "",
+    village: customer.village ?? "",
+    district: customer.district ?? "",
+    state: customer.state ?? "",
+    pincode: customer.pincode ?? "",
+    companyAddress: customer.companyAddress,
+    taluk: customer.taluk,
+    hobbli: customer.hobbli,
+  }).join("\n");
 }
 
 export function quotationCustomerFromSelection(
@@ -67,12 +69,17 @@ export function buildQuotationDocument(
 
   return {
     refNo: input.refNo.trim(),
+    referenceDate: input.referenceDate,
     quotationDate: input.quotationDate,
     customerName: resolveCustomerCompanyName(customer),
     customerGst: customer.gstNumber.trim(),
     customerAddress: formatQuotationCustomerAddress(customer),
     pinCode: customer.pincode?.trim() ?? "",
     state: customer.state?.trim() ?? "",
+    village: customer.village?.trim() ?? "",
+    hobbli: customer.hobbli?.trim() ?? "",
+    taluk: customer.taluk?.trim() ?? "",
+    district: customer.district?.trim() ?? "",
     subject: input.subject.trim(),
     items: normalizedItems,
     totals,

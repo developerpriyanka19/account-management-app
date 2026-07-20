@@ -7,6 +7,7 @@ import {
   Landmark,
   LandPlot,
   MapPin,
+  NotebookPen,
   TrendingUp,
   Users,
   Wallet,
@@ -159,7 +160,7 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
 
   return (
     <section className="dashboard-summary-grid space-y-3">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <KpiCard
           icon={Users}
           iconClassName="bg-blue-50 text-blue-600"
@@ -201,6 +202,13 @@ export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
           value={formatDashboardCurrencyCompact(stats.naTotal)}
           title="NA Total"
           subtitle="All NA components"
+        />
+        <KpiCard
+          icon={NotebookPen}
+          iconClassName="bg-rose-50 text-rose-600"
+          value={formatDashboardCurrencyCompact(stats.debitNoteTotal)}
+          title="Debit Note Total"
+          subtitle={`${formatDashboardCount(stats.debitNoteCount)} notes`}
         />
       </div>
 

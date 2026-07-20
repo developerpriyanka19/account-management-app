@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   invoiceNumber: string;
   invoiceDate: string;
+  documentType?: string;
   poNumber?: string;
   poDate?: string;
   compact?: boolean;
@@ -13,6 +14,7 @@ type Props = {
 export function InvoiceMetadataRow({
   invoiceNumber,
   invoiceDate,
+  documentType,
   poNumber,
   poDate,
   compact = false,
@@ -45,6 +47,12 @@ export function InvoiceMetadataRow({
         ) : null}
       </div>
       <div className="space-y-0.5 text-right">
+        {documentType ? (
+          <p>
+            <span className="font-semibold text-[#6B7280]">Type: </span>
+            {documentType}
+          </p>
+        ) : null}
         <p>
           <span className="font-semibold text-[#6B7280]">Date: </span>
           {invoiceDate}

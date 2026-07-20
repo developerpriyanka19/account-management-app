@@ -13,6 +13,8 @@ export type FarmerDashboardStats = {
   podiFee: number;
   naTotal: number;
   totalGovtFee: number;
+  debitNoteTotal: number;
+  debitNoteCount: number;
 };
 
 function sumOrZero(value: number | null | undefined): number {
@@ -47,26 +49,31 @@ export async function getFarmerDashboardStats(): Promise<FarmerDashboardStats> {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [totalFarmers, farmersAddedThisMonth, totalAesPaid, sums] = await Promise.all([
-    prisma.customer.count(),
-    prisma.customer.count({
-      where: { createdAt: { gte: monthStart } },
-    }),
-    sumTotalAesPaid(),
-    prisma.customer.aggregate({
-      _sum: {
-        loanAmount: true,
-        leaseAmount: true,
-        atlTotal: true,
-        paoTotal: true,
-        landConversion: true,
-        otherRecoveries: true,
-        podiFee: true,
-        leaseDeedStampDuty: true,
-        leaseDeedRegCharges: true,
-      },
-    }),
-  ]);
+  const [totalFarmers, farmersAddedThisMonth, totalAesPaid, sums, debitNoteAgg] =
+    await Promise.all([
+      prisma.customer.count(),
+      prisma.customer.count({
+        where: { createdAt: { gte: monthStart } },
+      }),
+      sumTotalAesPaid(),
+      prisma.customer.aggregate({
+        _sum: {
+          loanAmount: true,
+          leaseAmount: true,
+          atlTotal: true,
+          paoTotal: true,
+          landConversion: true,
+          otherRecoveries: true,
+          podiFee: true,
+          leaseDeedStampDuty: true,
+          leaseDeedRegCharges: true,
+        },
+      }),
+      prisma.debitNote.aggregate({
+        _sum: { total: true },
+        _count: { _all: true },
+      }),
+    ]);
 
   const s = sums._sum;
   const landConversion = sumOrZero(s.landConversion);
@@ -89,5 +96,7 @@ export async function getFarmerDashboardStats(): Promise<FarmerDashboardStats> {
     podiFee,
     naTotal: landConversion + otherRecoveries + podiFee,
     totalGovtFee: atlTotal + gpaPoaTotal + landConversion + otherRecoveries + podiFee + k2Challan,
+    debitNoteTotal: sumOrZero(debitNoteAgg._sum.total),
+    debitNoteCount: debitNoteAgg._count._all,
   };
 }

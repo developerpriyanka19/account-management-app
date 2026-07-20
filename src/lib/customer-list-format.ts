@@ -7,6 +7,11 @@ export type CustomerListRow = {
   vendorCode: string | null;
   surveyNo: string | null;
   newSurveyNo: string | null;
+  state?: string | null;
+  district?: string | null;
+  taluk?: string | null;
+  hobbli?: string | null;
+  village?: string | null;
   rtcExtentAcre: number | null;
   rtcExtentGunta: number | null;
   rtcAKharab: number | null;

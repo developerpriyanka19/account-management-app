@@ -42,13 +42,18 @@ const MONEY_LEAF_IDS = new Set([
   "leaseExtentGunta",
 ]);
 
-const LEFT_ALIGN_LEAF_IDS = new Set<LeafColumnId>([
+  const LEFT_ALIGN_LEAF_IDS = new Set<LeafColumnId>([
   "farmerName",
   "changedFarmerName",
   "vendorCode",
   "surveyNo",
   "newSurveyNo",
   "remark",
+  "state",
+  "district",
+  "taluk",
+  "hobbli",
+  "village",
 ]);
 
 const BORDER_COLOR = "D1D5DB";

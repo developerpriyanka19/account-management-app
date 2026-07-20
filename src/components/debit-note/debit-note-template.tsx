@@ -4,6 +4,11 @@ import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { PdfPage } from "@/components/pdf/pdf-page";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 import { isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import {
+  formatInvoiceLocationLine,
+  hasInvoiceLocation,
+  locationFromCustomer,
+} from "@/lib/invoice-location";
 
 type Props = {
   data: DebitNotePayload;
@@ -37,6 +42,15 @@ function HeaderBlock({
   gstNumber: string;
   address: string;
 }) {
+  const location = locationFromCustomer({
+    village: data.village,
+    hobbli: data.hobbli,
+    taluk: data.taluk,
+    district: data.district,
+    state: data.state,
+  });
+  const locationLine = formatInvoiceLocationLine(location);
+
   return (
     <>
       <header className="pb-1">
@@ -69,14 +83,11 @@ function HeaderBlock({
           </div>
         </div>
       </header>
-      <div className="mt-2 border-b border-[#111827] pb-1 text-[10.5px]">
-        <div className="grid grid-cols-4 gap-2">
-          <p><span className="font-semibold">Hobli:</span> {data.hobbli || "—"}</p>
-          <p><span className="font-semibold">Village:</span> {data.village || "—"}</p>
-          <p><span className="font-semibold">Taluk:</span> {data.taluk || "—"}</p>
-          <p><span className="font-semibold">District:</span> {data.district || "—"}</p>
+      {hasInvoiceLocation(location) ? (
+        <div className="mt-2 border-b border-[#111827] pb-1 text-[10.5px] font-semibold">
+          <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
         </div>
-      </div>
+      ) : null}
     </>
   );
 }

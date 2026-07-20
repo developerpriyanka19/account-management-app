@@ -243,7 +243,9 @@ export const LEAF_COLUMN_IDS = CUSTOMER_COLUMN_GROUPS.flatMap((g) =>
   g.fields.map((f) => f.id),
 ) as readonly string[];
 
-export type LeafColumnId = (typeof LEAF_COLUMN_IDS)[number];
+export type LeafColumnId = (typeof LEAF_COLUMN_IDS)[number] | ExportOnlyLeafId;
+
+type ExportOnlyLeafId = "state" | "district" | "taluk" | "hobbli" | "village";
 
 export type ExportGroup = {
   label: string;
@@ -252,12 +254,19 @@ export type ExportGroup = {
   headerTone?: "red";
 };
 
-export const EXPORT_GROUPS: ExportGroup[] = CUSTOMER_COLUMN_GROUPS.map((group) => ({
-  label: group.label,
-  headerTone: group.headerTone,
-  leafLabels: group.fields.map((f) => f.label),
-  leafIds: group.fields.map((f) => f.id) as LeafColumnId[],
-}));
+export const EXPORT_GROUPS: ExportGroup[] = [
+  {
+    label: "Location",
+    leafLabels: ["State", "District", "Taluk", "Hobli", "Village"],
+    leafIds: ["state", "district", "taluk", "hobbli", "village"],
+  },
+  ...CUSTOMER_COLUMN_GROUPS.map((group) => ({
+    label: group.label,
+    headerTone: group.headerTone,
+    leafLabels: group.fields.map((f) => f.label),
+    leafIds: group.fields.map((f) => f.id) as LeafColumnId[],
+  })),
+];
 
 export type CustomerLayoutRow =
   | { row: "parent"; label: string; headerTone?: "red" }

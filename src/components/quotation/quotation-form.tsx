@@ -38,6 +38,7 @@ export function QuotationForm({ customers }: Props) {
   const [pending, setPending] = useState(false);
   const [form, setForm] = useState<QuotationFormInput>({
     refNo: "",
+    referenceDate: todayStorageDate(),
     quotationDate: todayStorageDate(),
     customerId: "",
     subject: "",
@@ -131,6 +132,16 @@ export function QuotationForm({ customers }: Props) {
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <Label>Reference Date</Label>
+            <div className="mt-1">
+              <DateInput
+                value={form.referenceDate}
+                onChange={(value) => updateField("referenceDate", value)}
+                aria-label="Reference date"
+              />
+            </div>
+          </div>
           <div>
             <Label>Quotation Date</Label>
             <div className="mt-1">

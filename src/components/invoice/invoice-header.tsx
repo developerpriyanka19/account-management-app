@@ -1,7 +1,7 @@
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import {
+  formatInvoiceLocationLine,
   hasInvoiceLocation,
-  invoiceLocationEntries,
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
@@ -29,7 +29,7 @@ export function InvoiceHeader({ data, compact = false }: Props) {
   const isService = data.invoiceType === "service" || compact;
   const location = locationFromDocument(data);
   const showLocation = hasInvoiceLocation(location);
-  const locationItems = invoiceLocationEntries(location);
+  const locationLine = formatInvoiceLocationLine(location);
 
   return (
     <header
@@ -43,6 +43,7 @@ export function InvoiceHeader({ data, compact = false }: Props) {
       <InvoiceMetadataRow
         invoiceNumber={data.invoiceNumber}
         invoiceDate={data.invoiceDate}
+        documentType={data.subType}
         poNumber={data.poNumber}
         poDate={data.poDate}
         compact={isService}
@@ -52,52 +53,28 @@ export function InvoiceHeader({ data, compact = false }: Props) {
         className={
           isService
             ? "mt-2 border-t border-[#E5E7EB] pt-2 text-left text-[11px]"
-            : "mt-4 grid grid-cols-2 gap-4 border-t border-[#E5E7EB] pt-4 text-left text-[11px]"
+            : "mt-4 border-t border-[#E5E7EB] pt-4 text-left text-[11px]"
         }
       >
         <div>
           {billLines.map((row, i) => {
-            if (!row.label && row.value === "To,") {
+            if (!row.value) return null;
+            if (row.value === "To,") {
               return <p key={i}>To,</p>;
             }
-            if (!row.label && row.value) {
-              return (
-                <p key={i} className="font-semibold text-[#111827]">
-                  {row.value}
-                </p>
-              );
-            }
-            if (row.label) {
-              return (
-                <div key={i} className="mt-0.5">
-                  <p className="text-[#6B7280]">{row.label}</p>
-                  {row.value ? <p className="text-[#111827]">{row.value}</p> : null}
-                </div>
-              );
-            }
-            return null;
+            const isName = row.value === data.customer.companyName;
+            return (
+              <p key={i} className={isName ? "font-semibold text-[#111827]" : "text-[#111827]"}>
+                {row.value}
+              </p>
+            );
           })}
         </div>
-        {!isService ? (
-          <div className="text-right">
-            <p className="mt-1">
-              <span className="font-semibold text-[#6B7280]">Type: </span>
-              {data.subType}
-            </p>
-          </div>
-        ) : null}
       </div>
 
       {showLocation ? (
-        <div className="mt-2 border-t border-[#E5E7EB] pt-2 text-[11px] text-[#111827]">
-          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-5">
-            {locationItems.map(({ label, value }) => (
-              <p key={label} className="min-w-0">
-                <span className="font-semibold text-[#6B7280]">{label}: </span>
-                {value}
-              </p>
-            ))}
-          </div>
+        <div className="mt-2 border-t border-[#E5E7EB] pt-2 text-[11px] font-semibold text-[#111827]">
+          <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
         </div>
       ) : null}
     </header>

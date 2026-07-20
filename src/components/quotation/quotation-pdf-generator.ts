@@ -21,6 +21,11 @@ import {
 import { downloadPdfBlob, openPdfBlobInNewTab } from "@/lib/pdf-print";
 import { formatQuotationDateDisplay } from "@/lib/quotation-calculations";
 import type { QuotationDocument } from "@/lib/quotation-types";
+import {
+  formatInvoiceLocationLine,
+  hasInvoiceLocation,
+  locationFromCustomer,
+} from "@/lib/invoice-location";
 
 const PAGE_W = PDF_A4_PORTRAIT.width;
 const PAGE_H = PDF_A4_PORTRAIT.height;
@@ -115,7 +120,7 @@ function drawRefHeader(pdf: jsPDF, document: QuotationDocument, startY: number):
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(META_FONT);
   pdf.text(`Ref. No. ${document.refNo}`, leftX, startY);
-  pdf.text(`Date: ${formatQuotationDateDisplay(document.quotationDate)}`, rightX, startY, {
+  pdf.text(`Reference Date: ${formatQuotationDateDisplay(document.referenceDate)}`, rightX, startY, {
     align: "right",
   });
   return startY + 9;
@@ -141,15 +146,32 @@ function drawCustomerBlock(pdf: jsPDF, document: QuotationDocument, startY: numb
   pdf.text(addressLines, leftX, leftY);
   leftY += addressLines.length * BODY_LINE_H;
 
-  if (document.pinCode.trim()) {
-    pdf.text(`PIN Code: ${document.pinCode}`, leftX, leftY);
+  if (document.customerGst.trim()) {
+    pdf.text(`GST: ${document.customerGst}`, leftX, leftY);
     leftY += BODY_LINE_H;
   }
 
   pdf.setFontSize(META_FONT);
-  pdf.text(`Date: ${formatQuotationDateDisplay(document.quotationDate)}`, rightX, startY, {
+  pdf.text(`Quotation Date: ${formatQuotationDateDisplay(document.quotationDate)}`, rightX, startY, {
     align: "right",
   });
+
+  const location = locationFromCustomer({
+    village: document.village,
+    hobbli: document.hobbli,
+    taluk: document.taluk,
+    district: document.district,
+    state: document.state,
+  });
+  if (hasInvoiceLocation(location)) {
+    leftY += 3;
+    pdf.setFont(PDF_FONT, "bold");
+    pdf.setFontSize(8);
+    const locLines = pdf.splitTextToSize(formatInvoiceLocationLine(location), CONTENT_W);
+    pdf.text(locLines, leftX, leftY);
+    leftY += locLines.length * BODY_LINE_H;
+    pdf.setFont(PDF_FONT, "normal");
+  }
 
   const subjectY = leftY + SUBJECT_GAP;
   pdf.setFont(PDF_FONT, "bold");
@@ -279,43 +301,53 @@ async function buildQuotationPdf(document: QuotationDocument): Promise<jsPDF> {
     item.description,
     formatInvoiceMoney(item.amount),
   ]);
+  const { DOCUMENT_PDF_ROWS_PER_PAGE } = await import("@/lib/invoice-location");
+  const chunks: string[][][] = [];
+  for (let i = 0; i < tableBody.length; i += DOCUMENT_PDF_ROWS_PER_PAGE) {
+    chunks.push(tableBody.slice(i, i + DOCUMENT_PDF_ROWS_PER_PAGE));
+  }
+  if (chunks.length === 0) chunks.push([]);
 
-  autoTable(pdf, {
-    startY: y,
-    margin: TABLE_MARGINS,
-    didDrawPage: (data) => {
-      if (data.pageNumber > 1) {
-        drawQuotationBrandHeader(pdf, logoDataUrl, PDF_MARGIN.top);
-      }
-    },
-    tableWidth: CONTENT_W,
-    head: [["Sl No", "Description", "Amount"]],
-    body: tableBody,
-    foot: buildTableFoot(document),
-    styles: TABLE_STYLES,
-    headStyles: WHITE_TABLE_HEAD,
-    bodyStyles: {
-      fontStyle: "normal",
-      fontSize: TABLE_FONT,
-      fillColor: [255, 255, 255],
-    },
-    footStyles: {
-      fontStyle: "normal",
-      fontSize: TABLE_FONT,
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-    },
-    columnStyles: {
-      0: { cellWidth: SL_COL_W, halign: "center" },
-      1: { cellWidth: DESC_COL_W, halign: "left" },
-      2: { cellWidth: AMOUNT_COL_W, halign: "right" },
-    },
-    theme: "grid",
-    showHead: "everyPage",
-    rowPageBreak: "auto",
+  chunks.forEach((chunk, index) => {
+    const isLast = index === chunks.length - 1;
+    if (index > 0) {
+      pdf.addPage("a4", "portrait");
+      y = drawQuotationBrandHeader(pdf, logoDataUrl, PDF_MARGIN.top);
+    }
+    autoTable(pdf, {
+      startY: y,
+      margin: TABLE_MARGINS,
+      tableWidth: CONTENT_W,
+      head: [["Sl No", "Description", "Amount"]],
+      body: chunk,
+      foot: isLast ? buildTableFoot(document) : undefined,
+      styles: TABLE_STYLES,
+      headStyles: WHITE_TABLE_HEAD,
+      bodyStyles: {
+        fontStyle: "normal",
+        fontSize: TABLE_FONT,
+        fillColor: [255, 255, 255],
+      },
+      footStyles: {
+        fontStyle: "normal",
+        fontSize: TABLE_FONT,
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+      },
+      columnStyles: {
+        0: { cellWidth: SL_COL_W, halign: "center" },
+        1: { cellWidth: DESC_COL_W, halign: "left" },
+        2: { cellWidth: AMOUNT_COL_W, halign: "right" },
+      },
+      theme: "grid",
+      showHead: "everyPage",
+      showFoot: isLast ? "lastPage" : "never",
+      rowPageBreak: "avoid",
+    });
+    y = (pdf.lastAutoTable?.finalY ?? y) + WORDS_GAP;
   });
 
-  let endY = (pdf.lastAutoTable?.finalY ?? y) + WORDS_GAP;
+  let endY = y;
   const wordsBoxH = textBlockHeight(pdf, document.grandTotalInWords, CONTENT_W - 6, BODY_FONT) + 14;
   const closingH = closingBlockHeight(null) + SIGNATURE_EXTRA_GAP;
   endY = ensureVerticalSpace(pdf, endY, wordsBoxH + closingH);

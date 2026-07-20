@@ -2,6 +2,11 @@ import { formatInvoiceMoney } from "@/lib/invoice-calculations";
 import { CompanyBrandHeader } from "@/components/company-brand-header";
 import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { COMPANY_INVOICE_HEADER } from "@/lib/invoice-config";
+import {
+  formatInvoiceLocationLine,
+  hasInvoiceLocation,
+  locationFromCustomer,
+} from "@/lib/invoice-location";
 import { formatQuotationDateDisplay } from "@/lib/quotation-calculations";
 import type { QuotationDocument } from "@/lib/quotation-types";
 
@@ -11,6 +16,14 @@ type Props = {
 
 export function QuotationTemplate({ data }: Props) {
   const subtotalLabel = formatInvoiceMoney(data.totals.subtotal);
+  const location = locationFromCustomer({
+    village: data.village,
+    hobbli: data.hobbli,
+    taluk: data.taluk,
+    district: data.district,
+    state: data.state,
+  });
+  const locationLine = formatInvoiceLocationLine(location);
 
   return (
     <article className="mx-auto flex min-h-[297mm] w-full max-w-[210mm] flex-col bg-white p-8 text-[13px] leading-relaxed text-[#111827] shadow-sm">
@@ -18,7 +31,7 @@ export function QuotationTemplate({ data }: Props) {
 
       <div className="mt-4 flex justify-between text-[13px]">
         <span>Ref. No. {data.refNo}</span>
-        <span>Date: {formatQuotationDateDisplay(data.quotationDate)}</span>
+        <span>Reference Date: {formatQuotationDateDisplay(data.referenceDate)}</span>
       </div>
 
       <section className="mt-6 grid grid-cols-[1fr_auto] gap-6 text-[13px]">
@@ -26,12 +39,20 @@ export function QuotationTemplate({ data }: Props) {
           <p>To,</p>
           <p className="mt-2 font-semibold">{data.customerName}</p>
           <p className="mt-1 whitespace-pre-wrap">{data.customerAddress}</p>
-          {data.pinCode ? <p className="mt-1">PIN Code: {data.pinCode}</p> : null}
+          {data.customerGst ? <p className="mt-1">GST: {data.customerGst}</p> : null}
         </div>
-        <p className="self-start text-right">Date: {formatQuotationDateDisplay(data.quotationDate)}</p>
+        <p className="self-start text-right">
+          Quotation Date: {formatQuotationDateDisplay(data.quotationDate)}
+        </p>
       </section>
 
-      <p className="mt-8 text-[13px] font-bold">
+      {hasInvoiceLocation(location) ? (
+        <p className="mt-4 text-[12px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+          {locationLine}
+        </p>
+      ) : null}
+
+      <p className="mt-6 text-[13px] font-bold">
         Subject – Quotation for {data.subject}
       </p>
 

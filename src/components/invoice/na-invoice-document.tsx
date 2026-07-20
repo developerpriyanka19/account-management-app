@@ -16,8 +16,8 @@ import {
   resolveNaRatePerAcre,
 } from "@/lib/na-invoice-layout";
 import {
+  formatInvoiceLocationLine,
   hasInvoiceLocation,
-  invoiceLocationEntries,
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
@@ -38,25 +38,16 @@ function BillToBlock({ data }: { data: InvoiceDocumentData }) {
   return (
     <div className="text-[7px] leading-snug">
       {lines.map((row, i) => {
-        if (!row.label && row.value === "To,") {
+        if (!row.value) return null;
+        if (row.value === "To,") {
           return <p key={i}>To,</p>;
         }
-        if (!row.label && row.value) {
-          return (
-            <p key={i} className="font-bold uppercase">
-              {row.value}
-            </p>
-          );
-        }
-        if (row.label) {
-          return (
-            <div key={i} className="mt-0.5">
-              <p>{row.label}</p>
-              {row.value ? <p className="pl-1">{row.value}</p> : null}
-            </div>
-          );
-        }
-        return null;
+        const isName = row.value === data.customer.companyName;
+        return (
+          <p key={i} className={isName ? "font-bold" : undefined}>
+            {row.value}
+          </p>
+        );
       })}
     </div>
   );
@@ -81,7 +72,7 @@ export function NaInvoiceDocument({ data }: Props) {
     district: prepared.district?.trim() ?? "",
     state: prepared.state?.trim() ?? "",
   };
-  const locationItems = invoiceLocationEntries(location);
+  const locationLine = formatInvoiceLocationLine(location);
   const poDateDisplay = toDisplayDate(prepared.poDate) || "";
 
   return (
@@ -96,41 +87,19 @@ export function NaInvoiceDocument({ data }: Props) {
             <InvoiceMetadataRow
               invoiceNumber={prepared.invoiceNumber}
               invoiceDate={toDisplayDate(prepared.invoiceDate) || prepared.invoiceDate}
+              documentType={prepared.subType}
               poNumber={prepared.poNumber}
               poDate={poDateDisplay}
               className="text-[8px]"
             />
           </header>
 
-          <div className="mt-2 grid grid-cols-2 gap-4 border-b border-black pb-2">
+          <div className="mt-2 border-b border-black pb-2">
             <BillToBlock data={prepared} />
-            <div className="text-right text-[7px] leading-snug">
-              <p>
-                <span className="font-semibold">Type: </span>
-                {prepared.subType}
-              </p>
-            </div>
           </div>
           {hasInvoiceLocation(location) ? (
-            <div
-              className={`mt-1 grid gap-x-3 border-b border-black pb-1 text-[7px] ${
-                locationItems.length >= 5
-                  ? "grid-cols-5"
-                  : locationItems.length >= 4
-                    ? "grid-cols-4"
-                    : locationItems.length === 3
-                      ? "grid-cols-3"
-                      : locationItems.length === 2
-                        ? "grid-cols-2"
-                        : "grid-cols-1"
-              }`}
-            >
-              {locationItems.map(({ label, value }) => (
-                <p key={label} className="min-w-0">
-                  <span className="font-semibold">{label}: </span>
-                  {value}
-                </p>
-              ))}
+            <div className="mt-1 border-b border-black pb-1 text-[7px] font-semibold">
+              <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
             </div>
           ) : null}
         </>

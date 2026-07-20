@@ -8,12 +8,17 @@ export type QuotationItem = {
 
 export type QuotationDocument = {
   refNo: string;
+  referenceDate: string;
   quotationDate: string;
   customerName: string;
   customerGst: string;
   customerAddress: string;
   pinCode: string;
   state: string;
+  village: string;
+  hobbli: string;
+  taluk: string;
+  district: string;
   subject: string;
   items: QuotationItem[];
   totals: InvoiceTotals;
@@ -22,6 +27,7 @@ export type QuotationDocument = {
 
 export type QuotationFormInput = {
   refNo: string;
+  referenceDate: string;
   quotationDate: string;
   customerId: number | "";
   subject: string;

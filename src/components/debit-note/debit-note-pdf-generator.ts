@@ -7,7 +7,6 @@ import { drawCompanyBrandHeaderPdf } from "@/lib/company-brand-header-pdf";
 import { drawCompanyDocumentFooterPdf } from "@/lib/company-document-footer-pdf";
 import {
   ensureVerticalSpace,
-  PDF_A4_LANDSCAPE,
   PDF_A4_PORTRAIT,
   PDF_FONT,
   PDF_MARGIN,
@@ -23,6 +22,10 @@ import type {
   LandConversionRow,
 } from "@/lib/debit-note-types";
 import { DebitNoteType, isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import {
+  formatInvoiceLocationLine,
+  locationFromCustomer,
+} from "@/lib/invoice-location";
 
 type JsPdfWithAutoTable = JsPDFType & { lastAutoTable?: { finalY: number } };
 
@@ -47,7 +50,39 @@ function debitNotePurposeTitle(type: DebitNoteType, village: string): string {
 }
 
 function locationLine(data: DebitNotePayload): string {
-  return `DISTRICT: ${(data.district || "—").toUpperCase()}, TALUK: ${(data.taluk || "—").toUpperCase()}, HOBLI: ${(data.hobbli || "—").toUpperCase()} AND VILLAGE ${(data.village || "—").toUpperCase()}`;
+  return formatInvoiceLocationLine(
+    locationFromCustomer({
+      village: data.village,
+      hobbli: data.hobbli,
+      taluk: data.taluk,
+      district: data.district,
+      state: data.state,
+    }),
+  );
+}
+
+function drawLocationRow(
+  pdf: JsPDFType,
+  data: DebitNotePayload,
+  pageWidth: number,
+  startY: number,
+  options?: { align?: "left" | "center"; fontSize?: number },
+): number {
+  const line = locationLine(data);
+  if (!line) return startY;
+
+  const contentW = pdfContentWidth(pageWidth);
+  const align = options?.align ?? "left";
+  const fontSize = options?.fontSize ?? 8;
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(fontSize);
+  const lines = pdf.splitTextToSize(line, contentW);
+  if (align === "center") {
+    pdf.text(lines, pageWidth / 2, startY, { align: "center" });
+  } else {
+    pdf.text(lines, PDF_MARGIN.left, startY);
+  }
+  return startY + lines.length * (fontSize * 0.45 + 0.8) + 3;
 }
 
 let logoDataUrlPromise: Promise<string> | null = null;
@@ -188,12 +223,6 @@ function drawDebitNotePage1Intro(
   pdf.text(purposeLines, pageWidth / 2, y, { align: "center" });
   y += purposeLines.length * 5 + 3;
 
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(9);
-  const locLines = pdf.splitTextToSize(locationLine(data), contentW);
-  pdf.text(locLines, pageWidth / 2, y, { align: "center" });
-  y += locLines.length * 4.5 + 5;
-
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(9);
   pdf.text(`Debit Note No: ${data.debitNoteNo}`, leftX, y);
@@ -217,7 +246,9 @@ function drawDebitNotePage1Intro(
     pdf.text(line, leftX, y);
     y += 4.2;
   }
-  y += 6;
+  y += 4;
+  y = drawLocationRow(pdf, data, pageWidth, y, { align: "left", fontSize: 8 });
+  y += 2;
 
   return y;
 }
@@ -328,8 +359,8 @@ async function generateLandConversionDebitNotePdf(
     return pdf;
   }
 
-  pdf.addPage("a4", "landscape");
-  const landW = PDF_A4_LANDSCAPE.width;
+  pdf.addPage("a4", "portrait");
+  const landW = PDF_A4_PORTRAIT.width;
   const landContentW = pdfContentWidth(landW);
   let ly = drawContinuationLogoHeader(pdf, logoDataUrl, landW);
 
@@ -338,10 +369,7 @@ async function generateLandConversionDebitNotePdf(
   const purposeLines = pdf.splitTextToSize(purpose, landContentW);
   pdf.text(purposeLines, landW / 2, ly, { align: "center" });
   ly += purposeLines.length * 5 + 3;
-  pdf.setFontSize(9);
-  const locLines = pdf.splitTextToSize(locationLine(data), landContentW);
-  pdf.text(locLines, landW / 2, ly, { align: "center" });
-  ly += locLines.length * 4.5 + 4;
+  ly = drawLocationRow(pdf, data, landW, ly, { align: "center", fontSize: 8 });
 
   const detailBody = rows.map((r, i) => [
     String(i + 1),
@@ -523,10 +551,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
   const purposeLines = pdf.splitTextToSize(purpose, contentW);
   pdf.text(purposeLines, pageW / 2, py, { align: "center" });
   py += purposeLines.length * 5 + 3;
-  pdf.setFontSize(9);
-  const locLines = pdf.splitTextToSize(locationLine(data), contentW);
-  pdf.text(locLines, pageW / 2, py, { align: "center" });
-  py += locLines.length * 4.5 + 4;
+  py = drawLocationRow(pdf, data, pageW, py, { align: "center", fontSize: 8 });
 
   const sumRtcAcre = rows.reduce((s, r) => s + (r.rtcAcre ?? r.acres ?? 0), 0);
   const sumRtcGunta = rows.reduce((s, r) => s + (r.rtcGunta ?? r.guntas ?? 0), 0);
@@ -574,8 +599,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
         const pLines = pdf.splitTextToSize(purpose, contentW);
         pdf.text(pLines, pageW / 2, hy, { align: "center" });
         hy += pLines.length * 4.5 + 2;
-        const lLines = pdf.splitTextToSize(locationLine(data), contentW);
-        pdf.text(lLines, pageW / 2, hy, { align: "center" });
+        drawLocationRow(pdf, data, pageW, hy, { align: "center", fontSize: 8 });
       }
     },
     tableWidth: contentW,
@@ -725,8 +749,8 @@ async function generateAtlPoaDebitNotePdf(
     return pdf;
   }
 
-  pdf.addPage("a4", "landscape");
-  const landW = PDF_A4_LANDSCAPE.width;
+  pdf.addPage("a4", "portrait");
+  const landW = PDF_A4_PORTRAIT.width;
   let ly = drawContinuationLogoHeader(pdf, logoDataUrl, landW);
 
   pdf.setFont(PDF_FONT, "bold");
@@ -734,6 +758,7 @@ async function generateAtlPoaDebitNotePdf(
   const purposeLines = pdf.splitTextToSize(purpose, pdfContentWidth(landW));
   pdf.text(purposeLines, landW / 2, ly, { align: "center" });
   ly += purposeLines.length * 5 + 3;
+  ly = drawLocationRow(pdf, data, landW, ly, { align: "center", fontSize: 8 });
 
   const detailBody = rows.map((r, i) => [
     String(i + 1),

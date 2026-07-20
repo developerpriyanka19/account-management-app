@@ -222,6 +222,7 @@ const MONEY_IDS = new Set<string>([
   "totalGunta",
   "totalCents",
   "rentPerAcre",
+  "noOfYears",
   "rentAmount",
   "aesAdvanceChequeAmount",
   "balanceRentAmount",
@@ -292,11 +293,11 @@ export function getExportCellValue(row: CustomerListRow, id: LeafColumnId): stri
     if (v == null || Number.isNaN(v as number)) return "";
     return Math.round(v as number);
   }
-  if (MONEY_IDS.has(id)) {
+  if (MONEY_IDS.has(id) || typeof v === "number") {
     if (v == null || Number.isNaN(v as number)) return "";
     return v as number;
   }
-  const t = cellText(v as string | null);
+  const t = cellText(v as string | number | null | undefined);
   return t === "—" ? "" : t;
 }
 

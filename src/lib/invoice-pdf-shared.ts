@@ -5,8 +5,8 @@ import type { BankDetailsSnapshot } from "@/lib/bank-details-types";
 import { toDisplayDate } from "@/lib/date-format";
 import { buildBillToLines } from "@/lib/invoice-customer-format";
 import {
+  formatInvoiceLocationLine,
   hasInvoiceLocation,
-  invoiceLocationEntries,
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
 import { COMPANY_INVOICE_HEADER, INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
@@ -131,6 +131,9 @@ export async function renderInvoiceHeader(
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(8);
   pdf.text(`Invoice No: ${document.invoiceNumber}`, leftX, y);
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.text(`Type: ${document.subType}`, rightX, y, { align: "right" });
+  pdf.setFont(PDF_FONT, "normal");
   y += 3.5;
   pdf.text(`GST: ${COMPANY_INVOICE_HEADER.gstin}`, leftX, y);
   pdf.text(`Date: ${formatInvoiceDateDisplay(document.invoiceDate)}`, rightX, y, { align: "right" });
@@ -154,51 +157,34 @@ export async function renderInvoiceHeader(
   return y + 4;
 }
 
-/** Shared bill-to, type, and location block for NA and service invoices. */
+/** Shared bill-to and location block for NA and service invoices. Type is in the header. */
 export function renderInvoiceCustomerSection(
   pdf: jsPDF,
   document: InvoiceDocumentData,
   startY: number,
 ): number {
   const leftX = PDF_MARGIN.left;
-  const rightX = INVOICE_PAGE_W - PDF_MARGIN.right;
-  const colMid = INVOICE_PAGE_W / 2 + 2;
   let leftY = startY;
-  let rightY = startY;
   const lineHeight = 3.4;
+  const maxWidth = INVOICE_CONTENT_W * 0.62;
 
   pdf.setFontSize(7);
   pdf.setFont(PDF_FONT, "normal");
 
   const billLines = buildBillToLines(document.customer);
   for (const row of billLines) {
-    if (!row.label && row.value === "To,") {
+    if (!row.value) continue;
+    if (row.value === "To,") {
       pdf.text("To,", leftX, leftY);
       leftY += lineHeight;
       continue;
     }
-    if (!row.label && row.value) {
-      pdf.setFont(PDF_FONT, "bold");
-      pdf.text(row.value, leftX, leftY, { maxWidth: colMid - leftX - 4 });
-      pdf.setFont(PDF_FONT, "normal");
-      leftY += lineHeight;
-      continue;
-    }
-    if (row.label) {
-      pdf.text(row.label, leftX, leftY);
-      leftY += lineHeight;
-      if (row.value) {
-        pdf.text(row.value, leftX, leftY, { maxWidth: colMid - leftX - 4 });
-        leftY += lineHeight;
-      }
-    }
+    const isName = row.value === document.customer.companyName;
+    pdf.setFont(PDF_FONT, isName ? "bold" : "normal");
+    pdf.text(row.value, leftX, leftY, { maxWidth });
+    pdf.setFont(PDF_FONT, "normal");
+    leftY += lineHeight;
   }
-
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.text("Type:", colMid, rightY);
-  pdf.setFont(PDF_FONT, "normal");
-  pdf.text(document.subType, colMid + 22, rightY, { maxWidth: rightX - colMid - 22 });
-  rightY += lineHeight;
 
   const location: InvoiceLocationFields = {
     hobbli: document.hobbli?.trim() ?? "",
@@ -208,22 +194,20 @@ export function renderInvoiceCustomerSection(
     state: document.state?.trim() ?? "",
   };
 
-  let y = Math.max(leftY, rightY);
+  let y = leftY;
   if (hasInvoiceLocation(location)) {
-    const metaY = y + 2.5;
-    const entries = invoiceLocationEntries(location);
-    const quarter = INVOICE_CONTENT_W / Math.max(entries.length, 1);
-    entries.forEach(({ label, value }, index) => {
-      pdf.text(`${label}: ${value}`, PDF_MARGIN.left + quarter * index, metaY, {
-        maxWidth: quarter - 2,
-      });
-    });
-    y = metaY + lineHeight + 1;
+    y += 2.5;
+    const line = formatInvoiceLocationLine(location);
+    pdf.setFont(PDF_FONT, "bold");
+    pdf.setFontSize(7);
+    const wrapped = pdf.splitTextToSize(line, INVOICE_CONTENT_W);
+    pdf.text(wrapped, leftX, y);
+    y += wrapped.length * lineHeight + 1;
+    pdf.setFont(PDF_FONT, "normal");
   } else {
     y += 2;
   }
 
-  y = Math.max(y, rightY);
   pdf.setLineWidth(0.2);
   pdf.line(PDF_MARGIN.left, y + 1, INVOICE_PAGE_W - PDF_MARGIN.right, y + 1);
   return y + 5;

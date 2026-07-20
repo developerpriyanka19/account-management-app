@@ -17,9 +17,13 @@ export function formatIntegerAmount(value: number | null | undefined): string {
   }).format(Math.round(value));
 }
 
-export function cellText(value: string | null | undefined): string {
-  const t = value?.trim();
-  return t && t.length > 0 ? t : "—";
+export function cellText(value: string | number | null | undefined): string {
+  if (value == null) return "—";
+  if (typeof value === "number") {
+    return Number.isNaN(value) ? "—" : String(value);
+  }
+  const t = String(value).trim();
+  return t.length > 0 ? t : "—";
 }
 
 export function formatDateTime(value: Date): string {

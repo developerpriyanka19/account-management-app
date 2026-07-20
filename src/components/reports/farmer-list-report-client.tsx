@@ -7,12 +7,11 @@ import {
   ReportPagination,
   ReportToolbar,
 } from "@/components/reports/report-controls";
-import {
-  getFarmerListReportExport,
-  importFarmerListReportRows,
-} from "@/app/reports/actions";
+import { getFarmerListReportExport, importFarmerListReportRows } from "@/app/reports/actions";
+import { fetchAllFarmersForExport } from "@/app/farmer/actions";
 import type { FarmerListReportRow } from "@/lib/reports-types";
 import { downloadReportExcel } from "@/lib/reports-export";
+import { exportCustomersToExcel } from "@/lib/customer-excel";
 import {
   downloadFarmerListImportTemplate,
   FARMER_LIST_IMPORT_HEADERS,
@@ -59,6 +58,12 @@ export function FarmerListReportClient({
   const [importMessage, setImportMessage] = useState("");
 
   async function handleExport() {
+    const allFarmers = await fetchAllFarmersForExport();
+    const stamp = new Date().toISOString().slice(0, 10);
+    exportCustomersToExcel(allFarmers, `farmer-list-all-${stamp}.xlsx`);
+  }
+
+  async function handleExportFiltered() {
     const data = await getFarmerListReportExport(filter);
     downloadReportExcel(
       "Farmer List",
@@ -79,7 +84,7 @@ export function FarmerListReportClient({
         r.aKharab,
         r.bKharab,
       ]),
-      `farmer-list-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      `farmer-list-filtered-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
   }
 
@@ -145,6 +150,11 @@ export function FarmerListReportClient({
         onDownloadTemplate={() => downloadFarmerListImportTemplate()}
         onImport={() => fileRef.current?.click()}
       />
+      <div className="print:hidden">
+        <Button type="button" variant="outline" size="sm" onClick={() => void handleExportFiltered()}>
+          Export Filtered View
+        </Button>
+      </div>
       <input
         ref={fileRef}
         type="file"
