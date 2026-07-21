@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Eye, Download, Pencil, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toDisplayDate } from "@/lib/date-format";
 
 type Row = {
   id: number;
@@ -82,7 +83,7 @@ export function NaInvoiceListTable({ rows, page, pageSize, total, query }: Props
                 <td className="px-3 py-2">
                   {row.customer.companyName || `${row.customer.firstName} ${row.customer.lastName}`.trim()}
                 </td>
-                <td className="px-3 py-2">{row.invoiceDate}</td>
+                <td className="px-3 py-2">{toDisplayDate(row.invoiceDate) || row.invoiceDate}</td>
                 <td className="px-3 py-2">{row.district || "—"}</td>
                 <td className="px-3 py-2">{row.taluk || "—"}</td>
                 <td className="px-3 py-2">{row.village || "—"}</td>

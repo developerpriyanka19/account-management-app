@@ -141,6 +141,7 @@ export const COMPANY_INVOICE_HEADER = {
   footerAddress:
     "Shop No - 15 and 18 Second Floor Shriya Riddhi Siddhi Chaitanya Colony Opp Giants School R.N. Shetty Road HUBBALLI 580030",
   phone: "Mobile : +91-9916037152",
+  email: "Email : info@apoorvaenergysolutions.com",
 } as const;
 
 /** Brand header colors and typography (screen + PDF). */

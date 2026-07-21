@@ -21,9 +21,13 @@ import type {
   DebitNotePayload,
   LandConversionRow,
 } from "@/lib/debit-note-types";
-import { DebitNoteType, isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import { DebitNoteType, isK2ChallanDebitNote, isLandConversionOnly } from "@/lib/debit-note-types";
 import {
-  formatInvoiceLocationLine,
+  k2RowFee,
+  normalizeAcresGuntas,
+} from "@/lib/farmer-debit-note-row";
+import {
+  invoiceLocationEntries,
   locationFromCustomer,
 } from "@/lib/invoice-location";
 
@@ -40,6 +44,7 @@ function debitNotePurposeTitle(type: DebitNoteType, village: string): string {
   const place = village?.trim() || "—";
   switch (type) {
     case DebitNoteType.LEASE_DEED_EXECUTION:
+    case DebitNoteType.SERVICE_ORDER:
       return `Reimbursement of amount ${place} Farmers Lease Deeds Registration Fee and Stamp Duty Charges.`;
     case DebitNoteType.ATL_POA:
       return `Reimbursement of amount ${place} Farmers ATL and POA/GPA Charges.`;
@@ -49,8 +54,14 @@ function debitNotePurposeTitle(type: DebitNoteType, village: string): string {
   }
 }
 
-function locationLine(data: DebitNotePayload): string {
-  return formatInvoiceLocationLine(
+function drawLocationTable(
+  pdf: JsPdfWithAutoTable,
+  data: DebitNotePayload,
+  pageWidth: number,
+  startY: number,
+  fontSize = 8,
+): number {
+  const entries = invoiceLocationEntries(
     locationFromCustomer({
       village: data.village,
       hobbli: data.hobbli,
@@ -59,30 +70,36 @@ function locationLine(data: DebitNotePayload): string {
       state: data.state,
     }),
   );
-}
-
-function drawLocationRow(
-  pdf: JsPDFType,
-  data: DebitNotePayload,
-  pageWidth: number,
-  startY: number,
-  options?: { align?: "left" | "center"; fontSize?: number },
-): number {
-  const line = locationLine(data);
-  if (!line) return startY;
+  if (entries.length === 0) return startY;
 
   const contentW = pdfContentWidth(pageWidth);
-  const align = options?.align ?? "left";
-  const fontSize = options?.fontSize ?? 8;
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(fontSize);
-  const lines = pdf.splitTextToSize(line, contentW);
-  if (align === "center") {
-    pdf.text(lines, pageWidth / 2, startY, { align: "center" });
-  } else {
-    pdf.text(lines, PDF_MARGIN.left, startY);
-  }
-  return startY + lines.length * (fontSize * 0.45 + 0.8) + 3;
+  autoTable(pdf, {
+    startY,
+    margin: { left: PDF_MARGIN.left, right: PDF_MARGIN.right },
+    tableWidth: contentW,
+    body: [entries.map(({ label, value }) => `${label}: ${value}`)],
+    styles: {
+      font: PDF_FONT,
+      fontSize,
+      fontStyle: "bold",
+      cellPadding: 2.5,
+      halign: "center",
+      valign: "middle",
+      overflow: "linebreak",
+      lineWidth: 0.2,
+      lineColor: [0, 0, 0] as [number, number, number],
+      fillColor: [255, 255, 255] as [number, number, number],
+      textColor: [0, 0, 0] as [number, number, number],
+    },
+    columnStyles: buildScaledColumnStyles(
+      entries.map(() => 1),
+      contentW,
+      entries.map(() => "center"),
+    ),
+    theme: "grid",
+  });
+
+  return (pdf.lastAutoTable?.finalY ?? startY) + 4;
 }
 
 let logoDataUrlPromise: Promise<string> | null = null;
@@ -111,10 +128,6 @@ function formatPdfMoney(value: number): string {
   }).format(value || 0);
 }
 
-function formatPdfRupee(value: number): string {
-  return `₹ ${formatPdfMoney(value)}`;
-}
-
 function formatPdfNum(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("en-IN", {
@@ -134,6 +147,78 @@ function tableBaseStyles(fontSize: number) {
     lineColor: [0, 0, 0] as [number, number, number],
     fillColor: [255, 255, 255] as [number, number, number],
     fontStyle: "normal" as const,
+  };
+}
+
+/** Page 2 farmer detail tables — readable type that fits A4 portrait width. */
+const DETAIL_TABLE_BODY_FONT = 7.5;
+const DETAIL_TABLE_HEAD_FONT = 7;
+const DETAIL_TABLE_CELL_PADDING = 2;
+const DETAIL_TABLE_MIN_CELL_HEIGHT = 8;
+
+type ColumnAlign = "left" | "center" | "right";
+
+/** Scale relative column weights to exactly fit the printable table width. */
+function buildScaledColumnStyles(
+  weights: number[],
+  totalWidth: number,
+  alignments: (ColumnAlign | undefined)[] = [],
+): Record<number, { cellWidth: number; halign?: ColumnAlign; minCellHeight: number }> {
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const styles: Record<number, { cellWidth: number; halign?: ColumnAlign; minCellHeight: number }> =
+    {};
+  let used = 0;
+  weights.forEach((weight, index) => {
+    const isLast = index === weights.length - 1;
+    const cellWidth = isLast
+      ? Math.max(totalWidth - used, 4)
+      : Math.floor(((weight / weightSum) * totalWidth) * 10) / 10;
+    used += cellWidth;
+    const align = alignments[index];
+    styles[index] = {
+      cellWidth,
+      minCellHeight: DETAIL_TABLE_MIN_CELL_HEIGHT,
+      ...(align ? { halign: align } : {}),
+    };
+  });
+  return styles;
+}
+
+function detailTableStyles() {
+  return {
+    ...tableBaseStyles(DETAIL_TABLE_BODY_FONT),
+    cellPadding: DETAIL_TABLE_CELL_PADDING,
+    minCellHeight: DETAIL_TABLE_MIN_CELL_HEIGHT,
+    overflow: "linebreak" as const,
+  };
+}
+
+function detailTableHeadStyles() {
+  return {
+    fontStyle: "bold" as const,
+    fontSize: DETAIL_TABLE_HEAD_FONT,
+    halign: "center" as const,
+    fillColor: [255, 255, 255] as [number, number, number],
+    textColor: [0, 0, 0] as [number, number, number],
+    valign: "middle" as const,
+    overflow: "linebreak" as const,
+    cellPadding: DETAIL_TABLE_CELL_PADDING,
+  };
+}
+
+function detailTableAutoTableOptions(contentWidth: number) {
+  return {
+    tableWidth: contentWidth,
+    styles: detailTableStyles(),
+    headStyles: detailTableHeadStyles(),
+    bodyStyles: {
+      fontSize: DETAIL_TABLE_BODY_FONT,
+      overflow: "linebreak" as const,
+      cellPadding: DETAIL_TABLE_CELL_PADDING,
+    },
+    theme: "grid" as const,
+    showHead: "everyPage" as const,
+    rowPageBreak: "avoid" as const,
   };
 }
 
@@ -247,7 +332,7 @@ function drawDebitNotePage1Intro(
     y += 4.2;
   }
   y += 4;
-  y = drawLocationRow(pdf, data, pageWidth, y, { align: "left", fontSize: 8 });
+  y = drawLocationTable(pdf, data, pageWidth, y, 8);
   y += 2;
 
   return y;
@@ -327,15 +412,15 @@ async function generateLandConversionDebitNotePdf(
       ],
     ],
     body: [
-      ["1", "Total Amount of Land Conversions Fee", formatPdfRupee(totalLc)],
-      ["2", "Total Amount of Podi Fee", formatPdfRupee(totalPodi)],
-      ["3", "Total Amount of Other Recoveries Fee", formatPdfRupee(totalRecovery)],
+      ["1", "Total Amount of Land Conversions Fee", formatPdfMoney(totalLc)],
+      ["2", "Total Amount of Podi Fee", formatPdfMoney(totalPodi)],
+      ["3", "Total Amount of Other Recoveries Fee", formatPdfMoney(totalRecovery)],
       [
         { content: "", styles: { fontStyle: "bold" } },
         { content: "Total Amount", styles: { halign: "center", fontStyle: "bold" } },
         {
           content: `Rs ${formatPdfMoney(data.total)}/-`,
-          styles: { halign: "right", fontStyle: "bold" },
+          styles: { halign: "center", fontStyle: "bold" },
         },
       ],
     ],
@@ -344,7 +429,7 @@ async function generateLandConversionDebitNotePdf(
     columnStyles: {
       0: { cellWidth: 18, halign: "center" },
       1: { cellWidth: contentW - 55 },
-      2: { cellWidth: 37, halign: "right" },
+      2: { cellWidth: 37, halign: "center" },
     },
     theme: "grid",
     rowPageBreak: "avoid",
@@ -369,7 +454,7 @@ async function generateLandConversionDebitNotePdf(
   const purposeLines = pdf.splitTextToSize(purpose, landContentW);
   pdf.text(purposeLines, landW / 2, ly, { align: "center" });
   ly += purposeLines.length * 5 + 3;
-  ly = drawLocationRow(pdf, data, landW, ly, { align: "center", fontSize: 8 });
+  ly = drawLocationTable(pdf, data, landW, ly, 8);
 
   const detailBody = rows.map((r, i) => [
     String(i + 1),
@@ -412,42 +497,28 @@ async function generateLandConversionDebitNotePdf(
         drawContinuationLogoHeader(pdf, logoDataUrl, landW);
       }
     },
-    tableWidth: landContentW,
+    ...detailTableAutoTableOptions(landContentW),
     head: [
       [
-        "Sl No",
-        "Farmer Name",
-        "Survey No",
-        "NA Extent Acre",
+        "Sl\nNo",
+        "Farmer\nName",
+        "Survey\nNo",
+        "NA Extent\nAcre",
         "Gunta",
-        "Land Conversion Fee Challan Ref No",
-        "Fee",
-        "Podi Fee Challan Ref No",
-        "Fee",
-        "Other Recoveries Challan Ref No",
-        "Fee",
+        "Land Conversion\nChallan Ref No",
+        "Land Conversion\nFee",
+        "Podi Fee\nChallan Ref No",
+        "Podi\nFee",
+        "Other Recoveries\nChallan Ref No",
+        "Other Recoveries\nFee",
       ],
     ],
     body: detailBody,
-    styles: tableBaseStyles(6),
-    headStyles: { fontStyle: "bold", fontSize: 5.5, halign: "center", fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    bodyStyles: { fontSize: 6 },
-    columnStyles: {
-      0: { cellWidth: 8, halign: "center" },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 14, halign: "center" },
-      3: { cellWidth: 14, halign: "center" },
-      4: { cellWidth: 12, halign: "center" },
-      5: { cellWidth: 28 },
-      6: { cellWidth: 16, halign: "right" },
-      7: { cellWidth: 22 },
-      8: { cellWidth: 14, halign: "right" },
-      9: { cellWidth: 28 },
-      10: { cellWidth: 14, halign: "right" },
-    },
-    theme: "grid",
-    showHead: "everyPage",
-    rowPageBreak: "avoid",
+    columnStyles: buildScaledColumnStyles(
+      [1, 5, 2, 2, 1.5, 4, 2.5, 3.5, 2, 4, 2.5],
+      landContentW,
+      ["center", "left", "center", "center", "center", "left", "center", "left", "center", "left", "center"],
+    ),
   });
 
   let endY = (pdf.lastAutoTable?.finalY ?? ly) + 6;
@@ -471,7 +542,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
   logoDataUrl: string,
 ): Promise<JsPDFType> {
   const rows = data.rows as LandConversionRow[];
-  const totalFee = rows.reduce((s, r) => s + (r.landConversionFee || 0) + (r.podiFee || 0) + (r.recoveryFee || 0), 0);
+  const totalFee = rows.reduce((s, r) => s + k2RowFee(r), 0);
   const purpose = debitNotePurposeTitle(data.type, data.village);
   const hasDetail = rows.length > 0;
 
@@ -513,13 +584,13 @@ async function generateLeaseDeedExecutionDebitNotePdf(
       ],
     ],
     body: [
-      ["1", "Total Amount of Lease Deeds", formatPdfRupee(totalFee || data.total)],
+      ["1", "Total Amount of Lease Deeds", formatPdfMoney(totalFee || data.total)],
       [
         { content: "", styles: { fontStyle: "bold" } },
         { content: "Total Amount", styles: { halign: "center", fontStyle: "bold" } },
         {
           content: `Rs ${formatPdfMoney(totalFee || data.total)}/-`,
-          styles: { halign: "right", fontStyle: "bold" },
+          styles: { halign: "center", fontStyle: "bold" },
         },
       ],
     ],
@@ -528,7 +599,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
     columnStyles: {
       0: { cellWidth: 18, halign: "center" },
       1: { cellWidth: contentW - 55 },
-      2: { cellWidth: 37, halign: "right" },
+      2: { cellWidth: 37, halign: "center" },
     },
     theme: "grid",
     rowPageBreak: "avoid",
@@ -551,7 +622,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
   const purposeLines = pdf.splitTextToSize(purpose, contentW);
   pdf.text(purposeLines, pageW / 2, py, { align: "center" });
   py += purposeLines.length * 5 + 3;
-  py = drawLocationRow(pdf, data, pageW, py, { align: "center", fontSize: 8 });
+  py = drawLocationTable(pdf, data, pageW, py, 8);
 
   const sumRtcAcre = rows.reduce((s, r) => s + (r.rtcAcre ?? r.acres ?? 0), 0);
   const sumRtcGunta = rows.reduce((s, r) => s + (r.rtcGunta ?? r.guntas ?? 0), 0);
@@ -559,7 +630,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
   const sumLeaseGunta = rows.reduce((s, r) => s + (r.leaseGunta ?? r.guntas ?? 0), 0);
 
   const detailBody = rows.map((r, i) => {
-    const fee = (r.landConversionFee || 0) + (r.podiFee || 0) + (r.recoveryFee || 0);
+    const fee = k2RowFee(r);
     return [
       String(i + 1),
       r.farmerName || "—",
@@ -599,49 +670,32 @@ async function generateLeaseDeedExecutionDebitNotePdf(
         const pLines = pdf.splitTextToSize(purpose, contentW);
         pdf.text(pLines, pageW / 2, hy, { align: "center" });
         hy += pLines.length * 4.5 + 2;
-        drawLocationRow(pdf, data, pageW, hy, { align: "center", fontSize: 8 });
+        drawLocationTable(pdf, data, pageW, hy, 8);
       }
     },
-    tableWidth: contentW,
+    ...detailTableAutoTableOptions(contentW),
     head: [
       [
-        { content: "Sl. No", rowSpan: 2 },
-        { content: "Name of the Farmers", rowSpan: 2 },
-        { content: "Survey No", rowSpan: 2 },
+        { content: "Sl.\nNo", rowSpan: 2 },
+        { content: "Name of\nthe Farmers", rowSpan: 2 },
+        { content: "Survey\nNo", rowSpan: 2 },
         { content: "RTC Extent", colSpan: 2 },
         { content: "Lease Extent", colSpan: 2 },
-        { content: "Lease Deeds Challan Government Fees", rowSpan: 2 },
+        { content: "Lease Deeds k2\nChallan Govt Fees", rowSpan: 2 },
       ],
       ["Acres", "Guntas", "Acres", "Guntas"],
     ],
     body: detailBody,
-    styles: tableBaseStyles(8),
-    headStyles: {
-      fontStyle: "bold",
-      fontSize: 7,
-      halign: "center",
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-      valign: "middle",
-    },
-    bodyStyles: { fontSize: 8 },
-    columnStyles: {
-      0: { cellWidth: 12, halign: "center" },
-      1: { cellWidth: contentW - 108, halign: "left" },
-      2: { cellWidth: 22, halign: "center" },
-      3: { cellWidth: 14, halign: "center" },
-      4: { cellWidth: 14, halign: "center" },
-      5: { cellWidth: 14, halign: "center" },
-      6: { cellWidth: 14, halign: "center" },
-      7: { cellWidth: 18, halign: "right" },
-    },
-    theme: "grid",
-    showHead: "everyPage",
-    rowPageBreak: "avoid",
+    columnStyles: buildScaledColumnStyles(
+      [1.2, 5, 2.2, 1.5, 1.5, 1.5, 1.5, 2.5],
+      contentW,
+      ["center", "left", "center", "center", "center", "center", "center", "center"],
+    ),
   });
 
   let endY = (pdf.lastAutoTable?.finalY ?? py) + 4;
-  const summaryText = `TOTAL LEASE LAND EXTENSION ${formatPdfNum(sumLeaseAcre)} ACRES ${formatPdfNum(sumLeaseGunta)} GUNTAS AND TOTAL AMOUNT ${formatPdfMoney(totalFee || data.total)}/-`;
+  const normLease = normalizeAcresGuntas(sumLeaseAcre, sumLeaseGunta);
+  const summaryText = `TOTAL LEASE LAND EXTENSION ${formatPdfNum(normLease.acres)} ACRES ${String(normLease.gunta).padStart(2, "0")} GUNTAS AND TOTAL AMOUNT ${formatPdfMoney(totalFee || data.total)}/-`;
   const summaryNeed = 10 + 28;
   endY = ensureVerticalSpace(pdf, endY, summaryNeed);
 
@@ -717,15 +771,15 @@ async function generateAtlPoaDebitNotePdf(
       ],
     ],
     body: [
-      ["1", "Total Amount of ATL", formatPdfRupee(totalAtl)],
-      ["2", "Total Amount of POA OR GPA", formatPdfRupee(totalPoa)],
-      ["3", "AES Pay To Farmers Cheque And Cash", formatPdfRupee(totalCheque + totalCash)],
+      ["1", "Total Amount of ATL", formatPdfMoney(totalAtl)],
+      ["2", "Total Amount of POA OR GPA", formatPdfMoney(totalPoa)],
+      ["3", "AES Pay To Farmers Cheque And Cash", formatPdfMoney(totalCheque + totalCash)],
       [
         { content: "", styles: { fontStyle: "bold" } },
         { content: "Total Amount", styles: {halign: "center", fontStyle: "bold" } },
         {
           content: `Rs ${formatPdfMoney(data.total)}/-`,
-          styles: {halign: "right", fontStyle: "bold" },
+          styles: { halign: "center", fontStyle: "bold" },
         },
       ],
     ],
@@ -734,7 +788,7 @@ async function generateAtlPoaDebitNotePdf(
     columnStyles: {
       0: { cellWidth: 18,halign: "center" },
       1: { cellWidth: contentW - 55 },
-      2: { cellWidth: 37,halign: "right" },
+      2: { cellWidth: 37, halign: "center" },
     },
     theme: "grid",
     rowPageBreak: "avoid",
@@ -758,7 +812,7 @@ async function generateAtlPoaDebitNotePdf(
   const purposeLines = pdf.splitTextToSize(purpose, pdfContentWidth(landW));
   pdf.text(purposeLines, landW / 2, ly, { align: "center" });
   ly += purposeLines.length * 5 + 3;
-  ly = drawLocationRow(pdf, data, landW, ly, { align: "center", fontSize: 8 });
+  ly = drawLocationTable(pdf, data, landW, ly, 8);
 
   const detailBody = rows.map((r, i) => [
     String(i + 1),
@@ -799,6 +853,8 @@ async function generateAtlPoaDebitNotePdf(
     formatPdfMoney(totalCash),
   ]);
 
+  const atlContentW = pdfContentWidth(landW);
+
   autoTable(pdf, {
     startY: ly,
     margin: {
@@ -812,33 +868,41 @@ async function generateAtlPoaDebitNotePdf(
         drawContinuationLogoHeader(pdf, logoDataUrl, landW);
       }
     },
-    tableWidth: pdfContentWidth(landW),
+    ...detailTableAutoTableOptions(atlContentW),
     head: [
       [
-        { content: "Sl No", rowSpan: 2 },
-        { content: "Farmer Name", rowSpan: 2 },
-        { content: "Survey No", rowSpan: 2 },
+        { content: "Sl\nNo", rowSpan: 2 },
+        { content: "Farmer\nName", rowSpan: 2 },
+        { content: "Survey\nNo", rowSpan: 2 },
         { content: "RTC Extent", colSpan: 2 },
         { content: "Lease Extent", colSpan: 2 },
-        { content: "ATL Charges", rowSpan: 2 },
-        { content: "POA Charges", rowSpan: 2 },
+        { content: "ATL\nCharges", rowSpan: 2 },
+        { content: "POA\nCharges", rowSpan: 2 },
         { content: "AES Pay To Farmers Cheque And Cash", colSpan: 5 },
       ],
       ["Acre", "Gunta", "Acre", "Gunta", "Cheque No", "Date", "Amount", "Bank Name", "Cash"],
     ],
     body: detailBody,
-    styles: tableBaseStyles(5.5),
-    headStyles: {
-      fontStyle: "bold",
-      fontSize: 5,
-     halign: "center",
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-    },
-    bodyStyles: { fontSize: 5.5 },
-    theme: "grid",
-    showHead: "everyPage",
-    rowPageBreak: "avoid",
+    columnStyles: buildScaledColumnStyles(
+      [1, 4.5, 1.8, 1.2, 1.2, 1.2, 1.2, 2, 2, 2, 1.8, 2, 2.5, 1.5],
+      atlContentW,
+      [
+        "center",
+        "left",
+        "center",
+        "center",
+        "center",
+        "center",
+        "center",
+        "center",
+        "center",
+        "left",
+        "center",
+        "center",
+        "left",
+        "center",
+      ],
+    ),
   });
 
   let endY = (pdf.lastAutoTable?.finalY ?? ly) + 4;
@@ -858,10 +922,10 @@ export async function buildDebitNotePdf(
   ctx: DebitNotePdfContext,
 ): Promise<JsPDFType> {
   const logoDataUrl = await loadLogoDataUrl();
-  if (data.type === DebitNoteType.LEASE_DEED_EXECUTION) {
+  if (data.type === DebitNoteType.LEASE_DEED_EXECUTION || data.type === DebitNoteType.SERVICE_ORDER) {
     return generateLeaseDeedExecutionDebitNotePdf(data, ctx, logoDataUrl);
   }
-  if (isLandConversionStyleDebitNote(data.type)) {
+  if (isLandConversionOnly(data.type)) {
     return generateLandConversionDebitNotePdf(data, ctx, logoDataUrl);
   }
   return generateAtlPoaDebitNotePdf(data, ctx, logoDataUrl);

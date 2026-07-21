@@ -14,8 +14,8 @@ export const PDF_MARGIN = {
   left: 10,
   right: 10,
   bottom: 12,
-  /** Reserved space above bottom margin for green line + address + mobile footer. */
-  footerReserve: 14,
+  /** Reserved space above bottom margin for green line + address + contact footer. */
+  footerReserve: 26,
 } as const;
 
 /** Gap before signature block after last content line. */

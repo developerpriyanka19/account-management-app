@@ -181,6 +181,30 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     ],
   },
   {
+    label: "Other Charges",
+    fields: [
+      { id: "otherCharges", label: "Other Charges", inputType: "number", variant: "money" },
+    ],
+  },
+  {
+    label: "Crop Compensation",
+    fields: [
+      { id: "cropCompensation", label: "Crop Compensation", inputType: "number", variant: "money" },
+    ],
+  },
+  {
+    label: "Total Paid to Farmer",
+    fields: [
+      {
+        id: "totalPaidToFarmer",
+        label: "Total Paid to Farmer",
+        inputType: "number",
+        variant: "money",
+        computed: true,
+      },
+    ],
+  },
+  {
     label: "ATL",
     fields: [
       { id: "atlTotal", label: "ATL Govt Fee", inputType: "number", variant: "money" },
@@ -223,18 +247,6 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
     label: "Remark",
     fields: [
       { id: "remark", label: "Remark", inputType: "text", formName: "remark" },
-    ],
-  },
-  {
-    label: "Other Charger",
-    fields: [
-      { id: "otherCharges", label: "Other Charger", inputType: "number", variant: "money" },
-    ],
-  },
-  {
-    label: "Crop Compensations",
-    fields: [
-      { id: "cropCompensation", label: "Crop Compensations", inputType: "number", variant: "money" },
     ],
   },
 ];

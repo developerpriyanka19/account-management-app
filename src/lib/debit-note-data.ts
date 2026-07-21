@@ -1,7 +1,7 @@
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 import { snapshotFromRecord } from "@/lib/bank-details-types";
 import {
-  isLandConversionStyleDebitNote,
+  isLandConversionDataRow,
   normalizeDebitNoteType,
 } from "@/lib/debit-note-types";
 
@@ -57,7 +57,7 @@ type DebitNoteRecord = {
 
 export function debitNoteRecordToPayload(record: DebitNoteRecord): DebitNotePayload {
   const type = normalizeDebitNoteType(record.type);
-  const rows = isLandConversionStyleDebitNote(type)
+  const rows = isLandConversionDataRow(type)
     ? record.items.map((item) => ({
         farmerId: item.farmerId,
         farmerName: item.farmerName ?? "",

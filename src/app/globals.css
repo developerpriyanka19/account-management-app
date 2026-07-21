@@ -287,6 +287,13 @@ body {
     align-items: stretch;
   }
 
+  @media (min-width: 1024px) {
+    .customers-layout-shell .dashboard-summary-grid {
+      grid-auto-rows: 1fr;
+      grid-template-columns: repeat(5, 1fr) minmax(0, 1.7fr);
+    }
+  }
+
   .customers-layout-shell .dashboard-summary-grid .dashboard-card {
     min-height: auto;
     height: auto;

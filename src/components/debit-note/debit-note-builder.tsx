@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Printer, Save, X } from "lucide-react";
 import { useToast } from "@/components/customer/toast";
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BankAccountSelect } from "@/components/bank/bank-account-select";
+import { CustomerCombobox } from "@/components/invoice/customer-combobox";
 import { LocationFarmerSelector } from "@/components/shared/location-farmer-selector";
 import { saveDebitNote, getNextDebitNoteNumber } from "@/actions/debit-note-actions";
 import {
@@ -32,8 +33,21 @@ import type {
   DebitNotePayload,
   LandConversionRow,
 } from "@/lib/debit-note-types";
-import { DebitNoteType, isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
-import { todayStorageDate } from "@/lib/date-format";
+import { DebitNoteType, isK2ChallanDebitNote, isLandConversionOnly } from "@/lib/debit-note-types";
+import {
+  buildAtlPoaRowFromFarmer,
+  buildK2ChallanRowFromFarmer,
+  buildLandConversionRowFromFarmer,
+  extentFeeFromRate,
+  formatReadOnlyExtent,
+  formatReadOnlyTotalCents,
+  hasMasterExtent,
+  hasMasterMoney,
+  hasMasterText,
+  k2ChallanFeeFromFarmer,
+} from "@/lib/farmer-debit-note-row";
+import { parseAsZero, roundToTwoDecimals } from "@/lib/customer-computed-totals";
+import { todayStorageDate, toDisplayDate } from "@/lib/date-format";
 import {
   type DocumentLocation,
   type LocationField,
@@ -96,6 +110,116 @@ function buildCustomerAddress(customer: DebitNoteCustomerOption | undefined) {
   return lines.join(", ");
 }
 
+function ReadOnlyCell({
+  value,
+  align = "left",
+}: {
+  value: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <span
+      className={`block cursor-default rounded-md border border-[#E5E7EB] bg-[#F3F4F6] px-2 py-1.5 font-mono text-xs text-[#111827] ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {value}
+    </span>
+  );
+}
+
+function EditableTextCell({
+  value,
+  locked,
+  onChange,
+  placeholder,
+  align = "left",
+}: {
+  value: string;
+  locked: boolean;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  align?: "left" | "right";
+}) {
+  if (locked) {
+    return <ReadOnlyCell value={value.trim() || "—"} align={align} />;
+  }
+  return (
+    <Input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`h-8 font-mono ${align === "right" ? "text-right" : ""}`}
+      placeholder={placeholder}
+    />
+  );
+}
+
+function EditableMoneyCell({
+  value,
+  locked,
+  onChange,
+}: {
+  value: number;
+  locked: boolean;
+  onChange: (value: number) => void;
+}) {
+  if (locked) {
+    return <ReadOnlyCell value={value.toFixed(2)} align="right" />;
+  }
+  return (
+    <Input
+      type="number"
+      value={value}
+      onChange={(e) => onChange(toNumber(e.target.value))}
+      className="h-8 text-right font-mono"
+    />
+  );
+}
+
+function EditableExtentCell({
+  value,
+  locked,
+  onChange,
+}: {
+  value: number | null;
+  locked: boolean;
+  onChange: (value: number | null) => void;
+}) {
+  if (locked) {
+    return <ReadOnlyCell value={formatReadOnlyExtent(value)} align="right" />;
+  }
+  return (
+    <Input
+      type="number"
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value ? toNumber(e.target.value) : null)}
+      className="h-8 text-right font-mono"
+    />
+  );
+}
+
+function EditableDateCell({
+  value,
+  locked,
+  onChange,
+}: {
+  value: string;
+  locked: boolean;
+  onChange: (value: string) => void;
+}) {
+  if (locked) {
+    return <ReadOnlyCell value={toDisplayDate(value) || value || "—"} />;
+  }
+  return (
+    <DateInput
+      value={value}
+      onChange={onChange}
+      className="h-8"
+      aria-label="Date"
+    />
+  );
+}
+
 export function DebitNoteBuilder({
   type,
   title,
@@ -112,9 +236,6 @@ export function DebitNoteBuilder({
   const [showPreview, setShowPreview] = useState(false);
   const [debitNoteId] = useState<number | undefined>(existing?.id);
   const [customerId, setCustomerId] = useState<number | "">(existing?.customerId ?? "");
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [showCustomerList, setShowCustomerList] = useState(false);
-  const [customerHighlight, setCustomerHighlight] = useState(0);
   const [debitNoteNo, setDebitNoteNo] = useState(existing?.debitNoteNo ?? "");
   const [date, setDate] = useState(existing?.date ?? todayStorageDate());
   const [state, setState] = useState(existing?.state ?? "");
@@ -127,13 +248,13 @@ export function DebitNoteBuilder({
     initialBankSelection(existing?.bank, banks),
   );
   const [rows, setRows] = useState<(LandConversionRow | AtlPoaRow)[]>(existing?.rows ?? []);
+  const [ratePerAcre, setRatePerAcre] = useState("");
   const [pendingFocusRow, setPendingFocusRow] = useState<number | null>(null);
   const [removeRowIndex, setRemoveRowIndex] = useState<number | null>(null);
   const [locationErrors, setLocationErrors] = useState<
     Partial<Record<LocationField, string>>
   >({});
   const [farmerError, setFarmerError] = useState("");
-  const customerBoxRef = useRef<HTMLDivElement>(null);
 
   const location: DocumentLocation = useMemo(
     () => ({ state, district, taluk, hobbli, village }),
@@ -168,33 +289,62 @@ export function DebitNoteBuilder({
     [customers, customerId],
   );
 
+  const billingCustomers = useMemo(
+    () =>
+      customers.map((c) => ({
+        id: c.id,
+        label: c.label,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        gstNumber: c.gstNumber,
+        companyName: c.companyName,
+        buildingNumber: c.buildingNumber,
+        street: c.street,
+        locality: c.locality,
+        village: c.village,
+        taluk: c.taluk,
+        district: c.district,
+        hobbli: c.hobbli,
+        state: c.state,
+        pincode: c.pincode,
+        companyAddress: c.companyAddress,
+        panNumber: null,
+      })),
+    [customers],
+  );
+
   const totals = useMemo(() => {
     const subtotal = rows.reduce((sum, row) => sum + (row.total || 0), 0);
     const gst = subtotal * 0;
     return { subtotal, gst, total: subtotal + gst };
   }, [rows]);
 
-  const filteredCustomers = useMemo(() => {
-    const q = customerSearch.trim().toLowerCase();
-    if (!q) return customers.slice(0, 25);
-    return customers
-      .filter((c) => `${c.label} ${c.gstNumber}`.toLowerCase().includes(q))
-      .slice(0, 25);
-  }, [customers, customerSearch]);
-
   useEffect(() => {
-    setCustomerHighlight(0);
-  }, [customerSearch, showCustomerList]);
-
-  useEffect(() => {
-    function onPointerDown(e: MouseEvent) {
-      if (!customerBoxRef.current?.contains(e.target as Node)) {
-        setShowCustomerList(false);
-      }
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, []);
+    if (!isK2ChallanDebitNote(type) || farmers.length === 0) return;
+    setRows((prev) =>
+      prev.map((r) => {
+        const row = r as LandConversionRow;
+        if (!row.farmerId) return r;
+        const farmer = farmers.find((f) => f.id === row.farmerId);
+        if (!farmer) return r;
+        const snapshot = buildK2ChallanRowFromFarmer(farmer, 0);
+        return {
+          ...row,
+          vendorCode: snapshot.vendorCode,
+          changedFarmerName: snapshot.changedFarmerName,
+          newSurveyNo: snapshot.newSurveyNo,
+          rtcAcre: snapshot.rtcAcre,
+          rtcGunta: snapshot.rtcGunta,
+          leaseAcre: snapshot.leaseAcre,
+          leaseGunta: snapshot.leaseGunta,
+          balanceAcre: snapshot.balanceAcre,
+          balanceGunta: snapshot.balanceGunta,
+          totalGunta: snapshot.totalGunta,
+          totalCents: snapshot.totalCents,
+        };
+      }),
+    );
+  }, [type, farmers]);
 
   useEffect(() => {
     if (pendingFocusRow == null) return;
@@ -250,50 +400,32 @@ export function DebitNoteBuilder({
     [customer],
   );
 
-  function createRowFromFarmer(f: DebitNoteFarmerOption): LandConversionRow | AtlPoaRow {
-    if (isLandConversionStyleDebitNote(type)) {
-      return {
-        farmerId: f.id,
-        farmerName: f.farmerName,
-        surveyNo: f.surveyNo || "",
-        acres: f.leaseExtentAcre ?? f.rtcExtentAcre ?? null,
-        guntas: f.leaseExtentGunta ?? f.rtcExtentGunta ?? null,
-        rtcAcre: f.rtcExtentAcre,
-        rtcGunta: f.rtcExtentGunta,
-        leaseAcre: f.leaseExtentAcre,
-        leaseGunta: f.leaseExtentGunta,
-        landConversionChallanRefNo: "",
-        landConversionFee: 0,
-        podiChallanRefNo: "",
-        podiFee: 0,
-        recoveryChallanRefNo: "",
-        recoveryFee: 0,
-        total: 0,
-        remarks: "",
-      };
+  function createRowFromFarmer(
+    f: DebitNoteFarmerOption,
+    rateOverride?: number,
+  ): LandConversionRow | AtlPoaRow {
+    const rate = rateOverride ?? toNumber(ratePerAcre);
+    if (isK2ChallanDebitNote(type)) {
+      return buildK2ChallanRowFromFarmer(f, rate);
     }
-    return {
-      farmerId: f.id,
-      farmerName: f.farmerName,
-      surveyNo: f.surveyNo || "",
-      rtcAcre: f.rtcExtentAcre,
-      rtcGunta: f.rtcExtentGunta,
-      leaseAcre: f.leaseExtentAcre,
-      leaseGunta: f.leaseExtentGunta,
-      atlCharges: 0,
-      poaCharges: 0,
-      chequeNo: "",
-      chequeDate: "",
-      chequeAmount: 0,
-      bankName: "",
-      cashAmount: 0,
-      total: 0,
-      remarks: "",
-    };
+    if (isLandConversionOnly(type)) {
+      return buildLandConversionRowFromFarmer(f, rate);
+    }
+    return buildAtlPoaRowFromFarmer(f, rate);
   }
 
   function syncRowsFromSelection(ids: number[]) {
     setFarmerError("");
+    let effectiveRate = toNumber(ratePerAcre);
+    if (!ratePerAcre.trim()) {
+      const farmerWithRate = farmers.find(
+        (f) => ids.includes(f.id) && (f.rentPerAcre ?? 0) > 0,
+      );
+      if (farmerWithRate?.rentPerAcre) {
+        effectiveRate = farmerWithRate.rentPerAcre;
+        setRatePerAcre(String(farmerWithRate.rentPerAcre));
+      }
+    }
     setRows((prev) => {
       const byFarmer = new Map(
         prev
@@ -308,10 +440,13 @@ export function DebitNoteBuilder({
           continue;
         }
         const farmer = farmers.find((f) => f.id === id);
-        if (farmer) next.push(createRowFromFarmer(farmer));
+        if (farmer) {
+          next.push(createRowFromFarmer(farmer, effectiveRate));
+        }
       }
       if (
-        !isLandConversionStyleDebitNote(type) &&
+        !isK2ChallanDebitNote(type) &&
+        !isLandConversionOnly(type) &&
         next.length > prev.length
       ) {
         setPendingFocusRow(next.length - 1);
@@ -344,10 +479,8 @@ export function DebitNoteBuilder({
     });
   }
 
-  function selectCustomer(nextId: number) {
-    setCustomerId(nextId);
-    setCustomerSearch("");
-    setShowCustomerList(false);
+  function handleCustomerChange(next: { id: number } | null) {
+    setCustomerId(next?.id ?? "");
   }
 
   function confirmRemoveFarmer() {
@@ -373,8 +506,8 @@ export function DebitNoteBuilder({
     return true;
   }
 
-  function farmerNameDisplay(name: string) {
-    return <span className="block truncate">{name}</span>;
+  function farmerForRow(farmerId: number | null | undefined) {
+    return farmerId != null ? farmers.find((f) => f.id === farmerId) : undefined;
   }
 
   function actionCell(rowIndex: number, name: string, rowBg: string) {
@@ -400,8 +533,52 @@ export function DebitNoteBuilder({
       prev.map((r, idx) => {
         if (idx !== i) return r;
         const row = { ...(r as LandConversionRow), ...patch };
-        row.total = (row.landConversionFee || 0) + (row.podiFee || 0) + (row.recoveryFee || 0);
+        if (isK2ChallanDebitNote(type)) {
+          row.total = row.landConversionFee || 0;
+        } else {
+          row.total =
+            (row.landConversionFee || 0) + (row.podiFee || 0) + (row.recoveryFee || 0);
+        }
         return row;
+      }),
+    );
+  }
+
+  function applyRateToAllRows(rate: number) {
+    if (rate <= 0) return;
+    setRows((prev) =>
+      prev.map((r) => {
+        if (!r.farmerId) return r;
+        const farmer = farmers.find((f) => f.id === r.farmerId);
+        if (!farmer) return r;
+
+        if (isK2ChallanDebitNote(type)) {
+          if (k2ChallanFeeFromFarmer(farmer) > 0) return r;
+          const row = r as LandConversionRow;
+          const fee = roundToTwoDecimals(extentFeeFromRate(farmer, rate));
+          return { ...row, landConversionFee: fee, total: fee };
+        }
+
+        if (isLandConversionOnly(type)) {
+          const row = r as LandConversionRow;
+          if (parseAsZero(farmer.landConversion) > 0) return r;
+          const landConversionFee = roundToTwoDecimals(extentFeeFromRate(farmer, rate));
+          const total = roundToTwoDecimals(
+            landConversionFee + (row.podiFee || 0) + (row.recoveryFee || 0),
+          );
+          return { ...row, landConversionFee, total };
+        }
+
+        const row = r as AtlPoaRow;
+        if (parseAsZero(farmer.atlTotal) > 0) return r;
+        const atlCharges = roundToTwoDecimals(extentFeeFromRate(farmer, rate));
+        const total = roundToTwoDecimals(
+          atlCharges +
+            (row.poaCharges || 0) +
+            (row.chequeAmount || 0) +
+            (row.cashAmount || 0),
+        );
+        return { ...row, atlCharges, total };
       }),
     );
   }
@@ -450,7 +627,7 @@ export function DebitNoteBuilder({
       </header>
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <Label>Debit Note Number</Label>
             <div className="mt-1 flex gap-2">
@@ -486,70 +663,41 @@ export function DebitNoteBuilder({
               />
             </div>
           </div>
-          <div className="lg:col-span-2">
-            <Label>Customer</Label>
-            <div ref={customerBoxRef} className="relative mt-1">
-              <Input
-                value={showCustomerList ? customerSearch : customer?.label || ""}
-                onChange={(e) => {
-                  setCustomerSearch(e.target.value);
-                  setShowCustomerList(true);
-                }}
-                onFocus={() => setShowCustomerList(true)}
-                onKeyDown={(e) => {
-                  if (!showCustomerList && (e.key === "ArrowDown" || e.key === "Enter")) {
-                    setShowCustomerList(true);
-                    e.preventDefault();
-                    return;
-                  }
-                  if (!showCustomerList) return;
-                  if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setCustomerHighlight((i) => Math.min(i + 1, Math.max(0, filteredCustomers.length - 1)));
-                  } else if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setCustomerHighlight((i) => Math.max(i - 1, 0));
-                  } else if (e.key === "Enter" && filteredCustomers[customerHighlight]) {
-                    e.preventDefault();
-                    selectCustomer(filteredCustomers[customerHighlight]!.id);
-                  } else if (e.key === "Escape") {
-                    setShowCustomerList(false);
-                  }
-                }}
-                placeholder="Search Customer"
-              />
-              {showCustomerList ? (
-                <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-[#D1D5DB] bg-white shadow-lg">
-                  {filteredCustomers.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-[#6B7280]">No customers found.</p>
-                  ) : (
-                    filteredCustomers.map((c, idx) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => selectCustomer(c.id)}
-                        onMouseEnter={() => setCustomerHighlight(idx)}
-                        className={`block w-full border-b border-[#F3F4F6] px-3 py-2 text-left text-xs ${
-                          idx === customerHighlight ? "bg-[#EFF6FF]" : "hover:bg-[#F9FAFB]"
-                        }`}
-                      >
-                        <span className="block font-medium">{c.label}</span>
-                        <span className="text-[#6B7280]">{c.gstNumber}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : null}
-            </div>
+          <div>
+            <Label htmlFor="ratePerAcre">Rate Per Acre (₹)</Label>
+            <Input
+              id="ratePerAcre"
+              type="number"
+              inputMode="decimal"
+              value={ratePerAcre}
+              onChange={(e) => {
+                setRatePerAcre(e.target.value);
+                applyRateToAllRows(toNumber(e.target.value));
+              }}
+              className="mt-1 text-right font-mono"
+              placeholder="e.g. 500"
+            />
+            <p className="mt-1 text-xs text-[#6B7280]">
+              Pre-filled from farmer rent per acre. Calculates amounts for empty master fields.
+              Grey cells are read-only from farmer entry; white cells can be edited manually.
+            </p>
           </div>
-          <div className="md:col-span-2 lg:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Label>Customer</Label>
+            <CustomerCombobox
+              customers={billingCustomers}
+              value={typeof customerId === "number" ? customerId : 0}
+              onChange={handleCustomerChange}
+            />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
             <BankAccountSelect
               banks={banks}
               value={bankDetailsId}
               onChange={setBankDetailsId}
             />
           </div>
-          <div className="md:col-span-2 lg:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-3">
             <Label>Remark</Label>
             <Textarea
               value={remarks}
@@ -577,7 +725,7 @@ export function DebitNoteBuilder({
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4">
         <div className="relative z-0 max-h-[65vh] overflow-auto rounded border border-[#E5E7EB]">
-          {isLandConversionStyleDebitNote(type) ? (
+          {isLandConversionOnly(type) ? (
             <table
               className="border-separate border-spacing-0 text-xs"
               style={{ minWidth: `${1700 + DN_ACTION_COL_W}px` }}
@@ -627,19 +775,59 @@ export function DebitNoteBuilder({
                 {rows.map((row, i) => {
                   const r = row as LandConversionRow;
                   const rowBg = dnRowBackground(i);
+                  const farmer = farmerForRow(r.farmerId);
                   return (
                     <tr key={i}>
                       <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-center" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }}>{i + 1}</td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}>{farmerNameDisplay(r.farmerName)}</td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}>{r.surveyNo}</td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right" style={{ backgroundColor: rowBg }}>{r.acres ?? "—"}</td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right" style={{ backgroundColor: rowBg }}>{r.guntas ?? "—"}</td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.landConversionChallanRefNo} onChange={(e) => updateLandRow(i, { landConversionChallanRefNo: e.target.value })} className="h-8" /></td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.landConversionFee} onChange={(e) => updateLandRow(i, { landConversionFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.podiChallanRefNo} onChange={(e) => updateLandRow(i, { podiChallanRefNo: e.target.value })} className="h-8" /></td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.podiFee} onChange={(e) => updateLandRow(i, { podiFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.recoveryChallanRefNo} onChange={(e) => updateLandRow(i, { recoveryChallanRefNo: e.target.value })} className="h-8" /></td>
-                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.recoveryFee} onChange={(e) => updateLandRow(i, { recoveryFee: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}><ReadOnlyCell value={r.farmerName || "—"} /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}><ReadOnlyCell value={r.surveyNo || "—"} /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.acres)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.guntas)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableTextCell
+                          value={r.landConversionChallanRefNo}
+                          locked={false}
+                          onChange={(v) => updateLandRow(i, { landConversionChallanRefNo: v })}
+                          placeholder="Challan ref"
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.landConversionFee}
+                          locked={hasMasterMoney(farmer?.landConversion)}
+                          onChange={(v) => updateLandRow(i, { landConversionFee: v })}
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableTextCell
+                          value={r.podiChallanRefNo}
+                          locked={false}
+                          onChange={(v) => updateLandRow(i, { podiChallanRefNo: v })}
+                          placeholder="Challan ref"
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.podiFee}
+                          locked={hasMasterMoney(farmer?.podiFee)}
+                          onChange={(v) => updateLandRow(i, { podiFee: v })}
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableTextCell
+                          value={r.recoveryChallanRefNo}
+                          locked={false}
+                          onChange={(v) => updateLandRow(i, { recoveryChallanRefNo: v })}
+                          placeholder="Challan ref"
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.recoveryFee}
+                          locked={hasMasterMoney(farmer?.otherRecoveries)}
+                          onChange={(v) => updateLandRow(i, { recoveryFee: v })}
+                        />
+                      </td>
                       <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right font-semibold" style={{ backgroundColor: rowBg }}>{r.total.toFixed(2)}</td>
                       {actionCell(i, r.farmerName, rowBg)}
                     </tr>
@@ -672,6 +860,94 @@ export function DebitNoteBuilder({
                           {rows.reduce((s, r) => s + ((r as LandConversionRow).recoveryFee || 0), 0).toFixed(2)}
                         </td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
+                      </>
+                    );
+                  })()}
+                </tr>
+              </tbody>
+            </table>
+          ) : isK2ChallanDebitNote(type) ? (
+            <table
+              className="border-separate border-spacing-0 text-xs"
+              style={{ minWidth: `${2000 + DN_ACTION_COL_W}px` }}
+            >
+              <thead>
+                <tr>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]" style={{ ...dnHeaderScrollStyle(0, "#F9FAFB"), width: DN_SL_COL_W, minWidth: DN_SL_COL_W }}>Sl No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderFarmerStyle(0, "#F9FAFB")}>Farmer Name</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Vendor Code</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderSurveyStyle(0, "#F9FAFB")}>Survey No</th>
+                  <th colSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]">RTC Extent</th>
+                  <th colSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]">Lease Extent</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]">Total Gunta</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]">Total Cents</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]">K2 Challan Ref</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]">K2 Challan Fee</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]">Total</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderActionStyle(0, "#F9FAFB")}>Action</th>
+                </tr>
+                <tr>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]">Acre</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]">Gunta</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]">Acre</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]">Gunta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => {
+                  const r = row as LandConversionRow;
+                  const rowBg = dnRowBackground(i);
+                  const farmer = farmerForRow(r.farmerId);
+                  const k2FeeLocked = farmer ? k2ChallanFeeFromFarmer(farmer) > 0 : false;
+                  return (
+                    <tr key={i}>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-center" style={{ backgroundColor: rowBg, width: DN_SL_COL_W }}>{i + 1}</td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}><ReadOnlyCell value={r.farmerName || "—"} /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={r.vendorCode || "—"} /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}><ReadOnlyCell value={r.surveyNo || "—"} /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.rtcAcre)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.rtcGunta)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.leaseAcre)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.leaseGunta)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyExtent(r.totalGunta)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><ReadOnlyCell value={formatReadOnlyTotalCents(r.totalCents)} align="right" /></td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableTextCell
+                          value={r.landConversionChallanRefNo}
+                          locked={false}
+                          onChange={(v) => updateLandRow(i, { landConversionChallanRefNo: v })}
+                          placeholder="Challan ref"
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.landConversionFee}
+                          locked={k2FeeLocked}
+                          onChange={(v) => updateLandRow(i, { landConversionFee: v })}
+                        />
+                      </td>
+                      <td className="border-b border-[#E5E7EB] px-2 py-1.5 text-right font-semibold font-mono" style={{ backgroundColor: rowBg }}>{r.total.toFixed(2)}</td>
+                      {actionCell(i, r.farmerName, rowBg)}
+                    </tr>
+                  );
+                })}
+                <tr className="font-semibold">
+                  {(() => {
+                    const rowBg = dnRowBackground(0, "totals");
+                    const lcRows = rows as LandConversionRow[];
+                    return (
+                      <>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg, width: DN_SL_COL_W }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={dnBodyFarmerStyle(rowBg)} colSpan={3}>Totals</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right font-mono" style={{ backgroundColor: rowBg }}>{lcRows.reduce((s, r) => s + (r.rtcAcre || 0), 0).toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right font-mono" style={{ backgroundColor: rowBg }}>{lcRows.reduce((s, r) => s + (r.rtcGunta || 0), 0).toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right font-mono" style={{ backgroundColor: rowBg }}>{lcRows.reduce((s, r) => s + (r.leaseAcre || 0), 0).toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right font-mono" style={{ backgroundColor: rowBg }}>{lcRows.reduce((s, r) => s + (r.leaseGunta || 0), 0).toFixed(2)}</td>
+                        <td colSpan={2} className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right font-mono" style={{ backgroundColor: rowBg }}>{lcRows.reduce((s, r) => s + (r.landConversionFee || 0), 0).toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right font-mono" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
                       </>
                     );
@@ -741,29 +1017,89 @@ export function DebitNoteBuilder({
                 {rows.map((row, i) => {
                   const r = row as AtlPoaRow;
                   const rowBg = dnRowBackground(i);
+                  const farmer = farmerForRow(r.farmerId);
                   return (
                     <tr key={i}>
                       <td className="border border-[#E5E7EB] px-2 py-1.5 text-center" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }}>{i + 1}</td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}>{farmerNameDisplay(r.farmerName)}</td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}><Input value={r.surveyNo} onChange={(e) => updateAtlRow(i, { surveyNo: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.rtcAcre ?? ""} onChange={(e) => updateAtlRow(i, { rtcAcre: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.rtcGunta ?? ""} onChange={(e) => updateAtlRow(i, { rtcGunta: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.leaseAcre ?? ""} onChange={(e) => updateAtlRow(i, { leaseAcre: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.leaseGunta ?? ""} onChange={(e) => updateAtlRow(i, { leaseGunta: e.target.value ? toNumber(e.target.value) : null })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input data-focus-field="atl" data-row-index={i} type="number" value={r.atlCharges} onChange={(e) => updateAtlRow(i, { atlCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.poaCharges} onChange={(e) => updateAtlRow(i, { poaCharges: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.chequeNo} onChange={(e) => updateAtlRow(i, { chequeNo: e.target.value })} className="h-8" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={dnBodyFarmerStyle(rowBg)}><ReadOnlyCell value={r.farmerName || "—"} /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={dnBodySurveyStyle(rowBg)}><ReadOnlyCell value={r.surveyNo || "—"} /></td>
                       <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
-                        <DateInput
-                          value={r.chequeDate}
-                          onChange={(value) => updateAtlRow(i, { chequeDate: value })}
-                          className="h-8"
-                          aria-label="Cheque date"
+                        <EditableExtentCell
+                          value={r.rtcAcre}
+                          locked={hasMasterExtent(farmer?.rtcExtentAcre)}
+                          onChange={(v) => updateAtlRow(i, { rtcAcre: v })}
                         />
                       </td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.chequeAmount} onChange={(e) => updateAtlRow(i, { chequeAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input value={r.bankName} onChange={(e) => updateAtlRow(i, { bankName: e.target.value })} className="h-8" /></td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}><Input type="number" value={r.cashAmount} onChange={(e) => updateAtlRow(i, { cashAmount: toNumber(e.target.value) })} className="h-8 text-right" /></td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableExtentCell
+                          value={r.rtcGunta}
+                          locked={hasMasterExtent(farmer?.rtcExtentGunta)}
+                          onChange={(v) => updateAtlRow(i, { rtcGunta: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableExtentCell
+                          value={r.leaseAcre}
+                          locked={hasMasterExtent(farmer?.leaseExtentAcre)}
+                          onChange={(v) => updateAtlRow(i, { leaseAcre: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableExtentCell
+                          value={r.leaseGunta}
+                          locked={hasMasterExtent(farmer?.leaseExtentGunta)}
+                          onChange={(v) => updateAtlRow(i, { leaseGunta: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.atlCharges}
+                          locked={hasMasterMoney(farmer?.atlTotal)}
+                          onChange={(v) => updateAtlRow(i, { atlCharges: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.poaCharges}
+                          locked={hasMasterMoney(farmer?.paoTotal)}
+                          onChange={(v) => updateAtlRow(i, { poaCharges: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableTextCell
+                          value={r.chequeNo}
+                          locked={hasMasterText(farmer?.aesAdvanceChequeNo)}
+                          onChange={(v) => updateAtlRow(i, { chequeNo: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableDateCell
+                          value={r.chequeDate}
+                          locked={hasMasterText(farmer?.aesAdvanceDate)}
+                          onChange={(v) => updateAtlRow(i, { chequeDate: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.chequeAmount}
+                          locked={hasMasterMoney(farmer?.aesAdvanceChequeAmount)}
+                          onChange={(v) => updateAtlRow(i, { chequeAmount: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableTextCell
+                          value={r.bankName}
+                          locked={hasMasterText(farmer?.aesAdvanceBankName)}
+                          onChange={(v) => updateAtlRow(i, { bankName: v })}
+                        />
+                      </td>
+                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
+                        <EditableMoneyCell
+                          value={r.cashAmount}
+                          locked={false}
+                          onChange={(v) => updateAtlRow(i, { cashAmount: v })}
+                        />
+                      </td>
                       {actionCell(i, r.farmerName, rowBg)}
                     </tr>
                   );

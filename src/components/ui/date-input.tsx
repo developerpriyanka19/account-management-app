@@ -52,7 +52,7 @@ function dateToStorage(date: Date): string {
 }
 
 /**
- * Shared date picker — calendar select, displays DD/MM/YYYY, stores YYYY-MM-DD.
+ * Shared date picker — calendar select, displays DD/MMM/YYYY, stores YYYY-MM-DD.
  * Kept as `DateInput` export name for existing call sites.
  */
 export function DateInput({

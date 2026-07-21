@@ -21,6 +21,7 @@ const MONEY_LEAF_IDS = new Set([
   "shortageAmountSecondTime",
   "shortageThirdChequeAmount",
   "shortageAmountTotal",
+  "totalPaidToFarmer",
   "rentalDdPart1Amount",
   "atlTotal",
   "paoTotal",

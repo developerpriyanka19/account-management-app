@@ -4,6 +4,7 @@ import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { PdfPage } from "@/components/pdf/pdf-page";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
 import { isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import { toDisplayDate } from "@/lib/date-format";
 import {
   formatInvoiceLocationLine,
   hasInvoiceLocation,
@@ -77,7 +78,7 @@ function HeaderBlock({
             </div>
             <div className="text-right text-[10.5px]">
               <p>
-                <span className="font-semibold">Date:</span> {data.date}
+                <span className="font-semibold">Date:</span> {toDisplayDate(data.date) || data.date}
               </p>
             </div>
           </div>

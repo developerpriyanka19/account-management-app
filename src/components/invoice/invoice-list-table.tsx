@@ -7,6 +7,7 @@ import { deleteInvoice } from "@/app/invoice/actions";
 import { useToast } from "@/components/customer/toast";
 import { Button } from "@/components/ui/button";
 import { formatAmount } from "@/lib/customer-display";
+import { toDisplayDate } from "@/lib/date-format";
 import type { InvoiceCategoryCode } from "@/lib/invoice-category";
 import {
   invoiceListDownloadPath,
@@ -118,7 +119,7 @@ export function InvoiceListTable({
               return (
                 <tr key={row.id} className={index % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}>
                   <td className="px-3 py-2 font-medium">{row.invoiceNumber}</td>
-                  <td className="px-3 py-2">{row.invoiceDate}</td>
+                  <td className="px-3 py-2">{toDisplayDate(row.invoiceDate) || row.invoiceDate}</td>
                   <td className="px-3 py-2">{customerDisplayName(row.customer)}</td>
                   <td className="px-3 py-2">{row.subType || "—"}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">

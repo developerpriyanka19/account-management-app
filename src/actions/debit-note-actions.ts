@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { debitNoteListPath } from "@/lib/debit-note-routes";
 import type { DebitNotePayload, DebitNoteType } from "@/lib/debit-note-types";
-import { DebitNoteType as DNType, isLandConversionStyleDebitNote, normalizeDebitNoteType } from "@/lib/debit-note-types";
+import { DebitNoteType as DNType, isLandConversionDataRow, normalizeDebitNoteType } from "@/lib/debit-note-types";
 import { resolveBankSnapshotForSave } from "@/actions/bank-details-actions";
 import { bankSnapshotToPrismaFields } from "@/lib/bank-details-types";
 
@@ -38,11 +38,30 @@ export async function getDebitNoteBuilderData() {
       select: {
         id: true,
         farmerName: true,
+        changedFarmerName: true,
+        vendorCode: true,
         surveyNo: true,
+        newSurveyNo: true,
         rtcExtentAcre: true,
         rtcExtentGunta: true,
+        rtcAKharab: true,
+        rtcBKharab: true,
+        balanceExtentAcre: true,
+        balanceExtentGunta: true,
         leaseExtentAcre: true,
         leaseExtentGunta: true,
+        leaseDeedStampDuty: true,
+        leaseDeedRegCharges: true,
+        rentPerAcre: true,
+        landConversion: true,
+        podiFee: true,
+        otherRecoveries: true,
+        atlTotal: true,
+        paoTotal: true,
+        aesAdvanceChequeNo: true,
+        aesAdvanceDate: true,
+        aesAdvanceChequeAmount: true,
+        aesAdvanceBankName: true,
         state: true,
         district: true,
         taluk: true,
@@ -57,6 +76,8 @@ export async function getDebitNoteBuilderData() {
     customers: customers.map((c) => ({
       id: c.id,
       label: c.companyName?.trim() || `${c.firstName} ${c.lastName}`.trim() || c.gstNumber,
+      firstName: c.firstName,
+      lastName: c.lastName,
       gstNumber: c.gstNumber,
       companyName: c.companyName,
       companyAddress: c.companyAddress,
@@ -75,11 +96,30 @@ export async function getDebitNoteBuilderData() {
       .map((f) => ({
         id: f.id,
         farmerName: f.farmerName!.trim(),
+        changedFarmerName: f.changedFarmerName,
+        vendorCode: f.vendorCode,
         surveyNo: f.surveyNo,
+        newSurveyNo: f.newSurveyNo,
         rtcExtentAcre: f.rtcExtentAcre,
         rtcExtentGunta: f.rtcExtentGunta,
+        rtcAKharab: f.rtcAKharab,
+        rtcBKharab: f.rtcBKharab,
+        balanceExtentAcre: f.balanceExtentAcre,
+        balanceExtentGunta: f.balanceExtentGunta,
         leaseExtentAcre: f.leaseExtentAcre,
         leaseExtentGunta: f.leaseExtentGunta,
+        leaseDeedStampDuty: f.leaseDeedStampDuty,
+        leaseDeedRegCharges: f.leaseDeedRegCharges,
+        rentPerAcre: f.rentPerAcre,
+        landConversion: f.landConversion,
+        podiFee: f.podiFee,
+        otherRecoveries: f.otherRecoveries,
+        atlTotal: f.atlTotal,
+        paoTotal: f.paoTotal,
+        aesAdvanceChequeNo: f.aesAdvanceChequeNo,
+        aesAdvanceDate: f.aesAdvanceDate,
+        aesAdvanceChequeAmount: f.aesAdvanceChequeAmount,
+        aesAdvanceBankName: f.aesAdvanceBankName,
         state: f.state,
         district: f.district,
         taluk: f.taluk,
@@ -101,7 +141,9 @@ export async function getNextDebitNoteNumber(type: DebitNoteType): Promise<strin
       ? "DNL"
       : type === DNType.LEASE_DEED_EXECUTION
         ? "DLE"
-        : "DAP";
+        : type === DNType.SERVICE_ORDER
+          ? "DSO"
+          : "DAP";
   const count = await prisma.debitNote.count({ where: { type } });
   return `${prefix}-${String(count + 1).padStart(4, "0")}`;
 }
@@ -164,7 +206,7 @@ export async function saveDebitNote(
         remarks: row.remarks || null,
         total: row.total || 0,
       };
-      if (isLandConversionStyleDebitNote(payload.type)) {
+      if (isLandConversionDataRow(payload.type)) {
         const r = row as {
           acres: number | null;
           guntas: number | null;

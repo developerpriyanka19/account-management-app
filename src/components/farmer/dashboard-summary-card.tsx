@@ -2,12 +2,12 @@ import type { LucideIcon } from "lucide-react";
 import {
   Building2,
   FileText,
-  Home,
+  HandCoins,
   IndianRupee,
   Landmark,
   LandPlot,
   MapPin,
-  NotebookPen,
+  ScrollText,
   TrendingUp,
   Users,
   Wallet,
@@ -29,7 +29,6 @@ type KpiCardProps = {
   value: string;
   title: string;
   subtitle?: string;
-  progress?: number;
   className?: string;
 };
 
@@ -39,11 +38,8 @@ function KpiCard({
   value,
   title,
   subtitle,
-  progress,
   className,
 }: KpiCardProps) {
-  const progressPct = progress != null ? Math.min(100, Math.max(0, progress)) : null;
-
   return (
     <article className={cn(CARD_BASE, className)}>
       <div className="flex items-start justify-between gap-2">
@@ -55,11 +51,6 @@ function KpiCard({
         >
           <Icon className="h-4 w-4" aria-hidden />
         </div>
-        {progressPct != null ? (
-          <span className="text-[10px] font-medium tabular-nums text-slate-400">
-            {Math.round(progressPct)}%
-          </span>
-        ) : null}
       </div>
       <p
         className="dashboard-card-value mt-2 text-lg font-bold tabular-nums tracking-tight text-slate-900 sm:text-xl"
@@ -69,14 +60,6 @@ function KpiCard({
       </p>
       <p className="mt-0.5 text-xs font-medium leading-snug text-slate-600">{title}</p>
       {subtitle ? <p className="mt-0.5 text-[11px] leading-snug text-slate-400">{subtitle}</p> : null}
-      {progressPct != null ? (
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-[#2563EB] transition-all duration-500"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -149,88 +132,99 @@ type DashboardSummaryGridProps = {
 };
 
 export function DashboardSummaryGrid({ stats }: DashboardSummaryGridProps) {
-  const feeMixTotal = stats.atlTotal + stats.gpaPoaTotal + stats.naTotal;
-  const atlShare = feeMixTotal > 0 ? (stats.atlTotal / feeMixTotal) * 100 : 0;
-  const gpaShare = feeMixTotal > 0 ? (stats.gpaPoaTotal / feeMixTotal) * 100 : 0;
-
   const farmersSubtitle =
     stats.farmersAddedThisMonth > 0
       ? `+${formatDashboardCount(stats.farmersAddedThisMonth)} this month`
       : "Registered farmers";
 
   return (
-    <section className="dashboard-summary-grid space-y-3">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        <KpiCard
-          icon={Users}
-          iconClassName="bg-blue-50 text-blue-600"
-          value={formatDashboardCount(stats.totalFarmers)}
-          title="Total Farmers"
-          subtitle={farmersSubtitle}
-        />
-        <KpiCard
-          icon={Building2}
-          iconClassName="bg-emerald-50 text-emerald-600"
-          value={formatDashboardCurrencyCompact(stats.totalGovtFee)}
-          title="Total Govt Fee"
-          subtitle="Overall collected"
-        />
-        <KpiCard
-          icon={Wallet}
-          iconClassName="bg-amber-50 text-amber-600"
-          value={formatDashboardCurrencyCompact(stats.totalAesPaid)}
-          title="Total AES Paid"
-          subtitle="Advance + shortage cheques"
-        />
-        <KpiCard
-          icon={Landmark}
-          iconClassName="bg-blue-50 text-blue-600"
-          value={formatDashboardCurrencyCompact(stats.totalLoanDdFromCompany)}
-          title="Total Loan DD From Company"
-          subtitle="Bank Loan DD Amount"
-        />
-        <KpiCard
-          icon={Home}
-          iconClassName="bg-emerald-50 text-emerald-600"
-          value={formatDashboardCurrencyCompact(stats.totalRentDdFromCompany)}
-          title="Total Rent DD From Company"
-          subtitle="Rental DD Amount"
-        />
-        <KpiCard
-          icon={IndianRupee}
-          iconClassName="bg-orange-50 text-orange-600"
-          value={formatDashboardCurrencyCompact(stats.naTotal)}
-          title="NA Total"
-          subtitle="All NA components"
-        />
-        <KpiCard
-          icon={NotebookPen}
-          iconClassName="bg-rose-50 text-rose-600"
-          value={formatDashboardCurrencyCompact(stats.debitNoteTotal)}
-          title="Debit Note Total"
-          subtitle={`${formatDashboardCount(stats.debitNoteCount)} notes`}
-        />
-      </div>
+    <section className="dashboard-summary-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-rows-2">
+      <KpiCard
+        icon={Users}
+        iconClassName="bg-blue-50 text-blue-600"
+        value={formatDashboardCount(stats.totalFarmers)}
+        title="Farmer"
+        subtitle={farmersSubtitle}
+        className="h-full lg:col-start-1 lg:row-start-1"
+      />
+      <KpiCard
+        icon={Wallet}
+        iconClassName="bg-amber-50 text-amber-600"
+        value={formatDashboardCurrencyCompact(stats.totalAesPaid)}
+        title="AES Total Paid"
+        subtitle="Advance + shortage cheques"
+        className="h-full lg:col-start-2 lg:row-start-1"
+      />
+      <KpiCard
+        icon={IndianRupee}
+        iconClassName="bg-emerald-50 text-emerald-600"
+        value={formatDashboardCurrencyCompact(stats.totalRentDdFromCompany)}
+        title="Total Rental from DD Company"
+        subtitle="Rental DD 1 + Rental DD 2"
+        className="h-full lg:col-start-3 lg:row-start-1"
+      />
+      <KpiCard
+        icon={Landmark}
+        iconClassName="bg-blue-50 text-blue-600"
+        value={formatDashboardCurrencyCompact(stats.totalLoanDdFromCompany)}
+        title="Total Loan from DD Company"
+        subtitle="Bank Loan DD Amount"
+        className="h-full lg:col-start-4 lg:row-start-1"
+      />
+      <KpiCard
+        icon={HandCoins}
+        iconClassName="bg-violet-50 text-violet-600"
+        value={formatDashboardCurrencyCompact(stats.totalPaidToFarmer)}
+        title="Total Paid to Farmer"
+        subtitle="Sum across all farmers"
+        className="h-full lg:col-start-5 lg:row-start-1"
+      />
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard
-          icon={Wallet}
-          iconClassName="bg-blue-50 text-blue-600"
-          value={formatDashboardCurrencyCompact(stats.atlTotal)}
-          title="ATL Total"
-          subtitle="Agreement to Lease"
-          progress={atlShare}
-        />
-        <KpiCard
-          icon={FileText}
-          iconClassName="bg-emerald-50 text-emerald-600"
-          value={formatDashboardCurrencyCompact(stats.gpaPoaTotal)}
-          title="GPA / POA Total"
-          subtitle="Power of Attorney fees"
-          progress={gpaShare}
-        />
-        <NaBreakdownCard stats={stats} />
-      </div>
+      <KpiCard
+        icon={Wallet}
+        iconClassName="bg-blue-50 text-blue-600"
+        value={formatDashboardCurrencyCompact(stats.atlTotal)}
+        title="ATL Amount"
+        subtitle="Agreement to Lease"
+        className="h-full lg:col-start-1 lg:row-start-2"
+      />
+      <KpiCard
+        icon={FileText}
+        iconClassName="bg-emerald-50 text-emerald-600"
+        value={formatDashboardCurrencyCompact(stats.gpaPoaTotal)}
+        title="GPA / POA Total"
+        subtitle="Power of Attorney fees"
+        className="h-full lg:col-start-2 lg:row-start-2"
+      />
+      <KpiCard
+        icon={IndianRupee}
+        iconClassName="bg-orange-50 text-orange-600"
+        value={formatDashboardCurrencyCompact(stats.naTotal)}
+        title="NA Total"
+        subtitle="All NA components"
+        className="h-full lg:col-start-3 lg:row-start-2"
+      />
+      <KpiCard
+        icon={ScrollText}
+        iconClassName="bg-slate-50 text-slate-600"
+        value={formatDashboardCurrencyCompact(stats.leaseDeedK2Challan)}
+        title="Lease Deed K2 Challan"
+        subtitle="Stamp duty + reg charges"
+        className="h-full lg:col-start-4 lg:row-start-2"
+      />
+      <KpiCard
+        icon={Building2}
+        iconClassName="bg-emerald-50 text-emerald-600"
+        value={formatDashboardCurrencyCompact(stats.totalGovtFee)}
+        title="Total Govt Fee"
+        subtitle="Overall collected"
+        className="h-full lg:col-start-5 lg:row-start-2"
+      />
+
+      <NaBreakdownCard
+        stats={stats}
+        className="col-span-2 h-full sm:col-span-3 lg:col-span-1 lg:col-start-6 lg:row-start-1 lg:row-span-2"
+      />
     </section>
   );
 }

@@ -17,7 +17,7 @@ export type CustomerFormState = {
 
 const REQUIRED = "This field is required.";
 const INVALID_NUMBER = "Enter a valid number.";
-const INVALID_DATE = "Use a valid date (DD/MM/YYYY).";
+const INVALID_DATE = "Use a valid date (DD/MMM/YYYY).";
 
 const LOCATION_REQUIRED_FIELDS = ["state", "district", "taluk", "hobbli", "village"] as const;
 
@@ -213,6 +213,12 @@ export function validateCustomerForm(
     shortageChequeAmount: floats.shortageChequeAmount,
     shortageAmountSecondTime: floats.shortageAmountSecondTime,
     shortageThirdChequeAmount: floats.shortageThirdChequeAmount,
+    tdsAmount: floats.tdsAmount,
+    loanAmount: floats.loanAmount,
+    leaseAmount: floats.leaseAmount,
+    rentalDdPart1Amount: floats.rentalDdPart1Amount,
+    otherCharges: floats.otherCharges,
+    cropCompensation: floats.cropCompensation,
     atlTotal: floats.atlTotal,
     paoTotal: floats.paoTotal,
     landConversion: floats.landConversion,

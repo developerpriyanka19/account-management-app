@@ -10,6 +10,12 @@ export type FarmerDerivedInput = {
   shortageChequeAmount?: string | number | null;
   shortageAmountSecondTime?: string | number | null;
   shortageThirdChequeAmount?: string | number | null;
+  tdsAmount?: string | number | null;
+  loanAmount?: string | number | null;
+  leaseAmount?: string | number | null;
+  rentalDdPart1Amount?: string | number | null;
+  otherCharges?: string | number | null;
+  cropCompensation?: string | number | null;
   atlTotal?: string | number | null;
   paoTotal?: string | number | null;
   landConversion?: string | number | null;
@@ -19,12 +25,29 @@ export type FarmerDerivedInput = {
   leaseDeedRegCharges?: string | number | null;
 };
 
+export type TotalPaidToFarmerInput = Pick<
+  FarmerDerivedInput,
+  | "aesAdvanceChequeAmount"
+  | "shortageChequeAmount"
+  | "shortageAmountSecondTime"
+  | "shortageThirdChequeAmount"
+  | "tdsAmount"
+  | "loanAmount"
+  | "leaseAmount"
+  | "rentalDdPart1Amount"
+  | "otherCharges"
+  | "cropCompensation"
+> & {
+  shortageAmountTotal?: string | number | null;
+};
+
 export type FarmerDerivedFields = {
   totalGunta: number;
   totalCents: number;
   rentAmount: number;
   balanceRentAmount: number;
   shortageAmountTotal: number;
+  totalPaidToFarmer: number;
   totalGovtFee: number;
 };
 
@@ -99,6 +122,28 @@ export function computeTotalAesPaid(input: ShortageTotalsInput): number {
   return computeShortageAmountTotal(input);
 }
 
+/**
+ * Total Paid to Farmer =
+ * Total AES Paid (includes Cheque Amount — do not add Cheque separately)
+ * + TDS Amount
+ * + Bank Loan DD From Company Amount
+ * + Rental DD From Company 1 Amount
+ * + Rental DD From Company 2 Amount
+ * + Other Charges
+ * + Crop Compensation
+ */
+export function computeTotalPaidToFarmer(input: TotalPaidToFarmerInput): number {
+  return (
+    resolveShortageAmountTotal(input) +
+    parseAsZero(input.tdsAmount) +
+    parseAsZero(input.loanAmount) +
+    parseAsZero(input.leaseAmount) +
+    parseAsZero(input.rentalDdPart1Amount) +
+    parseAsZero(input.otherCharges) +
+    parseAsZero(input.cropCompensation)
+  );
+}
+
 export type ResolvedShortageInput = ShortageTotalsInput & {
   shortageAmountTotal?: string | number | null;
 };
@@ -150,6 +195,7 @@ export function computeFarmerDerivedFields(input: FarmerDerivedInput): FarmerDer
     parseAsZero(input.aesAdvanceChequeAmount),
   );
   const shortageAmountTotal = computeShortageAmountTotal(input);
+  const totalPaidToFarmer = computeTotalPaidToFarmer(input);
   const totalGovtFee = computeTotalGovtFee(input);
 
   return {
@@ -158,6 +204,7 @@ export function computeFarmerDerivedFields(input: FarmerDerivedInput): FarmerDer
     rentAmount,
     balanceRentAmount,
     shortageAmountTotal,
+    totalPaidToFarmer,
     totalGovtFee,
   };
 }

@@ -1,4 +1,4 @@
-import { formatDateOrDash } from "@/lib/date-format";
+import { formatDateOrDash, formatDateTimeDisplay } from "@/lib/date-format";
 
 export function formatAmount(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
@@ -27,13 +27,10 @@ export function cellText(value: string | number | null | undefined): string {
 }
 
 export function formatDateTime(value: Date): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(value);
+  return formatDateTimeDisplay(value);
 }
 
-/** Display stored date strings as DD/MM/YYYY (or dash). */
+/** Display stored date strings as DD/MMM/YYYY (or dash). */
 export function formatOptionalDate(value: string | null | undefined): string {
   return formatDateOrDash(value);
 }

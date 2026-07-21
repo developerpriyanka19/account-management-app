@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatAmount } from "@/lib/customer-display";
+import { toDisplayDate } from "@/lib/date-format";
 import {
   debitNoteCreatePath,
   debitNoteEditPath,
@@ -138,7 +139,7 @@ export function DebitNoteListTable({
                 return (
                   <tr key={row.id} className={index % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}>
                     <td className="px-3 py-2 font-medium">{row.debitNoteNo}</td>
-                    <td className="px-3 py-2">{row.date}</td>
+                    <td className="px-3 py-2">{toDisplayDate(row.date) || row.date}</td>
                     <td className="px-3 py-2">{customerDisplayName(row.customer)}</td>
                     <td className="px-3 py-2">{row.village?.trim() || "—"}</td>
                     <td className="px-3 py-2">{row.taluk?.trim() || "—"}</td>

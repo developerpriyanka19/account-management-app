@@ -19,6 +19,7 @@ import {
   type InvoiceLocationFields,
 } from "@/lib/invoice-location";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
+import { toDisplayDate } from "@/lib/date-format";
 
 type Props = {
   data: InvoiceDocumentData;
@@ -30,12 +31,6 @@ const td =
   "border border-black px-0.5 py-0.5 align-middle text-[7px] leading-tight text-black break-words bg-white";
 const tdNum = `${td} text-center tabular-nums`;
 const tdRight = `${td} text-right tabular-nums`;
-
-function formatDisplayDate(isoDate: string): string {
-  const parts = isoDate.split("-");
-  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  return isoDate;
-}
 
 function BillToBlock({ data }: { data: InvoiceDocumentData }) {
   const lines = buildBillToLines(data.customer);
@@ -89,7 +84,7 @@ export function ServiceInvoiceDocument({ data }: Props) {
             <InvoiceBrandHeader documentTitle="SERVICE INVOICE" />
             <InvoiceMetadataRow
               invoiceNumber={prepared.invoiceNumber}
-              invoiceDate={formatDisplayDate(prepared.invoiceDate)}
+              invoiceDate={toDisplayDate(prepared.invoiceDate) || prepared.invoiceDate}
               documentType={prepared.subType}
               className="text-[8px]"
             />

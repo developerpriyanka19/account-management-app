@@ -6,6 +6,7 @@ import {
 } from "@/components/reports/report-controls";
 import { downloadReportExcel } from "@/lib/reports-export";
 import { formatReportMoney } from "@/lib/reports-formulas";
+import { toDisplayDate } from "@/lib/date-format";
 import type { ReportPeriodPreset } from "@/lib/reports-period";
 
 type Row = {
@@ -61,7 +62,7 @@ export function CompanyPaymentReportClient({
           r.farmerName,
           r.surveyNo,
           r.village,
-          r.paymentDate,
+          toDisplayDate(r.paymentDate) || r.paymentDate,
           r.loanAmount,
           r.leaseAmount,
           r.rentalDdPart1Amount,
@@ -131,7 +132,7 @@ export function CompanyPaymentReportClient({
                   <td className="px-2 py-1.5">{r.farmerName || "—"}</td>
                   <td className="px-2 py-1.5">{r.surveyNo || "—"}</td>
                   <td className="px-2 py-1.5">{r.village || "—"}</td>
-                  <td className="px-2 py-1.5">{r.paymentDate}</td>
+                  <td className="px-2 py-1.5">{toDisplayDate(r.paymentDate) || r.paymentDate}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">
                     {formatReportMoney(r.loanAmount)}
                   </td>
