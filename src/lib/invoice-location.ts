@@ -70,4 +70,5 @@ export const INVOICE_LOCATION_FIELD_ORDER = [
 ] as const;
 
 /** Max farmer/item rows per PDF page before continuing. */
-export const DOCUMENT_PDF_ROWS_PER_PAGE = 10;
+export { PDF_FARMER_ROWS_PER_PAGE as DOCUMENT_PDF_ROWS_PER_PAGE } from "@/lib/pdf-table-rows";
+

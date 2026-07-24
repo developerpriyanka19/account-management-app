@@ -40,6 +40,7 @@ import {
   PDF_TABLE_BOTTOM_MARGIN,
 } from "@/lib/company-document-pdf-shared";
 import { DOCUMENT_PDF_ROWS_PER_PAGE } from "@/lib/invoice-location";
+import { chunkPdfRows } from "@/lib/pdf-table-rows";
 import { INVOICE_LOGO_PDF_MM } from "@/lib/invoice-config";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 
@@ -63,15 +64,6 @@ function centeredTableMargins(tableWidth: number) {
   };
 }
 
-function chunkRows<T>(rows: T[], size: number): T[][] {
-  if (rows.length === 0) return [[]];
-  const chunks: T[][] = [];
-  for (let i = 0; i < rows.length; i += size) {
-    chunks.push(rows.slice(i, i + size));
-  }
-  return chunks;
-}
-
 function drawPagedInvoiceTable(
   pdf: JsPdfWithAutoTable,
   prepared: InvoiceDocumentData,
@@ -84,7 +76,7 @@ function drawPagedInvoiceTable(
 ): number {
   const tableWidth = Math.min(sumColumnWidths(columnStyles), INVOICE_CONTENT_W);
   const margin = centeredTableMargins(tableWidth);
-  const chunks = chunkRows(body, DOCUMENT_PDF_ROWS_PER_PAGE);
+  const chunks = chunkPdfRows(body, DOCUMENT_PDF_ROWS_PER_PAGE);
   let y = startY;
 
   chunks.forEach((chunk, index) => {
@@ -157,10 +149,17 @@ async function generateNaInvoicePdf(document: InvoiceDocumentData): Promise<jsPD
 
   const words = naInvoiceAmountInWords(prepared);
   const wordsH = invoiceTextBlockHeight(pdf, words, INVOICE_CONTENT_W);
-  const totalAfterTable = 4 + wordsH + invoiceClosingBlockHeight(prepared.bank);
+  const grandBlockH = 12;
+  const totalAfterTable = 4 + grandBlockH + wordsH + invoiceClosingBlockHeight(prepared.bank);
 
   y = ensureVerticalSpace(pdf, y, totalAfterTable);
-  const wordsEndY = renderInvoiceAmountInWords(pdf, words, y);
+  const wordsEndY = renderInvoiceAmountInWords(pdf, words, y, {
+    grandTotalLabel: "Grand Total",
+    grandTotalDisplay: `Rs ${new Intl.NumberFormat("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(prepared.totals.grandTotal)}`,
+  });
   renderInvoiceFooter(pdf, wordsEndY, prepared.bank);
   return pdf;
 }
@@ -186,10 +185,17 @@ async function generateServiceInvoicePdf(document: InvoiceDocumentData): Promise
 
   const words = serviceInvoiceAmountInWords(prepared);
   const wordsH = invoiceTextBlockHeight(pdf, words, INVOICE_CONTENT_W);
-  const totalAfterTable = 4 + wordsH + invoiceClosingBlockHeight(prepared.bank);
+  const grandBlockH = 12;
+  const totalAfterTable = 4 + grandBlockH + wordsH + invoiceClosingBlockHeight(prepared.bank);
 
   y = ensureVerticalSpace(pdf, y, totalAfterTable);
-  const wordsEndY = renderInvoiceAmountInWords(pdf, words, y);
+  const wordsEndY = renderInvoiceAmountInWords(pdf, words, y, {
+    grandTotalLabel: "Grand Total",
+    grandTotalDisplay: `Rs ${new Intl.NumberFormat("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(prepared.totals.grandTotal)}`,
+  });
   renderInvoiceFooter(pdf, wordsEndY, prepared.bank);
   return pdf;
 }

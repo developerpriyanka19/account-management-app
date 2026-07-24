@@ -57,7 +57,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
       title={displayName}
       subtitle={`Vendor code: ${vendorCode && vendorCode.length > 0 ? vendorCode : "—"} · Created ${formatDateTime(customer.createdAt)}`}
       backHref="/farmer"
-      backLabel="Back to customers"
+      backLabel="Back to Dashboard"
       maxWidth="form"
       actions={<CustomerDetailToolbar customerId={customer.id} deleteLabel={deleteLabel} />}
     >

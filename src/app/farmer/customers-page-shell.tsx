@@ -20,16 +20,16 @@ export function CustomersPageShell({
   title,
   subtitle,
   backHref = "/farmer",
-  backLabel = "Back to farmers",
+  backLabel = "Back to Dashboard",
   actions,
   children,
   maxWidth = "list",
 }: Props) {
   return (
     <div
-      className={`mx-auto flex w-full ${maxWidthClass[maxWidth]} flex-1 flex-col gap-4 bg-white px-4 py-6 text-[#111827] sm:px-6 lg:px-8`}
+      className={`customer-print-area print-container mx-auto flex w-full ${maxWidthClass[maxWidth]} flex-1 flex-col gap-4 bg-white px-4 py-6 text-[#111827] sm:px-6 lg:px-8`}
     >
-      <header className="flex flex-col gap-3 border-b border-[#D1D5DB] pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="app-module-header no-print flex flex-col gap-3 border-b border-[#D1D5DB] pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <Link
             href={backHref}
@@ -45,7 +45,9 @@ export function CustomersPageShell({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+          <div className="top-actions no-print flex shrink-0 flex-wrap items-center gap-2">
+            {actions}
+          </div>
         ) : null}
       </header>
       {children}

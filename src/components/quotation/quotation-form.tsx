@@ -279,7 +279,7 @@ export function QuotationForm({ customers }: Props) {
         ) : null}
       </section>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
+      <div className="top-actions no-print sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
         <Button type="button" onClick={handleGenerate}>
           Generate Quotation
         </Button>

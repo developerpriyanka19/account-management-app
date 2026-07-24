@@ -60,10 +60,22 @@ body {
   line-height: 1.5;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Print utilities (screen defaults)                                          */
+/* -------------------------------------------------------------------------- */
+
+.print-only {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Global print stylesheet — hide chrome, print document content only         */
+/* -------------------------------------------------------------------------- */
+
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 10mm;
   }
 
   * {
@@ -71,12 +83,43 @@ body {
     print-color-adjust: exact;
   }
 
+  /* Utility: hidden while printing */
   .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Utility: visible only while printing */
+  .print-only {
+    display: block !important;
+  }
+
+  /* App chrome — never print */
   .app-sidebar,
+  .app-mobile-nav,
+  .app-module-header,
+  .app-breadcrumb,
   .top-actions,
-  .invoice-preview-root,
-  .invoice-a4-viewport,
-  .invoice-a4-scale {
+  .action-bar,
+  .sticky.bottom-4,
+  .sticky.top-4,
+  [data-no-print],
+  [role="dialog"],
+  [data-radix-portal],
+  [data-sonner-toaster],
+  .Toaster,
+  nav[aria-label="Breadcrumb"],
+  .invoice-preview-root {
+    display: none !important;
+  }
+
+  /* Common interactive UI chrome */
+  button:not(.print-keep),
+  a[role="button"]:not(.print-keep),
+  input[type="search"],
+  input[type="file"],
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-content"] {
     display: none !important;
   }
 
@@ -88,12 +131,41 @@ body {
     padding: 0 !important;
     background: #fff !important;
     color: #000 !important;
+    overflow: visible !important;
+  }
+
+  /* Flatten app shell so only main content remains */
+  .customers-layout-shell,
+  .app-module-shell {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
+
+  .app-main-content,
+  .print-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    float: none !important;
+    position: static !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* Undo sidebar offset used on large screens */
+  .app-main-content {
+    padding-left: 0 !important;
   }
 
   .print-document-root,
   .print-document-root html,
   .print-document-root body {
-    width: 297mm;
+    width: 100%;
     height: auto;
     background: white;
   }
@@ -138,15 +210,9 @@ body {
     text-align: center;
   }
 
-  /* Avoid an extra blank page from flex min-height on customer routes */
-  .customers-layout-shell {
-    display: block !important;
-    min-height: 0 !important;
-    height: auto !important;
-  }
-
   /* Use full content width inside A4 margins */
-  .customer-print-area {
+  .customer-print-area,
+  .print-container {
     max-width: none !important;
     width: 100% !important;
     padding-left: 0 !important;
@@ -157,7 +223,7 @@ body {
   .customer-print-sheet {
     font-size: 10.5pt;
     line-height: 1.4;
-    padding: 14mm 12mm;
+    padding: 0;
     box-sizing: border-box;
   }
 
@@ -173,7 +239,7 @@ body {
   .invoice-a4-viewport,
   .na-invoice-table-wrap,
   .invoice-table-scroll {
-    overflow: hidden !important;
+    overflow: visible !important;
     min-width: 0 !important;
   }
 
@@ -186,7 +252,7 @@ body {
     width: 100% !important;
     max-width: none !important;
     box-shadow: none !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .invoice-line-table {
@@ -204,6 +270,26 @@ body {
 
   .invoice-summary-wrap table {
     width: 280px !important;
+  }
+
+  /* Avoid breaking inside tables / cards when possible */
+  table,
+  tr,
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  a[href]::after {
+    content: none !important;
   }
 }
 

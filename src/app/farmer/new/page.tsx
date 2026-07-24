@@ -12,7 +12,7 @@ export default function NewCustomerPage() {
       title="Add Farmer"
       subtitle="Enter farmer details below."
       backHref="/farmer"
-      backLabel="Back to customers"
+      backLabel="Back to Dashboard"
       maxWidth="form"
     >
       <CustomersContentCard>

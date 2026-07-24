@@ -173,7 +173,7 @@ export function LocationFarmerSelector({
       <div>
         <h2 className="text-sm font-semibold text-[#111827]">Farmers</h2>
         <p className="mt-1 text-xs text-[#6B7280]">
-          Select location filters above, then search by farmer name or survey number.
+          Select location filters above, then search by farmer name, old survey number, or new survey number.
         </p>
         {!locationReady && requireCompleteLocation ? (
           <p className="mt-3 rounded-md border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-3 py-6 text-center text-sm text-[#6B7280]">

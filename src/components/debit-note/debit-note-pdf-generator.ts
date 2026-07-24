@@ -30,6 +30,12 @@ import {
   invoiceLocationEntries,
   locationFromCustomer,
 } from "@/lib/invoice-location";
+import { amountToIndianWords } from "@/lib/invoice-calculations";
+import {
+  chunkPdfRows,
+  PDF_FARMER_ROWS_PER_PAGE,
+} from "@/lib/pdf-table-rows";
+import type { RowInput } from "jspdf-autotable";
 
 type JsPdfWithAutoTable = JsPDFType & { lastAutoTable?: { finalY: number } };
 
@@ -215,11 +221,105 @@ function detailTableAutoTableOptions(contentWidth: number) {
       fontSize: DETAIL_TABLE_BODY_FONT,
       overflow: "linebreak" as const,
       cellPadding: DETAIL_TABLE_CELL_PADDING,
+      minCellHeight: DETAIL_TABLE_MIN_CELL_HEIGHT,
     },
     theme: "grid" as const,
     showHead: "everyPage" as const,
     rowPageBreak: "avoid" as const,
   };
+}
+
+function drawPagedDetailTables(
+  pdf: JsPdfWithAutoTable,
+  opts: {
+    pageWidth: number;
+    contentWidth: number;
+    startY: number;
+    logoDataUrl: string;
+    head: RowInput[];
+    dataRows: string[][];
+    columnStyles: Record<
+      number,
+      { cellWidth: number; halign?: "left" | "center" | "right"; minCellHeight: number }
+    >;
+    onPageHeader?: (pageStartY: number) => number;
+  },
+): number {
+  const chunks = chunkPdfRows(opts.dataRows, PDF_FARMER_ROWS_PER_PAGE);
+  let y = opts.startY;
+
+  chunks.forEach((chunk, index) => {
+    if (index > 0) {
+      pdf.addPage("a4", "portrait");
+      y = drawContinuationLogoHeader(pdf, opts.logoDataUrl, opts.pageWidth);
+      if (opts.onPageHeader) {
+        y = opts.onPageHeader(y);
+      }
+    }
+
+    autoTable(pdf, {
+      startY: y,
+      margin: {
+        left: PDF_MARGIN.left,
+        right: PDF_MARGIN.right,
+        top: 28,
+        bottom: PDF_TABLE_BOTTOM_MARGIN,
+      },
+      ...detailTableAutoTableOptions(opts.contentWidth),
+      head: opts.head,
+      body: chunk,
+      columnStyles: opts.columnStyles,
+    });
+
+    y = (pdf.lastAutoTable?.finalY ?? y) + 4;
+  });
+
+  return y;
+}
+
+/** Totals + amount in words + signature — stays on current page when space allows. */
+function drawDebitNoteClosingSummary(
+  pdf: JsPdfWithAutoTable,
+  opts: {
+    pageWidth: number;
+    contentWidth: number;
+    startY: number;
+    totalAmount: number;
+    summaryLines?: string[];
+  },
+): number {
+  const words = amountToIndianWords(opts.totalAmount);
+  const wordLines = pdf.splitTextToSize(words, opts.contentWidth);
+  const summaryH = (opts.summaryLines?.length ?? 0) * 5;
+  const blockH = 8 + summaryH + 18 + wordLines.length * 4 + 30;
+  let y = ensureVerticalSpace(pdf, opts.startY, blockH);
+
+  if (opts.summaryLines?.length) {
+    pdf.setFont(PDF_FONT, "bold");
+    pdf.setFontSize(8);
+    for (const line of opts.summaryLines) {
+      pdf.text(line, opts.pageWidth / 2, y, { align: "center" });
+      y += 5;
+    }
+    y += 2;
+  }
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(9);
+  pdf.text("Grand Total", PDF_MARGIN.left, y);
+  pdf.setFontSize(10);
+  pdf.text(`Rs ${formatPdfMoney(opts.totalAmount)}`, PDF_MARGIN.left, y + 5);
+  y += 12;
+
+  pdf.setFont(PDF_FONT, "bold");
+  pdf.setFontSize(8);
+  pdf.text("Amount in Words", PDF_MARGIN.left, y);
+  pdf.setFont(PDF_FONT, "normal");
+  pdf.setFontSize(7.5);
+  pdf.text(wordLines, PDF_MARGIN.left, y + 4);
+  y += 4 + wordLines.length * 4 + 4;
+
+  return drawSignatureBlock(pdf, opts.pageWidth, y);
 }
 
 function drawAddressFooter(pdf: JsPDFType, pageNumber: number, pageCount: number) {
@@ -456,7 +556,7 @@ async function generateLandConversionDebitNotePdf(
   ly += purposeLines.length * 5 + 3;
   ly = drawLocationTable(pdf, data, landW, ly, 8);
 
-  const detailBody = rows.map((r, i) => [
+  const detailRows = rows.map((r, i) => [
     String(i + 1),
     r.farmerName || "—",
     r.surveyNo || "—",
@@ -470,34 +570,11 @@ async function generateLandConversionDebitNotePdf(
     formatPdfMoney(r.recoveryFee || 0),
   ]);
 
-  detailBody.push([
-    "",
-    { content: "Totals", styles: { fontStyle: "bold", halign: "right" } } as unknown as string,
-    "",
-    formatPdfNum(totalAcre),
-    formatPdfNum(totalGunta),
-    "",
-    formatPdfMoney(totalLc),
-    "",
-    formatPdfMoney(totalPodi),
-    "",
-    formatPdfMoney(totalRecovery),
-  ]);
-
-  autoTable(pdf, {
+  let endY = drawPagedDetailTables(pdf, {
+    pageWidth: landW,
+    contentWidth: landContentW,
     startY: ly,
-    margin: {
-      left: PDF_MARGIN.left,
-      right: PDF_MARGIN.right,
-      top: 28,
-      bottom: PDF_TABLE_BOTTOM_MARGIN,
-    },
-    didDrawPage: (hook) => {
-      if (hook.pageNumber > 1) {
-        drawContinuationLogoHeader(pdf, logoDataUrl, landW);
-      }
-    },
-    ...detailTableAutoTableOptions(landContentW),
+    logoDataUrl,
     head: [
       [
         "Sl\nNo",
@@ -513,25 +590,37 @@ async function generateLandConversionDebitNotePdf(
         "Other Recoveries\nFee",
       ],
     ],
-    body: detailBody,
+    dataRows: detailRows,
     columnStyles: buildScaledColumnStyles(
       [1, 5, 2, 2, 1.5, 4, 2.5, 3.5, 2, 4, 2.5],
       landContentW,
       ["center", "left", "center", "center", "center", "left", "center", "left", "center", "left", "center"],
     ),
+    onPageHeader: (pageStartY) => {
+      pdf.setFont(PDF_FONT, "bold");
+      pdf.setFontSize(10);
+      const pLines = pdf.splitTextToSize(purpose, landContentW);
+      pdf.text(pLines, landW / 2, pageStartY, { align: "center" });
+      return drawLocationTable(
+        pdf,
+        data,
+        landW,
+        pageStartY + pLines.length * 5 + 3,
+        8,
+      );
+    },
   });
 
-  let endY = (pdf.lastAutoTable?.finalY ?? ly) + 6;
-  endY = ensureVerticalSpace(pdf, endY, 28);
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(9);
-  pdf.text(
-    `TOTAL AMOUNT Rs ${formatPdfMoney(data.total)}/-`,
-    landW - PDF_MARGIN.right,
-    endY,
-    { align: "right" },
-  );
-  drawSignatureBlock(pdf, landW, endY + 2);
+  drawDebitNoteClosingSummary(pdf, {
+    pageWidth: landW,
+    contentWidth: landContentW,
+    startY: endY,
+    totalAmount: data.total,
+    summaryLines: [
+      `Total Acres: ${formatPdfNum(totalAcre)}    Total Guntas: ${formatPdfNum(totalGunta)}`,
+      `Land Conversion: ${formatPdfMoney(totalLc)}    Podi: ${formatPdfMoney(totalPodi)}    Other Recoveries: ${formatPdfMoney(totalRecovery)}`,
+    ],
+  });
   finishDebitNotePages(pdf);
   return pdf;
 }
@@ -629,7 +718,7 @@ async function generateLeaseDeedExecutionDebitNotePdf(
   const sumLeaseAcre = rows.reduce((s, r) => s + (r.leaseAcre ?? r.acres ?? 0), 0);
   const sumLeaseGunta = rows.reduce((s, r) => s + (r.leaseGunta ?? r.guntas ?? 0), 0);
 
-  const detailBody = rows.map((r, i) => {
+  const detailRows = rows.map((r, i) => {
     const fee = k2RowFee(r);
     return [
       String(i + 1),
@@ -643,37 +732,11 @@ async function generateLeaseDeedExecutionDebitNotePdf(
     ];
   });
 
-  detailBody.push([
-    "",
-    { content: "Totals", styles: { fontStyle: "bold", halign: "right" } } as unknown as string,
-    "",
-    formatPdfNum(sumRtcAcre),
-    formatPdfNum(sumRtcGunta),
-    formatPdfNum(sumLeaseAcre),
-    formatPdfNum(sumLeaseGunta),
-    formatPdfMoney(totalFee || data.total),
-  ]);
-
-  autoTable(pdf, {
+  let endY = drawPagedDetailTables(pdf, {
+    pageWidth: pageW,
+    contentWidth: contentW,
     startY: py,
-    margin: {
-      left: PDF_MARGIN.left,
-      right: PDF_MARGIN.right,
-      top: 36,
-      bottom: PDF_TABLE_BOTTOM_MARGIN + 4,
-    },
-    didDrawPage: (hook) => {
-      if (hook.pageNumber > 1) {
-        let hy = drawContinuationLogoHeader(pdf, logoDataUrl, pageW);
-        pdf.setFont(PDF_FONT, "bold");
-        pdf.setFontSize(9);
-        const pLines = pdf.splitTextToSize(purpose, contentW);
-        pdf.text(pLines, pageW / 2, hy, { align: "center" });
-        hy += pLines.length * 4.5 + 2;
-        drawLocationTable(pdf, data, pageW, hy, 8);
-      }
-    },
-    ...detailTableAutoTableOptions(contentW),
+    logoDataUrl,
     head: [
       [
         { content: "Sl.\nNo", rowSpan: 2 },
@@ -685,37 +748,38 @@ async function generateLeaseDeedExecutionDebitNotePdf(
       ],
       ["Acres", "Guntas", "Acres", "Guntas"],
     ],
-    body: detailBody,
+    dataRows: detailRows,
     columnStyles: buildScaledColumnStyles(
       [1.2, 5, 2.2, 1.5, 1.5, 1.5, 1.5, 2.5],
       contentW,
       ["center", "left", "center", "center", "center", "center", "center", "center"],
     ),
-  });
-
-  let endY = (pdf.lastAutoTable?.finalY ?? py) + 4;
-  const normLease = normalizeAcresGuntas(sumLeaseAcre, sumLeaseGunta);
-  const summaryText = `TOTAL LEASE LAND EXTENSION ${formatPdfNum(normLease.acres)} ACRES ${String(normLease.gunta).padStart(2, "0")} GUNTAS AND TOTAL AMOUNT ${formatPdfMoney(totalFee || data.total)}/-`;
-  const summaryNeed = 10 + 28;
-  endY = ensureVerticalSpace(pdf, endY, summaryNeed);
-
-  autoTable(pdf, {
-    startY: endY,
-    margin: {
-      left: PDF_MARGIN.left,
-      right: PDF_MARGIN.right,
-      bottom: PDF_TABLE_BOTTOM_MARGIN,
+    onPageHeader: (pageStartY) => {
+      pdf.setFont(PDF_FONT, "bold");
+      pdf.setFontSize(9);
+      const pLines = pdf.splitTextToSize(purpose, contentW);
+      pdf.text(pLines, pageW / 2, pageStartY, { align: "center" });
+      return drawLocationTable(
+        pdf,
+        data,
+        pageW,
+        pageStartY + pLines.length * 4.5 + 2,
+        8,
+      );
     },
-    tableWidth: contentW,
-    body: [[{ content: summaryText, styles: { fontStyle: "bold", halign: "center", fontSize: 8 } }]],
-    styles: tableBaseStyles(8),
-    theme: "grid",
-    rowPageBreak: "avoid",
   });
 
-  endY = (pdf.lastAutoTable?.finalY ?? endY) + 4;
-  endY = ensureVerticalSpace(pdf, endY, 28);
-  drawSignatureBlock(pdf, pageW, endY);
+  const normLease = normalizeAcresGuntas(sumLeaseAcre, sumLeaseGunta);
+  drawDebitNoteClosingSummary(pdf, {
+    pageWidth: pageW,
+    contentWidth: contentW,
+    startY: endY,
+    totalAmount: totalFee || data.total,
+    summaryLines: [
+      `TOTAL LEASE LAND EXTENSION ${formatPdfNum(normLease.acres)} ACRES ${String(normLease.gunta).padStart(2, "0")} GUNTAS`,
+      `RTC: ${formatPdfNum(sumRtcAcre)} Acres / ${formatPdfNum(sumRtcGunta)} Guntas`,
+    ],
+  });
   finishDebitNotePages(pdf);
   return pdf;
 }
@@ -814,7 +878,7 @@ async function generateAtlPoaDebitNotePdf(
   ly += purposeLines.length * 5 + 3;
   ly = drawLocationTable(pdf, data, landW, ly, 8);
 
-  const detailBody = rows.map((r, i) => [
+  const detailRows = rows.map((r, i) => [
     String(i + 1),
     r.farmerName || "—",
     r.surveyNo || "—",
@@ -836,39 +900,13 @@ async function generateAtlPoaDebitNotePdf(
   const sumLeaseAcre = rows.reduce((s, r) => s + (r.leaseAcre || 0), 0);
   const sumLeaseGunta = rows.reduce((s, r) => s + (r.leaseGunta || 0), 0);
 
-  detailBody.push([
-    "",
-    "",
-    "Totals",
-    formatPdfNum(sumRtcAcre),
-    formatPdfNum(sumRtcGunta),
-    formatPdfNum(sumLeaseAcre),
-    formatPdfNum(sumLeaseGunta),
-    formatPdfMoney(totalAtl),
-    formatPdfMoney(totalPoa),
-    "",
-    "",
-    formatPdfMoney(totalCheque),
-    "",
-    formatPdfMoney(totalCash),
-  ]);
-
   const atlContentW = pdfContentWidth(landW);
 
-  autoTable(pdf, {
+  let endY = drawPagedDetailTables(pdf, {
+    pageWidth: landW,
+    contentWidth: atlContentW,
     startY: ly,
-    margin: {
-      left: PDF_MARGIN.left,
-      right: PDF_MARGIN.right,
-      top: 28,
-      bottom: PDF_TABLE_BOTTOM_MARGIN,
-    },
-    didDrawPage: (hook) => {
-      if (hook.pageNumber > 1) {
-        drawContinuationLogoHeader(pdf, logoDataUrl, landW);
-      }
-    },
-    ...detailTableAutoTableOptions(atlContentW),
+    logoDataUrl,
     head: [
       [
         { content: "Sl\nNo", rowSpan: 2 },
@@ -882,7 +920,7 @@ async function generateAtlPoaDebitNotePdf(
       ],
       ["Acre", "Gunta", "Acre", "Gunta", "Cheque No", "Date", "Amount", "Bank Name", "Cash"],
     ],
-    body: detailBody,
+    dataRows: detailRows,
     columnStyles: buildScaledColumnStyles(
       [1, 4.5, 1.8, 1.2, 1.2, 1.2, 1.2, 2, 2, 2, 1.8, 2, 2.5, 1.5],
       atlContentW,
@@ -903,16 +941,31 @@ async function generateAtlPoaDebitNotePdf(
         "center",
       ],
     ),
+    onPageHeader: (pageStartY) => {
+      pdf.setFont(PDF_FONT, "bold");
+      pdf.setFontSize(10);
+      const pLines = pdf.splitTextToSize(purpose, atlContentW);
+      pdf.text(pLines, landW / 2, pageStartY, { align: "center" });
+      return drawLocationTable(
+        pdf,
+        data,
+        landW,
+        pageStartY + pLines.length * 5 + 3,
+        8,
+      );
+    },
   });
 
-  let endY = (pdf.lastAutoTable?.finalY ?? ly) + 4;
-  endY = ensureVerticalSpace(pdf, endY, 28);
-  pdf.setFont(PDF_FONT, "bold");
-  pdf.setFontSize(8);
-  pdf.text(`TOTAL AMOUNT: Rs ${formatPdfMoney(data.total)}/-`, landW - PDF_MARGIN.right, endY, {
-    align: "right",
+  drawDebitNoteClosingSummary(pdf, {
+    pageWidth: landW,
+    contentWidth: atlContentW,
+    startY: endY,
+    totalAmount: data.total,
+    summaryLines: [
+      `Total Acres (RTC/Lease): ${formatPdfNum(sumRtcAcre)} / ${formatPdfNum(sumLeaseAcre)}    Guntas: ${formatPdfNum(sumRtcGunta)} / ${formatPdfNum(sumLeaseGunta)}`,
+      `ATL: ${formatPdfMoney(totalAtl)}    POA: ${formatPdfMoney(totalPoa)}    Cheque+Cash: ${formatPdfMoney(totalCheque + totalCash)}`,
+    ],
   });
-  drawSignatureBlock(pdf, landW, endY + 2);
   finishDebitNotePages(pdf);
   return pdf;
 }

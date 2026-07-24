@@ -211,7 +211,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-[#E5E7EB] bg-white px-4 py-2.5 lg:hidden">
+      <div className="app-mobile-nav no-print sticky top-0 z-40 flex items-center gap-3 border-b border-[#E5E7EB] bg-white px-4 py-2.5 lg:hidden">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
@@ -223,12 +223,12 @@ export function AppSidebar() {
         <span className="text-sm font-semibold text-[#111827]">Account Management</span>
       </div>
 
-      <div className="hidden shrink-0 lg:block">
+      <div className="app-sidebar no-print hidden shrink-0 lg:block">
         <SidebarPanel pathname={pathname} className="fixed inset-y-0 left-0 z-30" />
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="app-mobile-nav no-print fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"

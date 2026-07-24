@@ -16,8 +16,8 @@ type Props = {
 export function DocumentModulePage({ title, breadcrumbs, children }: Props) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col bg-white px-4 py-6 text-[#111827] sm:px-6 lg:px-8">
-      <header className="border-b border-[#D1D5DB] pb-4">
-        <nav aria-label="Breadcrumb" className="text-xs text-[#6B7280]">
+      <header className="app-module-header no-print border-b border-[#D1D5DB] pb-4">
+        <nav aria-label="Breadcrumb" className="app-breadcrumb text-xs text-[#6B7280]">
           <ol className="flex flex-wrap items-center gap-1.5">
             {breadcrumbs.map((crumb, index) => {
               const isLast = index === breadcrumbs.length - 1;

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import type { LocatableFarmer } from "@/lib/location-cascade";
 
 function farmerHaystack(f: LocatableFarmer): string {
-  return [f.label, f.surveyNo, f.newSurveyNo, f.vendorCode]
+  return [f.label, f.surveyNo, f.newSurveyNo]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -58,11 +58,11 @@ export function FarmerSearchList({
           <Input
             type="search"
             disabled={disabled}
-            placeholder="Search farmers by name or survey number..."
+            placeholder="Search by farmer name, old survey no, or new survey no..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-9 w-full pl-9"
-            aria-label="Search farmers"
+            aria-label="Search farmers by name or survey number"
           />
         </div>
         {selectedCount > 0 ? (
@@ -102,7 +102,8 @@ export function FarmerSearchList({
         ) : (
           filtered.map((f) => {
             const checked = selectedIds.includes(f.id);
-            const surveyHint = f.surveyNo?.trim();
+            const oldSurvey = f.surveyNo?.trim();
+            const newSurvey = f.newSurveyNo?.trim();
             return (
               <li key={f.id} role="option" aria-selected={checked}>
                 <label
@@ -122,8 +123,9 @@ export function FarmerSearchList({
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-[#111827]">{f.label}</span>
-                    <span className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-[#6B7280]">
-                      {surveyHint ? <span>Survey: {surveyHint}</span> : null}
+                    <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[#6B7280]">
+                      <span>Old Survey: {oldSurvey || "—"}</span>
+                      <span>New Survey: {newSurvey || "—"}</span>
                     </span>
                   </span>
                 </label>

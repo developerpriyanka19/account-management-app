@@ -504,7 +504,8 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                 <tr>
                   <th className="px-2 py-2 text-left">Sl No</th>
                   <th className="px-2 py-2 text-left">Farmer Name</th>
-                  <th className="px-2 py-2 text-left">Survey No</th>
+                  <th className="px-2 py-2 text-left">Old Survey No</th>
+                  <th className="px-2 py-2 text-left">New Survey No</th>
                   <th className="px-2 py-2 text-left">Affidavit ID</th>
                   <th className="px-2 py-2 text-left">Request ID</th>
                   <th className="px-2 py-2 text-right">Debit Note</th>
@@ -515,14 +516,17 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {lines.map((line, i) => (
+                {lines.map((line, i) => {
+                  const farmer = farmers.find((f) => f.id === line.farmerId);
+                  return (
                   <tr
                     key={`${line.farmerId}-${i}`}
                     className={i % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}
                   >
                     <td className="px-2 py-1.5">{i + 1}</td>
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
-                    <td className="px-2 py-1.5">{line.surveyNo}</td>
+                    <td className="px-2 py-1.5">{line.surveyNo || "—"}</td>
+                    <td className="px-2 py-1.5">{farmer?.newSurveyNo?.trim() || "—"}</td>
                     <td className="px-2 py-1.5">
                       <Input
                         value={line.affidavitId}
@@ -566,14 +570,15 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                         : "—"}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </section>
       ) : null}
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
+      <div className="top-actions no-print sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
         <Button
           type="button"
           variant="outline"

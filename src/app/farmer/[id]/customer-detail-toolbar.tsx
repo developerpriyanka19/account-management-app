@@ -14,7 +14,7 @@ export function CustomerDetailToolbar({ customerId, deleteLabel }: Props) {
   }
 
   return (
-    <>
+    <div className="no-print top-actions flex flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={openPrint}
@@ -33,6 +33,6 @@ export function CustomerDetailToolbar({ customerId, deleteLabel }: Props) {
         label={deleteLabel}
         className="!h-8 !rounded-md !border-[#DC2626]/30 !bg-white !px-3 !text-xs !text-[#DC2626] hover:!bg-red-50"
       />
-    </>
+    </div>
   );
 }

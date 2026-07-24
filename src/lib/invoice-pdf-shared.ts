@@ -221,15 +221,25 @@ export function renderInvoiceAmountInWords(
   pdf: jsPDF,
   words: string,
   startY: number,
+  options?: { grandTotalLabel?: string; grandTotalDisplay?: string },
 ): number {
+  let y = startY;
+  if (options?.grandTotalDisplay) {
+    pdf.setFont(PDF_FONT, "bold");
+    pdf.setFontSize(9);
+    pdf.text(options.grandTotalLabel ?? "Grand Total", PDF_MARGIN.left, y);
+    pdf.setFontSize(10);
+    pdf.text(options.grandTotalDisplay, PDF_MARGIN.left, y + 5);
+    y += 12;
+  }
   pdf.setFont(PDF_FONT, "bold");
   pdf.setFontSize(8);
-  pdf.text("Value of Invoice:", PDF_MARGIN.left, startY);
+  pdf.text(options?.grandTotalDisplay ? "Amount in Words" : "Value of Invoice:", PDF_MARGIN.left, y);
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(7.5);
   const wordLines = pdf.splitTextToSize(words, INVOICE_CONTENT_W);
-  pdf.text(wordLines, PDF_MARGIN.left, startY + 4);
-  return startY + 4 + wordLines.length * INVOICE_TEXT_LINE_H;
+  pdf.text(wordLines, PDF_MARGIN.left, y + 4);
+  return y + 4 + wordLines.length * INVOICE_TEXT_LINE_H;
 }
 
 function drawInvoiceAddressFooter(pdf: jsPDF, pageNumber: number, pageCount: number): void {

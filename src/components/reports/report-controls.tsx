@@ -52,7 +52,7 @@ export function ReportLocationFilters({
   }
 
   return (
-    <div className="print:hidden grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 lg:grid-cols-3">
+    <div className="no-print grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 lg:grid-cols-3">
       <div>
         <Label>State</Label>
         <select
@@ -187,7 +187,7 @@ export function ReportPeriodFilters({
   }
 
   return (
-    <div className="print:hidden grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 lg:grid-cols-4">
+    <div className="no-print grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 lg:grid-cols-4">
       <div>
         <Label>Period</Label>
         <select
@@ -256,14 +256,14 @@ export function ReportToolbar({
   onPrint?: () => void;
 }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <header className="app-module-header no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <Link href={backHref} className="print:hidden text-sm text-blue-600 hover:underline">
+        <Link href={backHref} className="text-sm text-blue-600 hover:underline">
           ← Reports
         </Link>
         <h1 className="text-2xl font-semibold text-[#111827]">{title}</h1>
       </div>
-      <div className="print:hidden flex flex-wrap gap-2">
+      <div className="top-actions no-print flex flex-wrap gap-2">
         {onDownloadTemplate ? (
           <Button type="button" variant="outline" size="sm" onClick={onDownloadTemplate}>
             Sample Template
@@ -307,7 +307,7 @@ export function ReportPagination({
 
   if (totalPages <= 1) {
     return (
-      <p className="print:hidden text-sm text-slate-500">
+      <p className="no-print text-sm text-slate-500">
         {total} result{total === 1 ? "" : "s"}
       </p>
     );
@@ -320,7 +320,7 @@ export function ReportPagination({
   }
 
   return (
-    <div className="print:hidden flex items-center justify-between gap-3 text-sm text-slate-600">
+    <div className="no-print flex items-center justify-between gap-3 text-sm text-slate-600">
       <span>
         Page {page} of {totalPages} · {total} total
       </span>

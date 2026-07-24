@@ -34,7 +34,7 @@ export default async function EditCustomerPage({ params }: PageProps) {
     <CustomersPageShell
       title={`Edit: ${displayTitle}`}
       backHref={`/farmer/${customer.id}`}
-      backLabel="Back to customer"
+      backLabel="Back to Farmer"
       maxWidth="form"
     >
       <CustomersContentCard>

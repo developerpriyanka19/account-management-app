@@ -569,6 +569,9 @@ export function ServiceInvoiceForm({
                   <th className="px-2 py-2 text-left" rowSpan={2}>
                     Sy No
                   </th>
+                  <th className="px-2 py-2 text-left" rowSpan={2}>
+                    New Sy No
+                  </th>
                   <th className="px-2 py-2 text-right" rowSpan={2}>
                     Acres
                   </th>
@@ -585,7 +588,9 @@ export function ServiceInvoiceForm({
                 </tr>
               </thead>
               <tbody>
-                {displayLines.map((line, i) => (
+                {displayLines.map((line, i) => {
+                  const farmer = farmers.find((f) => f.id === line.farmerId);
+                  return (
                   <tr
                     key={`${line.farmerId}-${i}`}
                     className={i % 2 === 1 ? "bg-[#FAFBFC]" : "bg-white"}
@@ -594,6 +599,7 @@ export function ServiceInvoiceForm({
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
                     <td className="px-2 py-1.5">{hsnSacCode || "—"}</td>
                     <td className="px-2 py-1.5">{line.surveyNo || "—"}</td>
+                    <td className="px-2 py-1.5">{farmer?.newSurveyNo?.trim() || "—"}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       {formatInvoiceDecimal(line.acres)}
                     </td>
@@ -607,7 +613,8 @@ export function ServiceInvoiceForm({
                       {formatInvoiceMoney(line.amount)}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -625,7 +632,7 @@ export function ServiceInvoiceForm({
         </section>
       ) : null}
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
+      <div className="top-actions no-print sticky bottom-4 z-10 flex flex-wrap gap-2 rounded-lg border border-[#D1D5DB] bg-white/95 p-3 shadow-lg backdrop-blur">
         <Button
           type="button"
           variant="outline"

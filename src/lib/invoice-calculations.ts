@@ -177,9 +177,8 @@ function threeDigitsToWords(n: number): string {
   return [hundredPart, restPart].filter(Boolean).join(" ").trim();
 }
 
-export function amountToIndianWords(amount: number): string {
-  const rounded = Math.floor(amount);
-  if (rounded <= 0) return "Rupees Zero Only";
+function integerToIndianWords(rounded: number): string {
+  if (rounded <= 0) return "Zero";
   const crore = Math.floor(rounded / 10000000);
   const lakh = Math.floor((rounded % 10000000) / 100000);
   const thousand = Math.floor((rounded % 100000) / 1000);
@@ -190,5 +189,24 @@ export function amountToIndianWords(amount: number): string {
   if (lakh) parts.push(`${threeDigitsToWords(lakh)} Lakh`);
   if (thousand) parts.push(`${threeDigitsToWords(thousand)} Thousand`);
   if (rest) parts.push(threeDigitsToWords(rest));
-  return `Rupees ${parts.join(" ").replace(/\s+/g, " ").trim()} Only`;
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+/** Indian numbering (Thousand / Lakh / Crore), including paise for decimals. */
+export function amountToIndianWords(amount: number): string {
+  const safe = Number.isFinite(amount) ? Math.abs(amount) : 0;
+  const rupees = Math.floor(safe + 1e-9);
+  const paise = Math.round((safe - rupees) * 100);
+
+  if (rupees <= 0 && paise <= 0) return "Rupees Zero Only";
+
+  const rupeePart = integerToIndianWords(rupees);
+  if (paise > 0) {
+    const paisePart = integerToIndianWords(paise);
+    if (rupees <= 0) {
+      return `Rupees Zero and ${paisePart} Paise Only`;
+    }
+    return `Rupees ${rupeePart} and ${paisePart} Paise Only`;
+  }
+  return `Rupees ${rupeePart} Only`;
 }
