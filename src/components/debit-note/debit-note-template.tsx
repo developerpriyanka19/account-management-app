@@ -1,0 +1,358 @@
+import { CompanyBrandHeader } from "@/components/company-brand-header";
+import { CompanyDocumentFooter } from "@/components/company-document-footer";
+import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
+import { PdfPage } from "@/components/pdf/pdf-page";
+import type { DebitNotePayload } from "@/lib/debit-note-types";
+import { isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import { toDisplayDate } from "@/lib/date-format";
+import {
+  formatInvoiceLocationLine,
+  hasInvoiceLocation,
+  locationFromCustomer,
+} from "@/lib/invoice-location";
+
+type Props = {
+  data: DebitNotePayload;
+  customerName: string;
+  gstNumber: string;
+  address: string;
+};
+
+function money(n: number) {
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n || 0);
+}
+
+function chunkRows<T>(rows: T[], size: number): T[][] {
+  if (rows.length === 0) return [[]];
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
+function HeaderBlock({
+  data,
+  customerName,
+  gstNumber,
+  address,
+}: {
+  data: DebitNotePayload;
+  customerName: string;
+  gstNumber: string;
+  address: string;
+}) {
+  const location = locationFromCustomer({
+    village: data.village,
+    hobbli: data.hobbli,
+    taluk: data.taluk,
+    district: data.district,
+    state: data.state,
+  });
+  const locationLine = formatInvoiceLocationLine(location);
+
+  return (
+    <>
+      <header className="pb-1">
+        <CompanyBrandHeader documentTitle="DEBIT NOTE" />
+        <div className="flex items-center justify-between text-[11px] italic text-[#374151]">
+          <p>Ref. No.</p>
+          <p>Date :</p>
+        </div>
+        <div className="mt-1 border-b border-[#111827] pb-2">
+          <div className="grid grid-cols-2 items-start gap-4">
+            <div className="text-[10px] leading-snug">
+              <p>
+                <span className="font-semibold">Debit Note No:</span> {data.debitNoteNo}
+              </p>
+              <p>
+                <span className="font-semibold">Customer Name:</span> {customerName || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">GST:</span> {gstNumber || "—"}
+              </p>
+              <p>
+                <span className="font-semibold">Address:</span> {address || "—"}
+              </p>
+            </div>
+            <div className="text-right text-[10px]">
+              <p>
+                <span className="font-semibold">Date:</span> {toDisplayDate(data.date) || data.date}
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+      {hasInvoiceLocation(location) ? (
+        <div className="mt-2 border-b border-[#111827] pb-1 text-[10px] font-semibold">
+          <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function RemarkBlock({ remarks }: { remarks?: string | null }) {
+  const text = remarks?.trim();
+  if (!text) return null;
+  return (
+    <div className="mt-3 text-[10px] leading-snug text-[#111827]">
+      <p className="font-semibold">Remark:</p>
+      <p className="mt-0.5 whitespace-pre-wrap">{text}</p>
+    </div>
+  );
+}
+
+function SignatureBlock() {
+  return (
+    <div className="text-right text-[11px] font-normal">
+      <p className="font-medium">For Apoorva Energy Solutions</p>
+      <p className="mt-4">Authorized Signatory</p>
+    </div>
+  );
+}
+
+function ClosingSection({ data }: { data: DebitNotePayload }) {
+  return (
+    <div className="mt-4 flex items-end justify-between gap-4 pb-2">
+      <BankDetailsDisplay bank={data.bank} />
+      <SignatureBlock />
+    </div>
+  );
+}
+
+const pageFooter = <CompanyDocumentFooter className="border-0 pt-0" />;
+
+export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Props) {
+  const rows = data.rows as any[];
+  const totalLandConversionFee = rows.reduce((s, r) => s + (r.landConversionFee || 0), 0);
+  const totalPodiFee = rows.reduce((s, r) => s + (r.podiFee || 0), 0);
+  const totalRecoveryFee = rows.reduce((s, r) => s + (r.recoveryFee || 0), 0);
+  const totalAcre = rows.reduce((s, r) => s + (r.acres || 0), 0);
+  const totalGunta = rows.reduce((s, r) => s + (r.guntas || 0), 0);
+  const headerProps = { data, customerName, gstNumber, address };
+
+  if (isLandConversionStyleDebitNote(data.type)) {
+    const detailPages = chunkRows(rows, 14);
+    const hasDetail = detailPages.some((page) => page.length > 0);
+
+    return (
+      <article className="mx-auto w-full max-w-[210mm] bg-white font-serif text-[10px] text-[#111827]">
+        <PdfPage
+          isLastPage={!hasDetail}
+          className="py-[8mm]"
+          header={<HeaderBlock {...headerProps} />}
+          footer={pageFooter}
+        >
+          <div className="mt-3 overflow-hidden rounded border border-[#111827]">
+            <table className="w-full border-collapse text-[10px]">
+              <thead className="bg-[#F3F4F6]">
+                <tr>
+                  <th className="border border-[#111827] px-2 py-1.5">Sl No</th>
+                  <th className="border border-[#111827] px-2 py-1.5 text-left">Description</th>
+                  <th className="border border-[#111827] px-2 py-1.5 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">1</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Land Conversion Fee</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalLandConversionFee)}</td></tr>
+                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">2</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Podi Fee</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalPodiFee)}</td></tr>
+                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">3</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Other Recoveries Fee</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalRecoveryFee)}</td></tr>
+                <tr className="font-bold"><td className="border border-[#111827] px-2 py-1.5" /><td className="border border-[#111827] px-2 py-1.5 text-center">Grand Total</td><td className="border border-[#111827] px-2 py-1.5 text-right font-bold tabular-nums">{money(data.total)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <RemarkBlock remarks={data.remarks} />
+          {!hasDetail ? <ClosingSection data={data} /> : null}
+        </PdfPage>
+
+        {detailPages.map((pageRows, pageIndex) => {
+          if (pageRows.length === 0) return null;
+          const isLastPage = pageIndex === detailPages.length - 1;
+          return (
+            <PdfPage
+              key={pageIndex}
+              isLastPage={isLastPage}
+              className="py-[8mm]"
+              header={<HeaderBlock {...headerProps} />}
+              footer={pageFooter}
+            >
+              <div className="mt-3 overflow-hidden rounded border border-[#111827]">
+                <table className="w-full border-collapse text-[10px]">
+                  <thead className="bg-[#F3F4F6]">
+                    <tr>
+                      <th className="border border-[#111827] px-1 py-1">Sl No</th>
+                      <th className="border border-[#111827] px-1 py-1">Farmer Name</th>
+                      <th className="border border-[#111827] px-1 py-1">Survey No</th>
+                      <th className="border border-[#111827] px-1 py-1 text-right">NA Extent Acre</th>
+                      <th className="border border-[#111827] px-1 py-1 text-right">Gunta</th>
+                      <th className="border border-[#111827] px-1 py-1">Land Conversion Fee Challan Ref No</th>
+                      <th className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th className="border border-[#111827] px-1 py-1">Podi Fee Challan Ref No</th>
+                      <th className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th className="border border-[#111827] px-1 py-1">Other Recoveries Challan Ref No</th>
+                      <th className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((r, i) => (
+                      <tr key={i}>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{pageIndex * 14 + i + 1}</td>
+                        <td className="border border-[#111827] px-1 py-1">{r.farmerName || "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1">{r.surveyNo || "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{r.acres ?? "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{r.guntas ?? "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1">{r.landConversionChallanRefNo || "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{money(r.landConversionFee || 0)}</td>
+                        <td className="border border-[#111827] px-1 py-1">{r.podiChallanRefNo || "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{money(r.podiFee || 0)}</td>
+                        <td className="border border-[#111827] px-1 py-1">{r.recoveryChallanRefNo || "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{money(r.recoveryFee || 0)}</td>
+                      </tr>
+                    ))}
+                    {isLastPage ? (
+                      <tr className="font-semibold">
+                        <td colSpan={3} className="border border-[#111827] px-1 py-1 text-right">Totals</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{totalAcre.toFixed(2)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-right">{totalGunta.toFixed(2)}</td>
+                        <td className="border border-[#111827] px-1 py-1" />
+                        <td className="border border-[#111827] px-1 py-1 text-right">{money(totalLandConversionFee)}</td>
+                        <td className="border border-[#111827] px-1 py-1" />
+                        <td className="border border-[#111827] px-1 py-1 text-right">{money(totalPodiFee)}</td>
+                        <td className="border border-[#111827] px-1 py-1" />
+                        <td className="border border-[#111827] px-1 py-1 text-right">{money(totalRecoveryFee)}</td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+              {isLastPage ? (
+                <div className="mt-3 text-right text-[10px] font-bold">Grand Total: {money(data.total)}</div>
+              ) : null}
+              {isLastPage ? <RemarkBlock remarks={data.remarks} /> : null}
+              {isLastPage ? <ClosingSection data={data} /> : null}
+            </PdfPage>
+          );
+        })}
+      </article>
+    );
+  }
+
+  const totalAtl = rows.reduce((s, r) => s + (r.atlCharges || 0), 0);
+  const totalPoa = rows.reduce((s, r) => s + (r.poaCharges || 0), 0);
+  const totalCheque = rows.reduce((s, r) => s + (r.chequeAmount || 0), 0);
+  const totalCash = rows.reduce((s, r) => s + (r.cashAmount || 0), 0);
+  const totalChequeCash = totalCheque + totalCash;
+  const hasDetail = rows.length > 0;
+
+  return (
+    <article className="mx-auto w-full max-w-[210mm] bg-white font-serif text-[10px] text-[#111827]">
+      <PdfPage
+        isLastPage={!hasDetail}
+        className="py-[8mm]"
+        header={<HeaderBlock {...headerProps} />}
+        footer={pageFooter}
+      >
+        <div className="mt-3 overflow-hidden rounded border border-[#111827]">
+          <table className="w-full border-collapse text-[11px]">
+            <thead className="bg-[#F3F4F6]">
+              <tr>
+                <th className="border border-[#111827] px-2 py-1.5">SL No</th>
+                <th className="border border-[#111827] px-2 py-1.5 text-left">Executed of ATL & POA (GPA)</th>
+                <th className="border border-[#111827] px-2 py-1.5 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">1</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of ATL</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalAtl)}</td></tr>
+              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">2</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of POA OR GPA</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalPoa)}</td></tr>
+              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">3</td><td className="border border-[#111827] px-2 py-1.5">AES Pay To Farmers Cheque And Cash</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalChequeCash)}</td></tr>
+              <tr className="font-bold"><td className="border border-[#111827] px-2 py-1.5" /><td className="border border-[#111827] px-2 py-1.5 text-center">TOTAL AMOUNT</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(data.total)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <RemarkBlock remarks={data.remarks} />
+        {!hasDetail ? <ClosingSection data={data} /> : null}
+      </PdfPage>
+
+      {hasDetail ? (
+        <PdfPage
+          isLastPage
+          className="py-[8mm]"
+          header={<HeaderBlock {...headerProps} />}
+          footer={pageFooter}
+        >
+          <div className="mt-3 overflow-hidden rounded border border-[#111827]">
+            <table className="w-full border-collapse text-[9px]">
+              <thead className="bg-[#F3F4F6]">
+                <tr>
+                  <th className="border border-[#111827] px-1 py-1" rowSpan={2}>Sl No</th>
+                  <th className="border border-[#111827] px-1 py-1" rowSpan={2}>Farmer Name</th>
+                  <th className="border border-[#111827] px-1 py-1" rowSpan={2}>Survey No</th>
+                  <th className="border border-[#111827] px-1 py-1" colSpan={2}>RTC Extent</th>
+                  <th className="border border-[#111827] px-1 py-1" colSpan={2}>Lease Extent</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right" rowSpan={2}>ATL Charges</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right" rowSpan={2}>POA Charges</th>
+                  <th className="border border-[#111827] px-1 py-1" colSpan={5}>AES Pay To Farmers Cheque And Cash</th>
+                </tr>
+                <tr>
+                  <th className="border border-[#111827] px-1 py-1 text-right">Acre</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right">Gunta</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right">Acre</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right">Gunta</th>
+                  <th className="border border-[#111827] px-1 py-1">Cheque No</th>
+                  <th className="border border-[#111827] px-1 py-1">Date</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right">Amount</th>
+                  <th className="border border-[#111827] px-1 py-1">Bank Name</th>
+                  <th className="border border-[#111827] px-1 py-1 text-right">Cash</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{i + 1}</td>
+                    <td className="border border-[#111827] px-1 py-1">{r.farmerName || "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1">{r.surveyNo || "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{r.rtcAcre ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{r.rtcGunta ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{r.leaseAcre ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{r.leaseGunta ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.atlCharges || 0)}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.poaCharges || 0)}</td>
+                    <td className="border border-[#111827] px-1 py-1">{r.chequeNo || "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1">{r.chequeDate || "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.chequeAmount || 0)}</td>
+                    <td className="border border-[#111827] px-1 py-1">{r.bankName || "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.cashAmount || 0)}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold">
+                  <td colSpan={3} className="border border-[#111827] px-1 py-1 text-right">Totals</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.rtcAcre || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.rtcGunta || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.leaseAcre || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.leaseGunta || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalAtl)}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalPoa)}</td>
+                  <td className="border border-[#111827] px-1 py-1" />
+                  <td className="border border-[#111827] px-1 py-1" />
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalCheque)}</td>
+                  <td className="border border-[#111827] px-1 py-1" />
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalCash)}</td>
+                </tr>
+                <tr className="font-semibold">
+                  <td colSpan={13} className="border border-[#111827] px-1 py-1 text-right">Total Amount</td>
+                  <td className="border border-[#111827] px-1 py-1 text-right">{money(data.total)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-right text-[10.5px] font-bold tabular-nums">
+            TOTAL AMOUNT: {money(data.total)}
+          </div>
+          <RemarkBlock remarks={data.remarks} />
+          <ClosingSection data={data} />
+        </PdfPage>
+      ) : null}
+    </article>
+  );
+}

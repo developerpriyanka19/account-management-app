@@ -1,0 +1,468 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --animate-collapsible-down: collapsible-down 0.2s ease-out;
+  --animate-collapsible-up: collapsible-up 0.2s ease-out;
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Customers area always uses light enterprise UI */
+.customers-layout-shell {
+  --background: #ffffff;
+  --foreground: #111827;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Print utilities (screen defaults)                                          */
+/* -------------------------------------------------------------------------- */
+
+.print-only {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Global print stylesheet — hide chrome, print document content only         */
+/* -------------------------------------------------------------------------- */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Utility: hidden while printing */
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Utility: visible only while printing */
+  .print-only {
+    display: block !important;
+  }
+
+  /* App chrome — never print */
+  .app-sidebar,
+  .app-mobile-nav,
+  .app-module-header,
+  .app-breadcrumb,
+  .top-actions,
+  .action-bar,
+  .sticky.bottom-4,
+  .sticky.top-4,
+  [data-no-print],
+  [role="dialog"],
+  [data-radix-portal],
+  [data-sonner-toaster],
+  .Toaster,
+  nav[aria-label="Breadcrumb"],
+  .invoice-preview-root {
+    display: none !important;
+  }
+
+  /* Common interactive UI chrome */
+  button:not(.print-keep),
+  a[role="button"]:not(.print-keep),
+  input[type="search"],
+  input[type="file"],
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-content"] {
+    display: none !important;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    overflow: visible !important;
+  }
+
+  /* Flatten app shell so only main content remains */
+  .customers-layout-shell,
+  .app-module-shell {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
+
+  .app-main-content,
+  .print-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    float: none !important;
+    position: static !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* Undo sidebar offset used on large screens */
+  .app-main-content {
+    padding-left: 0 !important;
+  }
+
+  .print-document-root,
+  .print-document-root html,
+  .print-document-root body {
+    width: 100%;
+    height: auto;
+    background: white;
+  }
+
+  .pdf-page {
+    width: 210mm;
+    height: 297mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    overflow: hidden;
+    page-break-after: always;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+    position: relative;
+    background: white;
+    padding-top: 8mm;
+    padding-bottom: 8mm;
+  }
+
+  .pdf-page-landscape {
+    width: 297mm;
+    height: 210mm;
+    min-height: 210mm;
+    max-height: 210mm;
+  }
+
+  .pdf-page:last-child {
+    page-break-after: auto;
+  }
+
+  .pdf-content {
+    padding-bottom: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .pdf-content.last-page {
+    padding-bottom: 0;
+  }
+
+  .pdf-footer {
+    position: relative;
+    margin-top: auto;
+    flex-shrink: 0;
+    padding-top: 4mm;
+    text-align: center;
+  }
+
+  /* Use full content width inside A4 margins */
+  .customer-print-area,
+  .print-container {
+    max-width: none !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin: 0 !important;
+  }
+
+  .customer-print-sheet {
+    font-size: 10px;
+    line-height: 1.4;
+    padding-top: 8mm;
+    padding-bottom: 8mm;
+    box-sizing: border-box;
+  }
+
+  .invoice-print-area {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .invoice-print-page,
+  .document-print-page {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 10mm;
+    padding-right: 10mm;
+  }
+
+  .invoice-preview-root,
+  .invoice-a4-viewport,
+  .na-invoice-table-wrap,
+  .invoice-table-scroll {
+    overflow: visible !important;
+    min-width: 0 !important;
+  }
+
+  .invoice-a4-viewport {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  .na-invoice-a4 {
+    width: 100% !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .invoice-line-table {
+    min-width: 100% !important;
+    width: 100% !important;
+    font-size: 10px;
+    table-layout: fixed !important;
+  }
+
+  .invoice-line-table th,
+  .invoice-line-table td {
+    overflow: hidden !important;
+    word-break: break-word !important;
+  }
+
+  .invoice-summary-wrap table {
+    width: 280px !important;
+  }
+
+  /* Avoid breaking inside tables / cards when possible */
+  table,
+  tr,
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  a[href]::after {
+    content: none !important;
+  }
+}
+
+/* Shared PDF page layout — screen preview */
+.pdf-page-portrait {
+  width: 210mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  box-sizing: border-box;
+  padding-top: 8mm;
+  padding-bottom: 8mm;
+}
+
+.pdf-page-landscape {
+  width: 297mm;
+  min-height: 210mm;
+  max-height: 210mm;
+  box-sizing: border-box;
+}
+
+.pdf-page {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pdf-content.last-page {
+  /* Closing section sits above the footer via flex layout */
+}
+
+.pdf-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 4mm;
+  text-align: center;
+}
+
+/* Invoice preview — screen layout (A4 paper simulation) */
+.invoice-preview-root {
+  overflow-x: hidden;
+}
+
+.invoice-a4-viewport {
+  overflow-x: hidden;
+}
+
+.invoice-a4-scale {
+  transform-origin: top center;
+}
+
+@media (max-width: 900px) {
+  .invoice-a4-scale {
+    transform: scale(calc((100vw - 2rem) / 793.7));
+  }
+}
+
+.na-invoice-a4 {
+  overflow-x: hidden;
+}
+
+.invoice-print-page,
+.document-print-page {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 10mm;
+  padding-right: 10mm;
+}
+
+.na-invoice-table-wrap {
+  overflow-x: hidden;
+}
+
+.invoice-line-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.invoice-table-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Farmers dashboard summary cards — never truncate monetary values */
+@layer components {
+  .customers-layout-shell .dashboard-summary-grid {
+    overflow: visible !important;
+    align-items: stretch;
+  }
+
+  @media (min-width: 1024px) {
+    .customers-layout-shell .dashboard-summary-grid {
+      grid-auto-rows: 1fr;
+      grid-template-columns: repeat(5, 1fr) minmax(0, 1.7fr);
+    }
+  }
+
+  .customers-layout-shell .dashboard-summary-grid .dashboard-card {
+    min-height: auto;
+    height: auto;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .customers-layout-shell .dashboard-card .dashboard-card-value {
+    display: block;
+    max-width: 100%;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+    line-height: 1.15;
+    flex: 1 1 auto;
+    flex-shrink: 0;
+    min-height: auto;
+  }
+
+  /* Override Tailwind truncate/line-clamp if ever applied to dashboard cards */
+  .customers-layout-shell .dashboard-card .truncate,
+  .customers-layout-shell .dashboard-card [class*="truncate"],
+  .customers-layout-shell .dashboard-card [class*="line-clamp"] {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    display: block !important;
+  }
+
+  /* Farmers table — full amount visibility (no ellipsis) */
+  .customers-layout-shell td.amount-cell-td,
+  .customers-layout-shell td.amount-cell-td .amount-cell {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+  }
+
+  .customers-layout-shell td.amount-cell-td {
+    height: auto;
+    vertical-align: middle;
+  }
+
+  .customers-layout-shell td.amount-cell-td .truncate,
+  .customers-layout-shell td.amount-cell-td [class*="truncate"] {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+  }
+}

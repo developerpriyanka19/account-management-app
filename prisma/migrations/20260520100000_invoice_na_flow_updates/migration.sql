@@ -1,0 +1,17 @@
+-- AlterTable
+ALTER TABLE "invoices"
+ADD COLUMN "district" TEXT,
+ADD COLUMN "taluk" TEXT,
+ADD COLUMN "village" TEXT,
+ADD COLUMN "hobbli" TEXT,
+ADD COLUMN "totalAmountWords" TEXT,
+ADD COLUMN "pdfUrl" TEXT,
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "invoice_items"
+ADD COLUMN "district" TEXT,
+ADD COLUMN "taluk" TEXT,
+ADD COLUMN "hobbli" TEXT,
+ADD COLUMN "debitNote" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "remark" TEXT;
