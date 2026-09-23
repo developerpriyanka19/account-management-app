@@ -15,8 +15,6 @@ import type { CellDef, RowInput } from "jspdf-autotable";
 export const NA_INVOICE_CONTENT_WIDTH_MM =
   PDF_A4_PORTRAIT.width - PDF_MARGIN.left - PDF_MARGIN.right;
 
-export const NA_INVOICE_COLUMN_COUNT = 10;
-
 /** Column widths (mm) — sum ≈ 168, table stretches to CONTENT_WIDTH. */
 export const NA_INVOICE_COLUMN_WIDTHS_MM = {
   slNo: 10,
@@ -110,20 +108,12 @@ export function buildNaInvoiceTableHead(document: InvoiceDocumentData): RowInput
   const rate = resolveNaRatePerAcre(document);
   const rateLabel = formatRatePerAcreDisplay(rate);
 
-  const titleRow: CellDef[] = [
-    {
-      content: "NA INVOICE",
-      colSpan: NA_INVOICE_COLUMN_COUNT,
-      styles: { halign: "center", fontSize: 16, fontStyle: "bold", fillColor: [255, 255, 255] },
-    },
-  ];
-
   const mainRow: CellDef[] = [
     { content: "Sl No", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
     { content: "Farmers Name", rowSpan: 2, styles: { valign: "middle" } },
     { content: "HSN / SAAC code", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
     { content: "Sy No", rowSpan: 2, styles: { valign: "middle" } },
-    { content: "NA XTENT", colSpan: 2, styles: { halign: "center" } },
+    { content: "NA Extent", colSpan: 2, styles: { halign: "center" } },
     { content: "Affidavit ID", rowSpan: 2, styles: { valign: "middle" } },
     { content: "Request ID", rowSpan: 2, styles: { valign: "middle" } },
     { content: "Total Cents", rowSpan: 2, styles: { halign: "right", valign: "middle" } },
@@ -140,7 +130,7 @@ export function buildNaInvoiceTableHead(document: InvoiceDocumentData): RowInput
     { content: rateLabel, styles: { halign: "center", fontSize: 9, fontStyle: "normal" } },
   ];
 
-  return [titleRow, mainRow, subRow];
+  return [mainRow, subRow];
 }
 
 /** Totals rows appended as table foot (traditional invoice grid). */

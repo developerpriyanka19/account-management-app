@@ -119,11 +119,6 @@ export function NaInvoiceDocument({ data }: Props) {
           </colgroup>
           <thead>
             <tr>
-              <th colSpan={10} className={`${th} py-1.5 text-[14px] font-bold`}>
-                NA INVOICE
-              </th>
-            </tr>
-            <tr>
               <th rowSpan={2} className={th}>
                 Sl No
               </th>
@@ -137,7 +132,7 @@ export function NaInvoiceDocument({ data }: Props) {
                 Sy No
               </th>
               <th colSpan={2} className={th}>
-                NA XTENT
+                NA Extent
               </th>
               <th rowSpan={2} className={th}>
                 Affidavit ID
