@@ -733,6 +733,7 @@ export function DebitNoteBuilder({
               <thead>
                 <tr>
                   <th
+                    rowSpan={2}
                     className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]"
                     style={{
                       ...dnHeaderScrollStyle(0, "#F9FAFB"),
@@ -743,32 +744,40 @@ export function DebitNoteBuilder({
                     Sl No
                   </th>
                   <th
+                    rowSpan={2}
                     className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]"
                     style={dnHeaderFarmerStyle(0, "#F9FAFB")}
                   >
                     Farmer Name
                   </th>
                   <th
+                    rowSpan={2}
                     className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]"
                     style={dnHeaderSurveyStyle(0, "#F9FAFB")}
                   >
                     Survey No
                   </th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>NA Extent Acre</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Gunta</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee Challan Ref No</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee Challan Ref No</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Challan Ref No</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Fee</th>
-                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Total</th>
+                  <th colSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]">
+                    NA Extent
+                  </th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee Challan Ref No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee Challan Ref No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Challan Ref No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Fee</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Total</th>
                   <th
+                    rowSpan={2}
                     className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]"
                     style={dnHeaderActionStyle(0, "#F9FAFB")}
                   >
                     Action
                   </th>
+                </tr>
+                <tr>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Acres</th>
+                  <th className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Guntas</th>
                 </tr>
               </thead>
               <tbody>

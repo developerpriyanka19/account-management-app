@@ -58,29 +58,22 @@ function HeaderBlock({
         <CompanyBrandHeader documentTitle="DEBIT NOTE" />
         <div className="flex items-center justify-between text-[11px] italic text-[#374151]">
           <p>Ref. No.</p>
-          <p>Date :</p>
+          <p>Date : {toDisplayDate(data.date) || data.date}</p>
         </div>
         <div className="mt-1 border-b border-[#111827] pb-2">
-          <div className="grid grid-cols-2 items-start gap-4">
-            <div className="text-[10px] leading-snug">
-              <p>
-                <span className="font-semibold">Debit Note No:</span> {data.debitNoteNo}
-              </p>
-              <p>
-                <span className="font-semibold">Customer Name:</span> {customerName || "—"}
-              </p>
-              <p>
-                <span className="font-semibold">GST:</span> {gstNumber || "—"}
-              </p>
-              <p>
-                <span className="font-semibold">Address:</span> {address || "—"}
-              </p>
-            </div>
-            <div className="text-right text-[10px]">
-              <p>
-                <span className="font-semibold">Date:</span> {toDisplayDate(data.date) || data.date}
-              </p>
-            </div>
+          <div className="text-[10px] leading-snug">
+            <p>
+              <span className="font-semibold">Debit Note No:</span> {data.debitNoteNo}
+            </p>
+            <p>
+              <span className="font-semibold">Customer Name:</span> {customerName || "—"}
+            </p>
+            <p>
+              <span className="font-semibold">GST:</span> {gstNumber || "—"}
+            </p>
+            <p>
+              <span className="font-semibold">Address:</span> {address || "—"}
+            </p>
           </div>
         </div>
       </header>
@@ -181,17 +174,22 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
                 <table className="w-full border-collapse text-[10px]">
                   <thead className="bg-[#F3F4F6]">
                     <tr>
-                      <th className="border border-[#111827] px-1 py-1">Sl No</th>
-                      <th className="border border-[#111827] px-1 py-1">Farmer Name</th>
-                      <th className="border border-[#111827] px-1 py-1">Survey No</th>
-                      <th className="border border-[#111827] px-1 py-1 text-right">NA Extent Acre</th>
-                      <th className="border border-[#111827] px-1 py-1 text-right">Gunta</th>
-                      <th className="border border-[#111827] px-1 py-1">Land Conversion Fee Challan Ref No</th>
-                      <th className="border border-[#111827] px-1 py-1 text-right">Fee</th>
-                      <th className="border border-[#111827] px-1 py-1">Podi Fee Challan Ref No</th>
-                      <th className="border border-[#111827] px-1 py-1 text-right">Fee</th>
-                      <th className="border border-[#111827] px-1 py-1">Other Recoveries Challan Ref No</th>
-                      <th className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Sl No</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Farmer Name</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Survey No</th>
+                      <th colSpan={2} className="border border-[#111827] px-1 py-1 text-center">
+                        NA Extent
+                      </th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Land Conversion Fee Challan Ref No</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Podi Fee Challan Ref No</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Other Recoveries Challan Ref No</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                    </tr>
+                    <tr>
+                      <th className="border border-[#111827] px-1 py-1 text-center">Acres</th>
+                      <th className="border border-[#111827] px-1 py-1 text-center">Guntas</th>
                     </tr>
                   </thead>
                   <tbody>

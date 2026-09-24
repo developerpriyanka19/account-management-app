@@ -422,7 +422,6 @@ function drawDebitNotePage1Intro(
   pdf.setFont(PDF_FONT, "normal");
   pdf.setFontSize(INTRO_BODY_FONT);
   pdf.text(`Debit Note No: ${data.debitNoteNo}`, leftX, y);
-  pdf.text(displayDate, rightX, y, { align: "right" });
   y += 7;
 
   pdf.text("To,", leftX, y);
@@ -582,22 +581,25 @@ async function generateLandConversionDebitNotePdf(
     logoDataUrl,
     head: [
       [
-        "Sl\nNo",
-        "Farmer\nName",
-        "Survey\nNo",
-        "NA Extent\nAcre",
-        "Gunta",
-        "Land Conversion\nChallan Ref No",
-        "Land Conversion\nFee",
-        "Podi Fee\nChallan Ref No",
-        "Podi\nFee",
-        "Other Recoveries\nChallan Ref No",
-        "Other Recoveries\nFee",
+        { content: "Sl\nNo", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
+        { content: "Farmer\nName", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "Survey\nNo", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "NA Extent", colSpan: 2, styles: { halign: "center", valign: "middle" } },
+        { content: "Land Conversion\nChallan Ref No", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "Land Conversion\nFee", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "Podi Fee\nChallan Ref No", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "Podi\nFee", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "Other Recoveries\nChallan Ref No", rowSpan: 2, styles: { valign: "middle" } },
+        { content: "Other Recoveries\nFee", rowSpan: 2, styles: { valign: "middle" } },
+      ],
+      [
+        { content: "Acres", styles: { halign: "center" } },
+        { content: "Guntas", styles: { halign: "center" } },
       ],
     ],
     dataRows: detailRows,
     columnStyles: buildScaledColumnStyles(
-      [1, 5, 2, 2, 1.5, 4, 2.5, 3.5, 2, 4, 2.5],
+      [1, 5, 2, 2, 2, 4, 2.5, 3.5, 2, 4, 2.5],
       landContentW,
       ["center", "left", "center", "center", "center", "left", "center", "left", "center", "left", "center"],
     ),
