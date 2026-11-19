@@ -13,37 +13,45 @@ import {
 } from "@/lib/invoice-calculations";
 import { getServiceInvoiceSubtypeConfig } from "@/lib/invoice-config";
 import { NA_INVOICE_CONTENT_WIDTH_MM } from "@/lib/na-invoice-layout";
+import { normalizeAcresGuntas } from "@/lib/farmer-debit-note-row";
 import type { InvoiceDocumentData, InvoiceLineInput } from "@/lib/invoice-types";
 import type { CellDef, RowInput } from "jspdf-autotable";
 
-export const SERVICE_INVOICE_COLUMN_COUNT = 8;
+export const SERVICE_INVOICE_COLUMN_COUNT = 9;
 
+/**
+ * Column widths (mm) — sum ≈ content width (190mm).
+ * Wider farmer / HSN; New Syr No after Syr No; reduced service amount column.
+ */
 export const SERVICE_INVOICE_COLUMN_WIDTHS_MM = {
   slNo: 10,
-  farmersName: 28,
-  hsn: 16,
+  farmersName: 36,
+  hsn: 22,
   syNo: 14,
+  newSyNo: 14,
   acres: 12,
   guntas: 12,
   totalCents: 16,
-  service: 82,
+  service: 54,
 } as const;
 
 export const SERVICE_INVOICE_TABLE_COLUMN_STYLES: Record<
   number,
   { cellWidth: number; halign?: "left" | "center" | "right" }
 > = {
-  0: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.slNo, halign: "center" },
-  1: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.farmersName },
-  2: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.hsn, halign: "center" },
-  3: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.syNo },
-  4: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.acres, halign: "center" },
-  5: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.guntas, halign: "center" },
-  6: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.totalCents, halign: "right" },
-  7: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.service, halign: "right" },
+  0: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.slNo,halign: "center" },
+  1: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.farmersName,halign: "center" },
+  2: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.hsn,halign: "center" },
+  3: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.syNo,halign: "center" },
+  4: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.newSyNo,halign: "center" },
+  5: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.acres,halign: "center" },
+  6: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.guntas,halign: "center" },
+  7: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.totalCents,halign: "center" },
+  8: { cellWidth: SERVICE_INVOICE_COLUMN_WIDTHS_MM.service,halign: "center" },
 };
 
-const SERVICE_TOTALS_LABEL_COL_SPAN = 6;
+/** Label span for Sub Total / GST rows (all columns except last amount). */
+const SERVICE_TOTALS_LABEL_COL_SPAN = 7;
 
 /** Total Cents = decimal acres × 100 (3 decimal places). */
 export function lineTotalCentsFromExtent(
@@ -55,12 +63,13 @@ export function lineTotalCentsFromExtent(
   return roundToThreeDecimals(extent * 100);
 }
 
+/** Rate display without currency glyph (Times PDF font lacks ₹). */
 export function formatServiceRatePerAcreDisplay(rate: number): string {
   const formatted = new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(rate);
-  return `₹${formatted}/- Per Acre`;
+  return `${formatted}/- Per Acre`;
 }
 
 export function resolveServiceRatePerAcre(document: InvoiceDocumentData): number {
@@ -117,29 +126,51 @@ export function serviceInvoiceAmountInWords(document: InvoiceDocumentData): stri
   return prepared.totalAmountWords?.trim() || amountToIndianWords(prepared.totals.grandTotal);
 }
 
+export function sumServiceInvoiceExtent(lines: InvoiceLineInput[]): {
+  acres: number;
+  guntas: number;
+  totalCents: number;
+} {
+  const raw = lines.reduce(
+    (acc, line) => ({
+      acres: acc.acres + (line.acres ?? 0),
+      guntas: acc.guntas + (line.gunta ?? 0),
+      totalCents: acc.totalCents + (line.totalCents ?? 0),
+    }),
+    { acres: 0, guntas: 0, totalCents: 0 },
+  );
+  const normalized = normalizeAcresGuntas(raw.acres, raw.guntas);
+  return {
+    acres: normalized.acres,
+    guntas: normalized.gunta,
+    totalCents: raw.totalCents,
+  };
+}
+
 export function buildServiceInvoiceTableHead(document: InvoiceDocumentData): RowInput[] {
   const prepared = prepareServiceInvoiceDocument(document);
   const config = getServiceInvoiceSubtypeConfig(prepared.subType);
   const rateLabel = formatServiceRatePerAcreDisplay(prepared.ratePerAcre);
 
   const mainRow: CellDef[] = [
-    { content: "SL NO", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
-    { content: "Name Of Farmers", rowSpan: 2, styles: { valign: "middle" } },
-    { content: "HSN/SAC Code", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
-    { content: "Sy No", rowSpan: 2, styles: { valign: "middle" } },
-    { content: "Acres", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
-    { content: "Guntas", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
-    { content: "Total Cents", rowSpan: 2, styles: { halign: "right", valign: "middle" } },
+    { content: "SL NO", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "Name Of Farmers", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "HSN/SAC Code", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "Syr No", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "New Syr No", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "Acres", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "Guntas", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
+    { content: "Total Cents", rowSpan: 2, styles: {halign: "center", valign: "middle" } },
     {
       content: config.serviceName,
-      styles: { halign: "center", fontSize: 7, fontStyle: "bold" },
+      styles: {halign: "center", fontSize: 9, fontStyle: "bold" },
     },
   ];
 
   const subRow: CellDef[] = [
     {
       content: rateLabel,
-      styles: { halign: "center", fontSize: 7, fontStyle: "normal" },
+      styles: {halign: "center", fontSize: 9, fontStyle: "bold" },
     },
   ];
 
@@ -156,6 +187,7 @@ export function buildServiceInvoiceTableBody(document: InvoiceDocumentData): str
     line.farmerName || line.description || "—",
     hsn || "—",
     line.surveyNo || "—",
+    line.newSurveyNo || "—",
     line.acres != null ? formatInvoiceDecimal(line.acres) : "—",
     line.gunta != null ? formatInvoiceDecimal(line.gunta) : "—",
     line.totalCents != null ? formatInvoiceTotalCents(line.totalCents) : "—",
@@ -166,10 +198,23 @@ export function buildServiceInvoiceTableBody(document: InvoiceDocumentData): str
 export function buildServiceInvoiceTableFoot(document: InvoiceDocumentData): RowInput[] {
   const prepared = prepareServiceInvoiceDocument(document);
   const { totals } = prepared;
-  const labelStyle = { halign: "right" as const, fontStyle: "bold" as const };
-  const valueStyle = { halign: "right" as const, fontStyle: "normal" as const };
+  const extent = sumServiceInvoiceExtent(prepared.lines);
+  const labelStyle = {halign: "center" as const, fontStyle: "bold" as const, valign: "middle" as const };
+  const valueStyle = {halign: "center" as const, fontStyle: "normal" as const, valign: "middle" as const };
+  const totalCenterBold = {
+    halign: "center" as const,
+    fontStyle: "bold" as const,
+    valign: "middle" as const,
+  };
 
   return [
+    [
+      { content: "Total", colSpan: 5, styles: totalCenterBold },
+      { content: formatInvoiceDecimal(extent.acres), styles: totalCenterBold },
+      { content: formatInvoiceDecimal(extent.guntas), styles: totalCenterBold },
+      { content: formatInvoiceTotalCents(extent.totalCents), styles: totalCenterBold },
+      { content: "", styles: totalCenterBold },
+    ],
     [
       { content: "", colSpan: SERVICE_TOTALS_LABEL_COL_SPAN },
       { content: "Sub Total", styles: labelStyle },
@@ -206,7 +251,7 @@ export function buildServiceInvoiceTableFoot(document: InvoiceDocumentData): Row
 
 export function getServiceInvoiceTableColumnStyles(): Record<
   number,
-  { cellWidth: number; halign?: "left" | "center" | "right" }
+  { cellWidth: number;halign?: "left" | "center" | "right" }
 > {
   return SERVICE_INVOICE_TABLE_COLUMN_STYLES;
 }

@@ -213,7 +213,7 @@ export const CUSTOMER_COLUMN_GROUPS: CustomerColumnGroup[] = [
   {
     label: "POA/GPA",
     fields: [
-      { id: "paoTotal", label: "GPA/POA GOVT Fee", inputType: "number", variant: "money" },
+      { id: "paoTotal", label: "GPA/POA Govt Fee", inputType: "number", variant: "money" },
     ],
   },
   {

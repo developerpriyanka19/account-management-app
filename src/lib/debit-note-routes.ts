@@ -10,6 +10,8 @@ export function debitNoteListPath(type: DebitNoteType): string {
       return "/debit-note/service-order";
     case DebitNoteType.ATL_POA:
       return "/debit-note/atl-poa-gpa";
+    case DebitNoteType.K2_CHALLAN:
+      return "/debit-note/k2-challan";
     default:
       return "/debit-note/land-conversion";
   }
@@ -29,6 +31,8 @@ export function debitNoteListTitle(type: DebitNoteType): string {
       return "Service Orders";
     case DebitNoteType.ATL_POA:
       return "ATL and POA/GPA Debit Notes";
+    case DebitNoteType.K2_CHALLAN:
+      return "K2 Challan Debit Notes";
     default:
       return "Debit Notes";
   }
@@ -44,6 +48,8 @@ export function debitNoteDocumentTitle(type: DebitNoteType): string {
       return "Service Order";
     case DebitNoteType.ATL_POA:
       return "ATL and POA/GPA Debit Note";
+    case DebitNoteType.K2_CHALLAN:
+      return "K2 Challan Debit Note";
     default:
       return "Debit Note";
   }

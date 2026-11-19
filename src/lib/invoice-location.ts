@@ -39,13 +39,15 @@ export function hasInvoiceLocation(fields: InvoiceLocationFields): boolean {
 export function invoiceLocationEntries(
   fields: InvoiceLocationFields,
 ): { label: string; value: string }[] {
-  const entries: { label: string; value: string }[] = [];
-  if (fields.village) entries.push({ label: "Village", value: fields.village });
-  if (fields.hobbli) entries.push({ label: "Hobli", value: fields.hobbli });
-  if (fields.taluk) entries.push({ label: "Taluk", value: fields.taluk });
-  if (fields.district) entries.push({ label: "District", value: fields.district });
-  if (fields.state) entries.push({ label: "State", value: fields.state });
-  return entries;
+  if (!hasInvoiceLocation(fields)) return [];
+  // Always include State alongside the other location fields when any value exists.
+  return [
+    { label: "Village", value: fields.village || "—" },
+    { label: "Hobli", value: fields.hobbli || "—" },
+    { label: "Taluk", value: fields.taluk || "—" },
+    { label: "District", value: fields.district || "—" },
+    { label: "State", value: fields.state || "—" },
+  ];
 }
 
 /**

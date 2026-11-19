@@ -56,7 +56,7 @@ export function InvoiceHeader({ data, compact = false }: Props) {
             : "mt-4 border-t border-[#E5E7EB] pt-4 text-left text-[11px]"
         }
       >
-        <div>
+        <div className="space-y-0.5 leading-relaxed">
           {billLines.map((row, i) => {
             if (!row.value) return null;
             if (row.value === "To,") {
@@ -64,7 +64,12 @@ export function InvoiceHeader({ data, compact = false }: Props) {
             }
             const isName = row.value === data.customer.companyName;
             return (
-              <p key={i} className={isName ? "font-semibold text-[#111827]" : "text-[#111827]"}>
+              <p
+                key={i}
+                className={`break-words whitespace-normal ${
+                  isName ? "font-semibold text-[#111827]" : "text-[#111827]"
+                }`}
+              >
                 {row.value}
               </p>
             );
@@ -74,7 +79,7 @@ export function InvoiceHeader({ data, compact = false }: Props) {
 
       {showLocation ? (
         <div className="mt-2 border-t border-[#E5E7EB] pt-2 text-[11px] font-semibold text-[#111827]">
-          <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
+          <p className="break-words whitespace-normal leading-relaxed">{locationLine}</p>
         </div>
       ) : null}
     </header>

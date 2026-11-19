@@ -25,6 +25,7 @@ export function invoiceRecordToDocument(record: InvoiceWithRelations): InvoiceDo
     village: item.village ?? "",
     hobbli: (item as { hobbli?: string | null }).hobbli ?? "",
     surveyNo: item.surveyNo ?? "",
+    newSurveyNo: (item as { newSurveyNo?: string | null }).newSurveyNo ?? "",
     naExtent: item.naExtent ?? "",
     acres: item.acres,
     gunta: item.gunta,

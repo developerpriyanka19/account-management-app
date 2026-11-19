@@ -3,7 +3,10 @@ import { CompanyDocumentFooter } from "@/components/company-document-footer";
 import { BankDetailsDisplay } from "@/components/bank/bank-details-display";
 import { PdfPage } from "@/components/pdf/pdf-page";
 import type { DebitNotePayload } from "@/lib/debit-note-types";
-import { isLandConversionStyleDebitNote } from "@/lib/debit-note-types";
+import {
+  isK2ChallanModule,
+  isLandConversionLayout,
+} from "@/lib/debit-note-types";
 import { toDisplayDate } from "@/lib/date-format";
 import {
   formatInvoiceLocationLine,
@@ -71,15 +74,18 @@ function HeaderBlock({
             <p>
               <span className="font-semibold">GST:</span> {gstNumber || "—"}
             </p>
-            <p>
-              <span className="font-semibold">Address:</span> {address || "—"}
-            </p>
+            <div className="mt-0.5">
+              <span className="font-semibold">Address:</span>
+              <div className="mt-0.5 space-y-0.5 break-words whitespace-pre-line leading-relaxed">
+                {address || "—"}
+              </div>
+            </div>
           </div>
         </div>
       </header>
       {hasInvoiceLocation(location) ? (
-        <div className="mt-2 border-b border-[#111827] pb-1 text-[10px] font-semibold">
-          <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
+        <div className="mt-2 border-b border-[#111827] pb-1.5 text-[10px] font-semibold">
+          <p className="break-words whitespace-normal leading-relaxed">{locationLine}</p>
         </div>
       ) : null}
     </>
@@ -126,7 +132,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
   const totalGunta = rows.reduce((s, r) => s + (r.guntas || 0), 0);
   const headerProps = { data, customerName, gstNumber, address };
 
-  if (isLandConversionStyleDebitNote(data.type)) {
+  if (isLandConversionLayout(data.type)) {
     const detailPages = chunkRows(rows, 14);
     const hasDetail = detailPages.some((page) => page.length > 0);
 
@@ -143,15 +149,15 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
               <thead className="bg-[#F3F4F6]">
                 <tr>
                   <th className="border border-[#111827] px-2 py-1.5">Sl No</th>
-                  <th className="border border-[#111827] px-2 py-1.5 text-left">Description</th>
-                  <th className="border border-[#111827] px-2 py-1.5 text-right">Amount</th>
+                  <th className="border border-[#111827] px-2 py-1.5 text-center">Description</th>
+                  <th className="border border-[#111827] px-2 py-1.5 text-center">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">1</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Land Conversion Fee</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalLandConversionFee)}</td></tr>
-                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">2</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Podi Fee</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalPodiFee)}</td></tr>
-                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">3</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Other Recoveries Fee</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalRecoveryFee)}</td></tr>
-                <tr className="font-bold"><td className="border border-[#111827] px-2 py-1.5" /><td className="border border-[#111827] px-2 py-1.5 text-center">Grand Total</td><td className="border border-[#111827] px-2 py-1.5 text-right font-bold tabular-nums">{money(data.total)}</td></tr>
+                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">1</td><td className="border border-[#111827] px-2 py-1.5">{isK2ChallanModule(data.type) ? "Total Amount of K2 Challan Fee" : "Total Amount of Land Conversion Fee"}</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(totalLandConversionFee)}</td></tr>
+                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">2</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Podi Fee</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(totalPodiFee)}</td></tr>
+                <tr><td className="border border-[#111827] px-2 py-1.5 text-center">3</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of Other Recoveries Fee</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(totalRecoveryFee)}</td></tr>
+                <tr className="font-bold"><td className="border border-[#111827] px-2 py-1.5" /><td className="border border-[#111827] px-2 py-1.5 text-center">Grand Total</td><td className="border border-[#111827] px-2 py-1.5 text-center font-bold tabular-nums">{money(data.total)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -176,16 +182,16 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
                     <tr>
                       <th rowSpan={2} className="border border-[#111827] px-1 py-1">Sl No</th>
                       <th rowSpan={2} className="border border-[#111827] px-1 py-1">Farmer Name</th>
-                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Survey No</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-center">Syr No</th>
                       <th colSpan={2} className="border border-[#111827] px-1 py-1 text-center">
                         NA Extent
                       </th>
-                      <th rowSpan={2} className="border border-[#111827] px-1 py-1">Land Conversion Fee Challan Ref No</th>
-                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-center">{isK2ChallanModule(data.type) ? "K2 Challan Fee Challan Ref No" : "Land Conversion Fee Challan Ref No"}</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-center">Fee</th>
                       <th rowSpan={2} className="border border-[#111827] px-1 py-1">Podi Fee Challan Ref No</th>
-                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-center">Fee</th>
                       <th rowSpan={2} className="border border-[#111827] px-1 py-1">Other Recoveries Challan Ref No</th>
-                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-right">Fee</th>
+                      <th rowSpan={2} className="border border-[#111827] px-1 py-1 text-center">Fee</th>
                     </tr>
                     <tr>
                       <th className="border border-[#111827] px-1 py-1 text-center">Acres</th>
@@ -198,27 +204,27 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
                         <td className="border border-[#111827] px-1 py-1 text-center">{pageIndex * 14 + i + 1}</td>
                         <td className="border border-[#111827] px-1 py-1">{r.farmerName || "—"}</td>
                         <td className="border border-[#111827] px-1 py-1">{r.surveyNo || "—"}</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{r.acres ?? "—"}</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{r.guntas ?? "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{r.acres ?? "—"}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{r.guntas ?? "—"}</td>
                         <td className="border border-[#111827] px-1 py-1">{r.landConversionChallanRefNo || "—"}</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{money(r.landConversionFee || 0)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{money(r.landConversionFee || 0)}</td>
                         <td className="border border-[#111827] px-1 py-1">{r.podiChallanRefNo || "—"}</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{money(r.podiFee || 0)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{money(r.podiFee || 0)}</td>
                         <td className="border border-[#111827] px-1 py-1">{r.recoveryChallanRefNo || "—"}</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{money(r.recoveryFee || 0)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{money(r.recoveryFee || 0)}</td>
                       </tr>
                     ))}
                     {isLastPage ? (
                       <tr className="font-semibold">
-                        <td colSpan={3} className="border border-[#111827] px-1 py-1 text-right">Totals</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{totalAcre.toFixed(2)}</td>
-                        <td className="border border-[#111827] px-1 py-1 text-right">{totalGunta.toFixed(2)}</td>
+                        <td className="border border-[#111827] px-1 py-1" /><td className="border border-[#111827] px-1 py-1 text-center font-bold">Total</td><td className="border border-[#111827] px-1 py-1" />
+                        <td className="border border-[#111827] px-1 py-1 text-center">{totalAcre.toFixed(2)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{totalGunta.toFixed(2)}</td>
                         <td className="border border-[#111827] px-1 py-1" />
-                        <td className="border border-[#111827] px-1 py-1 text-right">{money(totalLandConversionFee)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{money(totalLandConversionFee)}</td>
                         <td className="border border-[#111827] px-1 py-1" />
-                        <td className="border border-[#111827] px-1 py-1 text-right">{money(totalPodiFee)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{money(totalPodiFee)}</td>
                         <td className="border border-[#111827] px-1 py-1" />
-                        <td className="border border-[#111827] px-1 py-1 text-right">{money(totalRecoveryFee)}</td>
+                        <td className="border border-[#111827] px-1 py-1 text-center">{money(totalRecoveryFee)}</td>
                       </tr>
                     ) : null}
                   </tbody>
@@ -239,9 +245,7 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
   const totalAtl = rows.reduce((s, r) => s + (r.atlCharges || 0), 0);
   const totalPoa = rows.reduce((s, r) => s + (r.poaCharges || 0), 0);
   const totalCheque = rows.reduce((s, r) => s + (r.chequeAmount || 0), 0);
-  const totalCash = rows.reduce((s, r) => s + (r.cashAmount || 0), 0);
-  const totalChequeCash = totalCheque + totalCash;
-  const hasDetail = rows.length > 0;
+    const hasDetail = rows.length > 0;
 
   return (
     <article className="mx-auto w-full max-w-[210mm] bg-white font-serif text-[10px] text-[#111827]">
@@ -256,15 +260,15 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
             <thead className="bg-[#F3F4F6]">
               <tr>
                 <th className="border border-[#111827] px-2 py-1.5">SL No</th>
-                <th className="border border-[#111827] px-2 py-1.5 text-left">Executed of ATL & POA (GPA)</th>
-                <th className="border border-[#111827] px-2 py-1.5 text-right">Amount</th>
+                <th className="border border-[#111827] px-2 py-1.5 text-center">Executed of ATL & POA (GPA)</th>
+                <th className="border border-[#111827] px-2 py-1.5 text-center">Amount</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">1</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of ATL</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalAtl)}</td></tr>
-              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">2</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of POA OR GPA</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalPoa)}</td></tr>
-              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">3</td><td className="border border-[#111827] px-2 py-1.5">AES Pay To Farmers Cheque And Cash</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(totalChequeCash)}</td></tr>
-              <tr className="font-bold"><td className="border border-[#111827] px-2 py-1.5" /><td className="border border-[#111827] px-2 py-1.5 text-center">TOTAL AMOUNT</td><td className="border border-[#111827] px-2 py-1.5 text-right">{money(data.total)}</td></tr>
+              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">1</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of ATL</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(totalAtl)}</td></tr>
+              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">2</td><td className="border border-[#111827] px-2 py-1.5">Total Amount of POA OR GPA</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(totalPoa)}</td></tr>
+              <tr><td className="border border-[#111827] px-2 py-1.5 text-center">3</td><td className="border border-[#111827] px-2 py-1.5">AES Pay To Farmers Cheque</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(totalCheque)}</td></tr>
+              <tr className="font-bold"><td className="border border-[#111827] px-2 py-1.5" /><td className="border border-[#111827] px-2 py-1.5 text-center">TOTAL AMOUNT</td><td className="border border-[#111827] px-2 py-1.5 text-center">{money(data.total)}</td></tr>
             </tbody>
           </table>
         </div>
@@ -285,23 +289,22 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
                 <tr>
                   <th className="border border-[#111827] px-1 py-1" rowSpan={2}>Sl No</th>
                   <th className="border border-[#111827] px-1 py-1" rowSpan={2}>Farmer Name</th>
-                  <th className="border border-[#111827] px-1 py-1" rowSpan={2}>Survey No</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center" rowSpan={2}>Syr No</th>
                   <th className="border border-[#111827] px-1 py-1" colSpan={2}>RTC Extent</th>
                   <th className="border border-[#111827] px-1 py-1" colSpan={2}>Lease Extent</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right" rowSpan={2}>ATL Charges</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right" rowSpan={2}>POA Charges</th>
-                  <th className="border border-[#111827] px-1 py-1" colSpan={5}>AES Pay To Farmers Cheque And Cash</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center" rowSpan={2}>ATL Charges</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center" rowSpan={2}>POA Charges</th>
+                  <th className="border border-[#111827] px-1 py-1" colSpan={4}>AES Pay To Farmers Cheque</th>
                 </tr>
                 <tr>
-                  <th className="border border-[#111827] px-1 py-1 text-right">Acre</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right">Gunta</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right">Acre</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right">Gunta</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center">Acre</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center">Gunta</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center">Acre</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center">Gunta</th>
                   <th className="border border-[#111827] px-1 py-1">Cheque No</th>
                   <th className="border border-[#111827] px-1 py-1">Date</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right">Amount</th>
+                  <th className="border border-[#111827] px-1 py-1 text-center">Amount</th>
                   <th className="border border-[#111827] px-1 py-1">Bank Name</th>
-                  <th className="border border-[#111827] px-1 py-1 text-right">Cash</th>
                 </tr>
               </thead>
               <tbody>
@@ -310,36 +313,34 @@ export function DebitNoteTemplate({ data, customerName, gstNumber, address }: Pr
                     <td className="border border-[#111827] px-1 py-1 text-center">{i + 1}</td>
                     <td className="border border-[#111827] px-1 py-1">{r.farmerName || "—"}</td>
                     <td className="border border-[#111827] px-1 py-1">{r.surveyNo || "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{r.rtcAcre ?? "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{r.rtcGunta ?? "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{r.leaseAcre ?? "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{r.leaseGunta ?? "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.atlCharges || 0)}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.poaCharges || 0)}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{r.rtcAcre ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{r.rtcGunta ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{r.leaseAcre ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{r.leaseGunta ?? "—"}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{money(r.atlCharges || 0)}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{money(r.poaCharges || 0)}</td>
                     <td className="border border-[#111827] px-1 py-1">{r.chequeNo || "—"}</td>
                     <td className="border border-[#111827] px-1 py-1">{r.chequeDate || "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.chequeAmount || 0)}</td>
+                    <td className="border border-[#111827] px-1 py-1 text-center">{money(r.chequeAmount || 0)}</td>
                     <td className="border border-[#111827] px-1 py-1">{r.bankName || "—"}</td>
-                    <td className="border border-[#111827] px-1 py-1 text-right">{money(r.cashAmount || 0)}</td>
                   </tr>
                 ))}
                 <tr className="font-semibold">
-                  <td colSpan={3} className="border border-[#111827] px-1 py-1 text-right">Totals</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.rtcAcre || 0), 0))}</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.rtcGunta || 0), 0))}</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.leaseAcre || 0), 0))}</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(rows.reduce((s, r) => s + (r.leaseGunta || 0), 0))}</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalAtl)}</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalPoa)}</td>
+                  <td className="border border-[#111827] px-1 py-1" /><td className="border border-[#111827] px-1 py-1 text-center font-bold">Total</td><td className="border border-[#111827] px-1 py-1" />
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(rows.reduce((s, r) => s + (r.rtcAcre || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(rows.reduce((s, r) => s + (r.rtcGunta || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(rows.reduce((s, r) => s + (r.leaseAcre || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(rows.reduce((s, r) => s + (r.leaseGunta || 0), 0))}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(totalAtl)}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(totalPoa)}</td>
                   <td className="border border-[#111827] px-1 py-1" />
                   <td className="border border-[#111827] px-1 py-1" />
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalCheque)}</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(totalCheque)}</td>
                   <td className="border border-[#111827] px-1 py-1" />
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(totalCash)}</td>
                 </tr>
                 <tr className="font-semibold">
-                  <td colSpan={13} className="border border-[#111827] px-1 py-1 text-right">Total Amount</td>
-                  <td className="border border-[#111827] px-1 py-1 text-right">{money(data.total)}</td>
+                  <td colSpan={12} className="border border-[#111827] px-1 py-1 text-center">Total Amount</td>
+                  <td className="border border-[#111827] px-1 py-1 text-center">{money(data.total)}</td>
                 </tr>
               </tbody>
             </table>

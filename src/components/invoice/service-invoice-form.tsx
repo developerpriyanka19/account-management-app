@@ -46,6 +46,7 @@ import {
   computeServiceLineAmounts,
   formatServiceRatePerAcreDisplay,
   prepareServiceInvoiceDocument,
+  sumServiceInvoiceExtent,
 } from "@/lib/service-invoice-layout";
 import type {
   InvoiceBillingCustomerOption,
@@ -181,6 +182,8 @@ export function ServiceInvoiceForm({
             village: location.village,
             hobbli: location.hobbli,
             farmerName: f.label,
+            surveyNo: previous?.surveyNo ?? line.surveyNo,
+            newSurveyNo: previous?.newSurveyNo ?? line.newSurveyNo,
             // Keep edited IDs on existing lines; new lines stay empty.
             affidavitId: previous?.affidavitId ?? "",
             requestId: previous?.requestId ?? "",
@@ -314,6 +317,7 @@ export function ServiceInvoiceForm({
     documentData?.lines ?? computeServiceLineAmounts(lines, displayRate, subType);
   const rateLabel = formatServiceRatePerAcreDisplay(displayRate);
   const hsnSacCode = formValues.hsnSacCode?.trim() ?? "";
+  const extentTotals = sumServiceInvoiceExtent(displayLines);
 
   function handleCustomerChange(customer: InvoiceBillingCustomerOption | null) {
     if (!customer) {
@@ -566,30 +570,29 @@ export function ServiceInvoiceForm({
                   <th className="px-2 py-2 text-left" rowSpan={2}>
                     HSN/SAC Code
                   </th>
-                  <th className="px-2 py-2 text-left" rowSpan={2}>
-                    Sy No
+                  <th className="px-2 py-2 text-center" rowSpan={2}>
+                    Syr No
                   </th>
-                  <th className="px-2 py-2 text-left" rowSpan={2}>
-                    New Sy No
+                  <th className="px-2 py-2 text-center" rowSpan={2}>
+                    New Syr No
                   </th>
-                  <th className="px-2 py-2 text-right" rowSpan={2}>
+                  <th className="px-2 py-2 text-center" rowSpan={2}>
                     Acres
                   </th>
-                  <th className="px-2 py-2 text-right" rowSpan={2}>
+                  <th className="px-2 py-2 text-center" rowSpan={2}>
                     Guntas
                   </th>
-                  <th className="px-2 py-2 text-right" rowSpan={2}>
+                  <th className="px-2 py-2 text-center" rowSpan={2}>
                     Total Cents
                   </th>
-                  <th className="px-2 py-2 text-center">{subtypeConfig.serviceName}</th>
+                  <th className="px-2 py-2 text-center font-semibold">{subtypeConfig.serviceName}</th>
                 </tr>
                 <tr>
-                  <th className="px-2 py-2 text-center">{rateLabel}</th>
+                  <th className="px-2 py-2 text-center font-bold">{rateLabel}</th>
                 </tr>
               </thead>
               <tbody>
                 {displayLines.map((line, i) => {
-                  const farmer = farmers.find((f) => f.id === line.farmerId);
                   return (
                   <tr
                     key={`${line.farmerId}-${i}`}
@@ -599,7 +602,7 @@ export function ServiceInvoiceForm({
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
                     <td className="px-2 py-1.5">{hsnSacCode || "—"}</td>
                     <td className="px-2 py-1.5">{line.surveyNo || "—"}</td>
-                    <td className="px-2 py-1.5">{farmer?.newSurveyNo?.trim() || "—"}</td>
+                    <td className="px-2 py-1.5">{line.newSurveyNo || "—"}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       {formatInvoiceDecimal(line.acres)}
                     </td>
@@ -616,6 +619,23 @@ export function ServiceInvoiceForm({
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr className="bg-[#F9FAFB] font-bold">
+                  <td className="px-2 py-2 text-center" colSpan={5}>
+                    Total
+                  </td>
+                  <td className="px-2 py-2 text-center tabular-nums">
+                    {formatInvoiceDecimal(extentTotals.acres)}
+                  </td>
+                  <td className="px-2 py-2 text-center tabular-nums">
+                    {formatInvoiceDecimal(extentTotals.guntas)}
+                  </td>
+                  <td className="px-2 py-2 text-center tabular-nums">
+                    {formatInvoiceTotalCents(extentTotals.totalCents)}
+                  </td>
+                  <td className="px-2 py-2" />
+                </tr>
+              </tfoot>
             </table>
           </div>
           {documentData ? (

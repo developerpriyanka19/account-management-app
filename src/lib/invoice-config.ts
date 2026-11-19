@@ -186,8 +186,12 @@ export const INVOICE_LOGO_PDF_MM = {
   titleFontSize: 11,
   lineWidth: 0.35,
   metadataMargin: 4.8,
-  /** Reserved top margin on continuation pages (logo row + line + title). */
-  repeatHeaderHeight: 36,
+  /**
+   * Absolute Y (from page top) reserved on continuation pages before the table.
+   * Must clear logo + company name + green line + document title.
+   * Kept in sync with {@link drawCompanyBrandHeaderPdf} defaults.
+   */
+  repeatHeaderHeight: 45,
 } as const;
 
 /** Logo height in mm for a given display width in mm. */

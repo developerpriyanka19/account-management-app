@@ -221,6 +221,7 @@ model InvoiceItem {
   village     String?
   hobbli      String?
   surveyNo    String?
+  newSurveyNo String?
   naExtent    String?
   acres       Float?
   gunta       Float?
@@ -239,7 +240,7 @@ model InvoiceItem {
 
 model DebitNote {
   id            Int      @id @default(autoincrement())
-  type          String   // "LAND_CONVERSION" | "ATL_POA" | "LEASE_DEED_EXECUTION"
+  type          String   // "LAND_CONVERSION" | "ATL_POA" | "LEASE_DEED_EXECUTION" | "SERVICE_ORDER" | "K2_CHALLAN"
   customerId    Int
   debitNoteNo   String   @unique
   date          String // YYYY-MM-DD

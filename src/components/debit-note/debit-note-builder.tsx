@@ -33,7 +33,12 @@ import type {
   DebitNotePayload,
   LandConversionRow,
 } from "@/lib/debit-note-types";
-import { DebitNoteType, isK2ChallanDebitNote, isLandConversionOnly } from "@/lib/debit-note-types";
+import {
+  DebitNoteType,
+  isK2ChallanDebitNote,
+  isK2ChallanModule,
+  isLandConversionLayout,
+} from "@/lib/debit-note-types";
 import {
   buildAtlPoaRowFromFarmer,
   buildK2ChallanRowFromFarmer,
@@ -104,10 +109,11 @@ function buildCustomerAddressLines(customer: DebitNoteCustomerOption | undefined
 function buildCustomerAddress(customer: DebitNoteCustomerOption | undefined) {
   if (!customer) return "";
   const lines = [
-    customer.companyAddress,
+    customer.companyAddress?.trim() || null,
     ...buildCustomerAddressLines(customer),
-  ].filter(Boolean);
-  return lines.join(", ");
+  ].filter((v): v is string => Boolean(v?.trim()));
+  // Newline-separated so PDF/HTML preview can show one field per line.
+  return lines.join("\n");
 }
 
 function ReadOnlyCell({
@@ -408,7 +414,7 @@ export function DebitNoteBuilder({
     if (isK2ChallanDebitNote(type)) {
       return buildK2ChallanRowFromFarmer(f, rate);
     }
-    if (isLandConversionOnly(type)) {
+    if (isLandConversionLayout(type)) {
       return buildLandConversionRowFromFarmer(f, rate);
     }
     return buildAtlPoaRowFromFarmer(f, rate);
@@ -446,7 +452,7 @@ export function DebitNoteBuilder({
       }
       if (
         !isK2ChallanDebitNote(type) &&
-        !isLandConversionOnly(type) &&
+        !isLandConversionLayout(type) &&
         next.length > prev.length
       ) {
         setPendingFocusRow(next.length - 1);
@@ -559,7 +565,7 @@ export function DebitNoteBuilder({
           return { ...row, landConversionFee: fee, total: fee };
         }
 
-        if (isLandConversionOnly(type)) {
+        if (isLandConversionLayout(type)) {
           const row = r as LandConversionRow;
           if (parseAsZero(farmer.landConversion) > 0) return r;
           const landConversionFee = roundToTwoDecimals(extentFeeFromRate(farmer, rate));
@@ -573,10 +579,7 @@ export function DebitNoteBuilder({
         if (parseAsZero(farmer.atlTotal) > 0) return r;
         const atlCharges = roundToTwoDecimals(extentFeeFromRate(farmer, rate));
         const total = roundToTwoDecimals(
-          atlCharges +
-            (row.poaCharges || 0) +
-            (row.chequeAmount || 0) +
-            (row.cashAmount || 0),
+          atlCharges + (row.poaCharges || 0) + (row.chequeAmount || 0),
         );
         return { ...row, atlCharges, total };
       }),
@@ -589,10 +592,7 @@ export function DebitNoteBuilder({
         if (idx !== i) return r;
         const row = { ...(r as AtlPoaRow), ...patch };
         row.total =
-          (row.atlCharges || 0) +
-          (row.poaCharges || 0) +
-          (row.chequeAmount || 0) +
-          (row.cashAmount || 0);
+          (row.atlCharges || 0) + (row.poaCharges || 0) + (row.chequeAmount || 0);
         return row;
       }),
     );
@@ -725,7 +725,7 @@ export function DebitNoteBuilder({
 
       <section className="rounded-lg border border-[#D1D5DB] bg-white p-4">
         <div className="relative z-0 max-h-[65vh] overflow-auto rounded border border-[#E5E7EB]">
-          {isLandConversionOnly(type) ? (
+          {isLandConversionLayout(type) ? (
             <table
               className="border-separate border-spacing-0 text-xs"
               style={{ minWidth: `${1700 + DN_ACTION_COL_W}px` }}
@@ -755,18 +755,18 @@ export function DebitNoteBuilder({
                     className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]"
                     style={dnHeaderSurveyStyle(0, "#F9FAFB")}
                   >
-                    Survey No
+                    Syr No
                   </th>
                   <th colSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]">
                     NA Extent
                   </th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee Challan Ref No</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Land Conversion Fee</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee Challan Ref No</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Challan Ref No</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Fee</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Total</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>{isK2ChallanModule(type) ? "K2 Challan Fee Challan Ref No" : "Land Conversion Fee Challan Ref No"}</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>{isK2ChallanModule(type) ? "K2 Challan Fee" : "Land Conversion Fee"}</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee Challan Ref No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Podi Fee</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Challan Ref No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Other Recoveries Fee</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Total</th>
                   <th
                     rowSpan={2}
                     className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]"
@@ -848,27 +848,27 @@ export function DebitNoteBuilder({
                     return (
                       <>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }} />
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={dnBodyFarmerStyle(rowBg)}>Totals</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={dnBodyFarmerStyle(rowBg)}>Total</td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={dnBodySurveyStyle(rowBg)} />
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={{ backgroundColor: rowBg }}>
                           {rows.reduce((s, r) => s + ((r as LandConversionRow).acres || 0), 0).toFixed(2)}
                         </td>
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={{ backgroundColor: rowBg }}>
                           {rows.reduce((s, r) => s + ((r as LandConversionRow).guntas || 0), 0).toFixed(2)}
                         </td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={{ backgroundColor: rowBg }}>
                           {rows.reduce((s, r) => s + ((r as LandConversionRow).landConversionFee || 0), 0).toFixed(2)}
                         </td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={{ backgroundColor: rowBg }}>
                           {rows.reduce((s, r) => s + ((r as LandConversionRow).podiFee || 0), 0).toFixed(2)}
                         </td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={{ backgroundColor: rowBg }} />
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={{ backgroundColor: rowBg }}>
                           {rows.reduce((s, r) => s + ((r as LandConversionRow).recoveryFee || 0), 0).toFixed(2)}
                         </td>
-                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
+                        <td className="border-b border-[#E5E7EB] px-2 py-2 text-center" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
                         <td className="border-b border-[#E5E7EB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
                       </>
                     );
@@ -886,7 +886,7 @@ export function DebitNoteBuilder({
                   <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]" style={{ ...dnHeaderScrollStyle(0, "#F9FAFB"), width: DN_SL_COL_W, minWidth: DN_SL_COL_W }}>Sl No</th>
                   <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderFarmerStyle(0, "#F9FAFB")}>Farmer Name</th>
                   <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>Vendor Code</th>
-                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-left font-semibold text-[#374151]" style={dnHeaderSurveyStyle(0, "#F9FAFB")}>Survey No</th>
+                  <th rowSpan={2} className="border-b border-[#E5E7EB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderSurveyStyle(0, "#F9FAFB")}>Syr No</th>
                   <th colSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]">RTC Extent</th>
                   <th colSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]">Lease Extent</th>
                   <th rowSpan={2} className="border-b border-[#E5E7EB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]">Total Gunta</th>
@@ -994,13 +994,13 @@ export function DebitNoteBuilder({
                     className="border border-[#D1D5DB] px-2 py-2 text-left font-semibold text-[#374151]"
                     style={dnHeaderSurveyStyle(0, "#F9FAFB")}
                   >
-                    Survey No
+                    Syr No
                   </th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={2}>RTC Extent</th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={2}>Lease Extent</th>
-                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>ATL Charges</th>
-                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>POA Charges</th>
-                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={5}>AES Pay To Farmers Cheque And Cash</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>ATL Charges</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")}>POA Charges</th>
+                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-2 text-center font-semibold text-[#374151]" style={dnHeaderScrollStyle(0, "#F9FAFB")} colSpan={4}>AES Pay To Farmers Cheque</th>
                   <th
                     rowSpan={2}
                     className="border border-[#D1D5DB] px-2 py-2 text-center font-semibold text-[#374151]"
@@ -1014,12 +1014,10 @@ export function DebitNoteBuilder({
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Gunta</th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Acre</th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Gunta</th>
-                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")} colSpan={2} />
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Cheque No</th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Date</th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Amount</th>
                   <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Bank Name</th>
-                  <th className="border border-[#D1D5DB] bg-[#F9FAFB] px-2 py-1 text-right font-semibold text-[#374151]" style={dnHeaderScrollStyle(DN_ATL_HEADER_H, "#F9FAFB")}>Cash</th>
                 </tr>
               </thead>
               <tbody>
@@ -1102,13 +1100,6 @@ export function DebitNoteBuilder({
                           onChange={(v) => updateAtlRow(i, { bankName: v })}
                         />
                       </td>
-                      <td className="border border-[#E5E7EB] px-2 py-1.5" style={{ backgroundColor: rowBg }}>
-                        <EditableMoneyCell
-                          value={r.cashAmount}
-                          locked={false}
-                          onChange={(v) => updateAtlRow(i, { cashAmount: v })}
-                        />
-                      </td>
                       {actionCell(i, r.farmerName, rowBg)}
                     </tr>
                   );
@@ -1145,9 +1136,6 @@ export function DebitNoteBuilder({
                           {rows.reduce((s, r) => s + ((r as AtlPoaRow).chequeAmount || 0), 0).toFixed(2)}
                         </td>
                         <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} />
-                        <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>
-                          {rows.reduce((s, r) => s + ((r as AtlPoaRow).cashAmount || 0), 0).toFixed(2)}
-                        </td>
                         <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
                       </>
                     );
@@ -1161,7 +1149,7 @@ export function DebitNoteBuilder({
                         <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg, width: DN_SL_COL_W, minWidth: DN_SL_COL_W }} />
                         <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={dnBodyFarmerStyle(rowBg)}>Total Amount</td>
                         <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodySurveyStyle(rowBg)} />
-                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} colSpan={10} />
+                        <td className="border border-[#D1D5DB] px-2 py-2" style={{ backgroundColor: rowBg }} colSpan={9} />
                         <td className="border border-[#D1D5DB] px-2 py-2 text-right" style={{ backgroundColor: rowBg }}>{totals.total.toFixed(2)}</td>
                         <td className="border border-[#D1D5DB] px-2 py-2" style={dnBodyActionStyle(rowBg)} />
                       </>

@@ -24,6 +24,11 @@ import {
 } from "@/lib/company-document-pdf-shared";
 import type { InvoiceDocumentData } from "@/lib/invoice-types";
 import { NA_INVOICE_CONTENT_WIDTH_MM } from "@/lib/na-invoice-layout";
+import {
+  PDF_TABLE_AUTOTABLE_LAYOUT,
+  PDF_TABLE_BASE_STYLES,
+  PDF_TABLE_HEAD_STYLES,
+} from "@/lib/pdf-table-shared";
 
 export const INVOICE_PAGE_W = PDF_A4_PORTRAIT.width;
 export const INVOICE_PAGE_H = PDF_A4_PORTRAIT.height;
@@ -33,36 +38,17 @@ export const INVOICE_CONTENT_LEFT = PDF_MARGIN.left;
 export const INVOICE_CONTENT_RIGHT = PDF_MARGIN.right;
 export const INVOICE_TEXT_LINE_H = 4;
 
-export const INVOICE_TABLE_STYLES = {
-  font: PDF_FONT,
-  fontSize: 10,
-  cellPadding: 1.5,
-  overflow: "linebreak" as const,
-  valign: "middle" as const,
-  lineWidth: 0.1,
-  lineColor: [0, 0, 0] as [number, number, number],
-  fillColor: [255, 255, 255] as [number, number, number],
-  fontStyle: "normal" as const,
-};
+/** Shared PDF table styles (center-aligned project-wide). */
+export const INVOICE_TABLE_STYLES = PDF_TABLE_BASE_STYLES;
 
-export const INVOICE_TABLE_MARGINS = pdfAutoTableMargins(INVOICE_LOGO_PDF_MM.repeatHeaderHeight);
+/** autoTable margins — top clears the continuation brand header band. */
+export const INVOICE_TABLE_MARGINS = pdfAutoTableMargins(
+  INVOICE_LOGO_PDF_MM.repeatHeaderHeight,
+);
 
-export const INVOICE_AUTOTABLE_LAYOUT = {
-  theme: "grid" as const,
-  showHead: "everyPage" as const,
-  showFoot: "lastPage" as const,
-  horizontalPageBreak: false,
-  rowPageBreak: "avoid" as const,
-};
+export const INVOICE_AUTOTABLE_LAYOUT = PDF_TABLE_AUTOTABLE_LAYOUT;
 
-export const INVOICE_TABLE_HEAD_STYLES = {
-  fillColor: [255, 255, 255] as [number, number, number],
-  textColor: [0, 0, 0] as [number, number, number],
-  lineWidth: 0.2,
-  fontStyle: "bold" as const,
-  halign: "center" as const,
-  fontSize: 9,
-};
+export const INVOICE_TABLE_HEAD_STYLES = PDF_TABLE_HEAD_STYLES;
 
 let logoDataUrlPromise: Promise<string> | null = null;
 
@@ -108,13 +94,21 @@ export function drawInvoiceBrandHeader(
   });
 }
 
-/** Logo + company name + document title — repeated at top of continuation pages. */
+/**
+ * Logo + company name + document title — repeated at top of continuation pages.
+ * Returns the Y where table content may safely begin (below the header).
+ */
 export function renderInvoiceContinuationHeader(
   pdf: jsPDF,
   logoDataUrl: string,
   document: InvoiceDocumentData,
-): void {
-  drawInvoiceBrandHeader(pdf, logoDataUrl, getInvoiceBrandTitle(document), PDF_MARGIN.top);
+): number {
+  return drawInvoiceBrandHeader(
+    pdf,
+    logoDataUrl,
+    getInvoiceBrandTitle(document),
+    PDF_MARGIN.top,
+  );
 }
 
 /** Shared invoice PDF header: logo, company name, green line, INVOICE title, invoice meta. */
@@ -157,6 +151,24 @@ export async function renderInvoiceHeader(
   return y + 4;
 }
 
+/**
+ * Draw a wrapping text block and return the Y after the last line.
+ * Always advances by actual wrapped line count so long addresses never overlap.
+ */
+export function drawPdfWrappedText(
+  pdf: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number = INVOICE_TEXT_LINE_H,
+): number {
+  const wrapped = pdf.splitTextToSize(text, maxWidth) as string[];
+  if (wrapped.length === 0) return y;
+  pdf.text(wrapped, x, y);
+  return y + wrapped.length * lineHeight;
+}
+
 /** Shared bill-to and location block for NA and service invoices. Type is in the header. */
 export function renderInvoiceCustomerSection(
   pdf: jsPDF,
@@ -164,9 +176,9 @@ export function renderInvoiceCustomerSection(
   startY: number,
 ): number {
   const leftX = pdfContentLeftX();
-  let leftY = startY;
-  const lineHeight = 4;
-  const maxWidth = INVOICE_CONTENT_W * 0.62;
+  let y = startY;
+  const lineHeight = INVOICE_TEXT_LINE_H;
+  const maxWidth = INVOICE_CONTENT_W;
 
   pdf.setFontSize(10);
   pdf.setFont(PDF_FONT, "normal");
@@ -175,15 +187,16 @@ export function renderInvoiceCustomerSection(
   for (const row of billLines) {
     if (!row.value) continue;
     if (row.value === "To,") {
-      pdf.text("To,", leftX, leftY);
-      leftY += lineHeight;
+      pdf.text("To,", leftX, y);
+      y += lineHeight;
       continue;
     }
     const isName = row.value === document.customer.companyName;
     pdf.setFont(PDF_FONT, isName ? "bold" : "normal");
-    pdf.text(row.value, leftX, leftY, { maxWidth });
+    y = drawPdfWrappedText(pdf, row.value, leftX, y, maxWidth, lineHeight);
     pdf.setFont(PDF_FONT, "normal");
-    leftY += lineHeight;
+    // Consistent gap between address fields.
+    y += 0.8;
   }
 
   const location: InvoiceLocationFields = {
@@ -194,15 +207,13 @@ export function renderInvoiceCustomerSection(
     state: document.state?.trim() ?? "",
   };
 
-  let y = leftY;
   if (hasInvoiceLocation(location)) {
     y += 2.5;
     const line = formatInvoiceLocationLine(location);
     pdf.setFont(PDF_FONT, "bold");
     pdf.setFontSize(10);
-    const wrapped = pdf.splitTextToSize(line, INVOICE_CONTENT_W);
-    pdf.text(wrapped, leftX, y);
-    y += wrapped.length * lineHeight + 1;
+    y = drawPdfWrappedText(pdf, line, leftX, y, INVOICE_CONTENT_W, lineHeight);
+    y += 1;
     pdf.setFont(PDF_FONT, "normal");
   } else {
     y += 2;

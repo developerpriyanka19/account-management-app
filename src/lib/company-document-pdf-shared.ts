@@ -85,9 +85,11 @@ export function closingBlockHeight(bank?: BankDetailsSnapshot | null): number {
  */
 export function ensureVerticalSpace(pdf: jsPDF, currentY: number, blockHeight: number): number {
   const pageHeight = pdf.internal.pageSize.getHeight();
+  const pageWidth = pdf.internal.pageSize.getWidth();
   const limit = pdfContentBottomLimit(pageHeight);
   if (currentY + blockHeight > limit) {
-    pdf.addPage();
+    const orientation = pageWidth > pageHeight ? "landscape" : "portrait";
+    pdf.addPage("a4", orientation);
     return PDF_MARGIN.top;
   }
   return currentY;

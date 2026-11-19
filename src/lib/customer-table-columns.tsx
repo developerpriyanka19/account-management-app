@@ -807,11 +807,11 @@ export function buildCustomerTableColumns(
     columnGroup("pao", "POA/GPA", {
       id: "paoTotal",
       accessorKey: "paoTotal",
-      header: "GPA/POA GOVT Fee",
+      header: "GPA/POA Govt Fee",
       cell: ({ getValue }) => moneyCell(getValue() as number),
-      size: 120,
-      minSize: 104,
-    }, { subHeader: "GPA/POA GOVT Fee" }),
+      size: 136,
+      minSize: 120,
+    }, { subHeader: "GPA/POA Govt Fee" }),
     {
       id: "na",
       header: "NA",

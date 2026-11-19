@@ -161,6 +161,8 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
             village: location.village,
             hobbli: location.hobbli,
             farmerName: f.label,
+            surveyNo: previous?.surveyNo ?? line.surveyNo,
+            newSurveyNo: previous?.newSurveyNo ?? line.newSurveyNo,
             // Keep edited IDs on existing lines; new lines stay empty (not vendorCode).
             affidavitId: previous?.affidavitId ?? "",
             requestId: previous?.requestId ?? "",
@@ -504,20 +506,19 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                 <tr>
                   <th className="px-2 py-2 text-left">Sl No</th>
                   <th className="px-2 py-2 text-left">Farmer Name</th>
-                  <th className="px-2 py-2 text-left">Old Survey No</th>
-                  <th className="px-2 py-2 text-left">New Survey No</th>
-                  <th className="px-2 py-2 text-left">Affidavit ID</th>
-                  <th className="px-2 py-2 text-left">Request ID</th>
+                  <th className="px-2 py-2 text-left">Syr No</th>
+                  <th className="px-2 py-2 text-left">New Syr No</th>
+                  <th className="px-2 py-2 text-center">Affidavit ID</th>
+                  <th className="px-2 py-2 text-center">Request ID</th>
                   <th className="px-2 py-2 text-right">Debit Note</th>
                   <th className="px-2 py-2 text-left">Remark</th>
                   <th className="px-2 py-2 text-right">Acres</th>
                   <th className="px-2 py-2 text-right">Guntas</th>
-                  <th className="px-2 py-2 text-right">Total Cents</th>
+                  <th className="px-2 py-2 text-center">Total Cents</th>
                 </tr>
               </thead>
               <tbody>
                 {lines.map((line, i) => {
-                  const farmer = farmers.find((f) => f.id === line.farmerId);
                   return (
                   <tr
                     key={`${line.farmerId}-${i}`}
@@ -525,13 +526,29 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                   >
                     <td className="px-2 py-1.5">{i + 1}</td>
                     <td className="px-2 py-1.5">{line.farmerName || line.description}</td>
-                    <td className="px-2 py-1.5">{line.surveyNo || "—"}</td>
-                    <td className="px-2 py-1.5">{farmer?.newSurveyNo?.trim() || "—"}</td>
+                    <td className="px-2 py-1.5">
+                      <Input
+                        value={line.surveyNo === "—" ? "" : line.surveyNo}
+                        onChange={(e) => updateLine(i, { surveyNo: e.target.value })}
+                        className="h-8 text-xs"
+                        disabled={isFinal}
+                        aria-label={`Syr No row ${i + 1}`}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <Input
+                        value={line.newSurveyNo === "—" ? "" : line.newSurveyNo}
+                        onChange={(e) => updateLine(i, { newSurveyNo: e.target.value })}
+                        className="h-8 text-xs"
+                        disabled={isFinal}
+                        aria-label={`New Syr No row ${i + 1}`}
+                      />
+                    </td>
                     <td className="px-2 py-1.5">
                       <Input
                         value={line.affidavitId}
                         onChange={(e) => updateLine(i, { affidavitId: e.target.value })}
-                        className="h-8 text-xs"
+                        className="h-8 text-center text-xs"
                         disabled={isFinal}
                       />
                     </td>
@@ -539,7 +556,7 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                       <Input
                         value={line.requestId}
                         onChange={(e) => updateLine(i, { requestId: e.target.value })}
-                        className="h-8 text-xs"
+                        className="h-8 text-center text-xs"
                         disabled={isFinal}
                       />
                     </td>
@@ -564,7 +581,7 @@ export function NaInvoiceForm({ customers, farmers, banks, existing }: Props) {
                     </td>
                     <td className="px-2 py-1.5 text-right">{line.acres ?? "—"}</td>
                     <td className="px-2 py-1.5 text-right">{line.gunta ?? "—"}</td>
-                    <td className="px-2 py-1.5 text-right">
+                    <td className="px-2 py-1.5 text-center tabular-nums">
                       {line.totalCents != null
                         ? formatInvoiceTotalCents(line.totalCents)
                         : "—"}

@@ -54,9 +54,11 @@ export function gstCustomerToInvoiceCustomer(
 }
 
 /**
- * Quotation-style natural address lines (no Road:/Street: labels).
+ * Natural address lines — one field per line (no overlapping / combined fields).
  * Example:
  *   Sy. No. 76/7
+ *   MG Road
+ *   Locality name
  *   Challakere Taluk
  *   Parashurampura Hobli
  *   Channammanagathihalli
@@ -81,11 +83,11 @@ export function formatNaturalCustomerAddressLines(
   }
 
   const lines: string[] = [];
-  const line1 = [customer.buildingNumber, customer.street]
-    .map((p) => p?.trim())
-    .filter(Boolean)
-    .join(", ");
-  if (line1) lines.push(line1);
+  const building = customer.buildingNumber?.trim();
+  if (building) lines.push(building);
+
+  const street = customer.street?.trim();
+  if (street) lines.push(street);
 
   if (customer.locality?.trim()) lines.push(customer.locality.trim());
 

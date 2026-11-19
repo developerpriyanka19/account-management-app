@@ -68,6 +68,7 @@ export type InvoiceLineInput = {
   village: string;
   hobbli: string;
   surveyNo: string;
+  newSurveyNo: string;
   naExtent: string;
   acres: number | null;
   gunta: number | null;
@@ -132,9 +133,10 @@ export function farmerToInvoiceLine(
     farmerName: farmer.label,
     district: "",
     taluk: "",
-    village: farmer.newSurveyNo?.trim() || "—",
+    village: "",
     hobbli: "",
     surveyNo: farmer.surveyNo?.trim() || "—",
+    newSurveyNo: farmer.newSurveyNo?.trim() || "—",
     naExtent: naParts.length > 0 ? naParts.join(" · ") : "—",
     acres,
     gunta,

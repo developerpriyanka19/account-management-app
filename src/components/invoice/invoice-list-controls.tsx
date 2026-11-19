@@ -28,8 +28,12 @@ export function InvoiceListControls({
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      const nextQ = value.trim();
+      const currentQ = (searchParams.get("q") ?? "").trim();
+      if (nextQ === currentQ) return;
+
       const params = new URLSearchParams(searchParams.toString());
-      if (value.trim()) params.set("q", value.trim());
+      if (nextQ) params.set("q", nextQ);
       else params.delete("q");
       params.delete("page");
       router.replace(`${pathname}?${params.toString()}`);

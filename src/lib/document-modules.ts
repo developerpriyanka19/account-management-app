@@ -38,6 +38,11 @@ export const DEBIT_NOTE_MODULE_ITEMS: DocumentModuleItem[] = [
     href: "/debit-note/atl-poa-gpa",
     pageTitle: "ATL and POA/GPA Debit Notes",
   },
+  {
+    label: "K2 Challan",
+    href: "/debit-note/k2-challan",
+    pageTitle: "K2 Challan Debit Notes",
+  },
 ];
 
 export const DOCUMENT_MODULE_GROUPS: DocumentModuleGroup[] = [

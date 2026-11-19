@@ -44,16 +44,39 @@ export function DebitNoteListControls({
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      const nextQ = query.trim();
+      const nextStatus = status && status !== "all" ? status : "";
+      const nextCustomerId = customerId.trim();
+      const nextDateFrom = dateFrom.trim();
+      const nextDateTo = dateTo.trim();
+
+      const currentQ = (searchParams.get("q") ?? "").trim();
+      const currentStatus =
+        (searchParams.get("status") ?? "").trim() === "all"
+          ? ""
+          : (searchParams.get("status") ?? "").trim();
+      const currentCustomerId = (searchParams.get("customerId") ?? "").trim();
+      const currentDateFrom = (searchParams.get("dateFrom") ?? "").trim();
+      const currentDateTo = (searchParams.get("dateTo") ?? "").trim();
+
+      const filtersUnchanged =
+        nextQ === currentQ &&
+        nextStatus === currentStatus &&
+        nextCustomerId === currentCustomerId &&
+        nextDateFrom === currentDateFrom &&
+        nextDateTo === currentDateTo;
+      if (filtersUnchanged) return;
+
       const params = new URLSearchParams(searchParams.toString());
-      if (query.trim()) params.set("q", query.trim());
+      if (nextQ) params.set("q", nextQ);
       else params.delete("q");
-      if (status && status !== "all") params.set("status", status);
+      if (nextStatus) params.set("status", nextStatus);
       else params.delete("status");
-      if (customerId) params.set("customerId", customerId);
+      if (nextCustomerId) params.set("customerId", nextCustomerId);
       else params.delete("customerId");
-      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (nextDateFrom) params.set("dateFrom", nextDateFrom);
       else params.delete("dateFrom");
-      if (dateTo) params.set("dateTo", dateTo);
+      if (nextDateTo) params.set("dateTo", nextDateTo);
       else params.delete("dateTo");
       params.delete("page");
       router.replace(`${pathname}?${params.toString()}`);

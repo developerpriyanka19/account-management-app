@@ -139,11 +139,13 @@ export async function getNextDebitNoteNumber(type: DebitNoteType): Promise<strin
   const prefix =
     type === DNType.LAND_CONVERSION
       ? "DNL"
-      : type === DNType.LEASE_DEED_EXECUTION
-        ? "DLE"
-        : type === DNType.SERVICE_ORDER
-          ? "DSO"
-          : "DAP";
+      : type === DNType.K2_CHALLAN
+        ? "DK2"
+        : type === DNType.LEASE_DEED_EXECUTION
+          ? "DLE"
+          : type === DNType.SERVICE_ORDER
+            ? "DSO"
+            : "DAP";
   const count = await prisma.debitNote.count({ where: { type } });
   return `${prefix}-${String(count + 1).padStart(4, "0")}`;
 }
@@ -423,6 +425,7 @@ export async function deleteDebitNote(
       revalidatePath(listPath);
     }
     revalidatePath("/debit-note/land-conversion");
+    revalidatePath("/debit-note/k2-challan");
     revalidatePath("/debit-note/atl-poa-gpa");
     return { ok: true };
   } catch {

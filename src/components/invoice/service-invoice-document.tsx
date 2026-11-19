@@ -12,6 +12,7 @@ import {
   resolveServiceHsnSacCode,
   serviceInvoiceAmountInWords,
   serviceLineAmount,
+  sumServiceInvoiceExtent,
 } from "@/lib/service-invoice-layout";
 import {
   formatInvoiceLocationLine,
@@ -28,14 +29,14 @@ type Props = {
 const th =
   "border border-black px-0.5 py-0.5 text-center text-[10px] font-bold leading-tight text-black bg-white";
 const td =
-  "border border-black px-0.5 py-0.5 align-middle text-[10px] leading-tight text-black break-words bg-white";
-const tdNum = `${td} text-center tabular-nums`;
-const tdRight = `${td} text-right tabular-nums`;
+  "border border-black px-0.5 py-0.5 align-middle text-center text-[10px] leading-tight text-black break-words whitespace-normal bg-white";
+const tdNum = `${td} tabular-nums whitespace-nowrap`;
+const tdRight = `${td} tabular-nums whitespace-nowrap`;
 
 function BillToBlock({ data }: { data: InvoiceDocumentData }) {
   const lines = buildBillToLines(data.customer);
   return (
-    <div className="text-[10px] leading-snug">
+    <div className="space-y-0.5 text-[10px] leading-relaxed">
       {lines.map((row, i) => {
         if (!row.value) return null;
         if (row.value === "To,") {
@@ -43,7 +44,10 @@ function BillToBlock({ data }: { data: InvoiceDocumentData }) {
         }
         const isName = row.value === data.customer.companyName;
         return (
-          <p key={i} className={isName ? "font-bold" : undefined}>
+          <p
+            key={i}
+            className={`break-words whitespace-normal ${isName ? "font-bold" : ""}`}
+          >
             {row.value}
           </p>
         );
@@ -62,7 +66,8 @@ export function ServiceInvoiceDocument({ data }: Props) {
   const rows = prepared.lines;
   const amountWords = serviceInvoiceAmountInWords(prepared);
   const { totals } = prepared;
-  const labelSpan = 6;
+  const labelSpan = 7;
+  const extent = sumServiceInvoiceExtent(rows);
 
   const location: InvoiceLocationFields = {
     hobbli: prepared.hobbli?.trim() ?? "",
@@ -94,8 +99,8 @@ export function ServiceInvoiceDocument({ data }: Props) {
             <BillToBlock data={prepared} />
           </div>
           {hasInvoiceLocation(location) ? (
-            <div className="mt-1 border-b border-black pb-1 text-[10px] font-semibold">
-              <p className="whitespace-nowrap overflow-hidden text-ellipsis">{locationLine}</p>
+            <div className="mt-2 border-b border-black pb-1.5 text-[10px] font-semibold">
+              <p className="break-words whitespace-normal leading-relaxed">{locationLine}</p>
             </div>
           ) : null}
         </>
@@ -105,13 +110,14 @@ export function ServiceInvoiceDocument({ data }: Props) {
         <table className="w-full table-fixed border-collapse border border-black text-[10px]">
           <colgroup>
             <col style={{ width: "5.3%" }} />
-            <col style={{ width: "14.7%" }} />
-            <col style={{ width: "8.4%" }} />
+            <col style={{ width: "18.9%" }} />
+            <col style={{ width: "11.6%" }} />
+            <col style={{ width: "7.4%" }} />
             <col style={{ width: "7.4%" }} />
             <col style={{ width: "6.3%" }} />
             <col style={{ width: "6.3%" }} />
             <col style={{ width: "8.4%" }} />
-            <col style={{ width: "43.2%" }} />
+            <col style={{ width: "28.4%" }} />
           </colgroup>
           <thead>
             <tr>
@@ -125,7 +131,10 @@ export function ServiceInvoiceDocument({ data }: Props) {
                 HSN/SAC Code
               </th>
               <th className={th} rowSpan={2}>
-                Sy No
+                Syr No
+              </th>
+              <th className={th} rowSpan={2}>
+                New Syr No
               </th>
               <th className={th} rowSpan={2}>
                 Acres
@@ -139,59 +148,79 @@ export function ServiceInvoiceDocument({ data }: Props) {
               <th className={th}>{config.serviceName}</th>
             </tr>
             <tr>
-              <th className={`${th} text-[9px] font-normal`}>{rateLabel}</th>
+              <th className={`${th} text-[9px] font-bold`}>{rateLabel}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className={`${td} py-4 text-center text-[#6B7280]`}>
+                <td colSpan={9} className={`${td} py-4 text-center text-[#6B7280]`}>
                   No line items
                 </td>
               </tr>
             ) : (
               rows.map((line, index) => (
                 <tr key={`${line.farmerId ?? "x"}-${index}`}>
-                  <td className={tdNum}>{index + 1}</td>
-                  <td className={td}>{line.farmerName || line.description || "—"}</td>
-                  <td className={tdNum}>{hsn || "—"}</td>
-                  <td className={td}>{line.surveyNo || "—"}</td>
-                  <td className={tdNum}>
+                  <td className={`${tdNum} whitespace-nowrap`}>{index + 1}</td>
+                  <td className={`${td} text-center break-words whitespace-normal`}>
+                    {line.farmerName || line.description || "—"}
+                  </td>
+                  <td className={`${tdNum} whitespace-nowrap`}>{hsn || "—"}</td>
+                  <td className={`${tdNum} whitespace-nowrap`}>{line.surveyNo || "—"}</td>
+                  <td className={`${tdNum} whitespace-nowrap`}>{line.newSurveyNo || "—"}</td>
+                  <td className={`${tdNum} whitespace-nowrap`}>
                     {line.acres != null ? formatInvoiceDecimal(line.acres) : "—"}
                   </td>
-                  <td className={tdNum}>
+                  <td className={`${tdNum} whitespace-nowrap`}>
                     {line.gunta != null ? formatInvoiceDecimal(line.gunta) : "—"}
                   </td>
-                  <td className={tdRight}>
+                  <td className={`${tdNum} whitespace-nowrap`}>
                     {line.totalCents != null ? formatInvoiceTotalCents(line.totalCents) : "—"}
                   </td>
-                  <td className={tdRight}>{formatInvoiceMoney(serviceLineAmount(line, rate))}</td>
+                  <td className={`${tdRight} whitespace-nowrap`}>
+                    {formatInvoiceMoney(serviceLineAmount(line, rate))}
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
           <tfoot>
             <tr>
+              <td colSpan={5} className={`${tdNum} font-bold`}>
+                Total
+              </td>
+              <td className={`${tdNum} font-bold whitespace-nowrap`}>
+                {formatInvoiceDecimal(extent.acres)}
+              </td>
+              <td className={`${tdNum} font-bold whitespace-nowrap`}>
+                {formatInvoiceDecimal(extent.guntas)}
+              </td>
+              <td className={`${tdNum} font-bold whitespace-nowrap`}>
+                {formatInvoiceTotalCents(extent.totalCents)}
+              </td>
+              <td className={tdNum} />
+            </tr>
+            <tr>
               <td colSpan={labelSpan} className="border border-black bg-white" />
-              <td className={`${td} text-right font-bold`}>Sub Total</td>
+              <td className={`${td} text-center font-bold`}>Sub Total</td>
               <td className={`${tdRight} font-normal`}>{formatInvoiceMoney(totals.subtotal)}</td>
             </tr>
             <tr>
               <td colSpan={labelSpan} className="border border-black bg-white" />
-              <td className={`${td} text-right font-bold`}>SGST @ 9% on</td>
+              <td className={`${td} text-center font-bold`}>SGST @ 9% on</td>
               <td className={`${tdRight} font-normal`}>{formatInvoiceMoney(totals.sgst)}</td>
             </tr>
             <tr>
               <td colSpan={labelSpan} className="border border-black bg-white" />
-              <td className={`${td} text-right font-bold`}>CGST @ 9% on</td>
+              <td className={`${td} text-center font-bold`}>CGST @ 9% on</td>
               <td className={`${tdRight} font-normal`}>{formatInvoiceMoney(totals.cgst)}</td>
             </tr>
             <tr className="bg-[#1F2937] font-bold text-white">
               <td colSpan={labelSpan} className="border border-black bg-white" />
-              <td className="border border-black bg-[#1F2937] px-0.5 py-1 text-right text-[10px] font-bold text-white">
+              <td className="border border-black bg-[#1F2937] px-0.5 py-1 text-center text-[10px] font-bold text-white">
                 Grand Total
               </td>
-              <td className="border border-black bg-[#1F2937] px-0.5 py-1 text-right text-[10px] font-bold tabular-nums text-white">
+              <td className="border border-black bg-[#1F2937] px-0.5 py-1 text-center text-[10px] font-bold tabular-nums text-white">
                 {formatInvoiceMoney(totals.grandTotal)}
               </td>
             </tr>

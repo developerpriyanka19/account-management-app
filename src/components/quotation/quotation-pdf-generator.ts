@@ -28,6 +28,11 @@ import {
   hasInvoiceLocation,
   locationFromCustomer,
 } from "@/lib/invoice-location";
+import {
+  buildPdfColumnStyles,
+  drawPagedPdfTable,
+  PDF_TABLE_MIN_CELL_HEIGHT,
+} from "@/lib/pdf-table-shared";
 
 const PAGE_W = PDF_A4_PORTRAIT.width;
 const PAGE_H = PDF_A4_PORTRAIT.height;
@@ -36,7 +41,6 @@ const CONTENT_W = pdfContentWidth(PAGE_W);
 const BODY_FONT = 10;
 const META_FONT = 10;
 const TABLE_FONT = 10;
-const TABLE_PADDING = 2.4;
 const TEXT_LINE_H = 4.8;
 const BODY_LINE_H = 5;
 const SUBJECT_GAP = 8;
@@ -48,27 +52,6 @@ const AMOUNT_COL_W = 42;
 const DESC_COL_W = CONTENT_W - SL_COL_W - AMOUNT_COL_W;
 
 const TABLE_MARGINS = pdfAutoTableMargins();
-
-const TABLE_STYLES = {
-  font: PDF_FONT,
-  fontSize: TABLE_FONT,
-  cellPadding: TABLE_PADDING,
-  overflow: "linebreak" as const,
-  valign: "middle" as const,
-  lineColor: [0, 0, 0] as [number, number, number],
-  lineWidth: 0.2,
-  fillColor: [255, 255, 255] as [number, number, number],
-  fontStyle: "normal" as const,
-};
-
-const WHITE_TABLE_HEAD = {
-  fillColor: [255, 255, 255] as [number, number, number],
-  textColor: [0, 0, 0] as [number, number, number],
-  fontStyle: "bold" as const,
-  halign: "center" as const,
-  fontSize: TABLE_FONT,
-  lineWidth: 0.2,
-};
 
 type JsPdfWithAutoTable = jsPDF & {
   lastAutoTable?: { finalY: number };
@@ -135,13 +118,14 @@ function drawCustomerBlock(pdf: jsPDF, document: QuotationDocument, startY: numb
   leftY += BODY_LINE_H;
 
   pdf.setFont(PDF_FONT, "bold");
-  pdf.text(document.customerName, leftX, leftY, { maxWidth: addressWidth });
-  leftY += BODY_LINE_H;
+  const nameLines = pdf.splitTextToSize(document.customerName, addressWidth) as string[];
+  pdf.text(nameLines, leftX, leftY);
+  leftY += Math.max(1, nameLines.length) * BODY_LINE_H;
   pdf.setFont(PDF_FONT, "normal");
 
-  const addressLines = pdf.splitTextToSize(document.customerAddress, addressWidth);
+  const addressLines = pdf.splitTextToSize(document.customerAddress, addressWidth) as string[];
   pdf.text(addressLines, leftX, leftY);
-  leftY += addressLines.length * BODY_LINE_H;
+  leftY += Math.max(1, addressLines.length) * BODY_LINE_H;
 
   if (document.customerGst.trim()) {
     pdf.text(`GST: ${document.customerGst}`, leftX, leftY);
@@ -242,7 +226,7 @@ function finishQuotationPdf(pdf: jsPDF, contentEndY: number): void {
 
 function buildTableFoot(document: QuotationDocument) {
   const subtotalLabel = formatInvoiceMoney(document.totals.subtotal);
-  const rightLabel = { halign: "right" as const, fontSize: TABLE_FONT };
+  const rightLabel = { halign: "center" as const, fontSize: TABLE_FONT };
   return [
     [
       { content: "", colSpan: 1 },
@@ -298,51 +282,26 @@ async function buildQuotationPdf(document: QuotationDocument): Promise<jsPDF> {
     item.description,
     formatInvoiceMoney(item.amount),
   ]);
-  const { DOCUMENT_PDF_ROWS_PER_PAGE } = await import("@/lib/invoice-location");
-  const chunks: string[][][] = [];
-  for (let i = 0; i < tableBody.length; i += DOCUMENT_PDF_ROWS_PER_PAGE) {
-    chunks.push(tableBody.slice(i, i + DOCUMENT_PDF_ROWS_PER_PAGE));
-  }
-  if (chunks.length === 0) chunks.push([]);
-
-  chunks.forEach((chunk, index) => {
-    const isLast = index === chunks.length - 1;
-    if (index > 0) {
-      pdf.addPage("a4", "portrait");
-      y = drawQuotationBrandHeader(pdf, logoDataUrl, PDF_MARGIN.top);
-    }
-    autoTable(pdf, {
-      startY: y,
-      margin: TABLE_MARGINS,
-      tableWidth: CONTENT_W,
-      head: [["Sl No", "Description", "Amount"]],
-      body: chunk,
-      foot: isLast ? buildTableFoot(document) : undefined,
-      styles: TABLE_STYLES,
-      headStyles: WHITE_TABLE_HEAD,
-      bodyStyles: {
-        fontStyle: "normal",
-        fontSize: TABLE_FONT,
-        fillColor: [255, 255, 255],
-      },
-      footStyles: {
-        fontStyle: "normal",
-        fontSize: TABLE_FONT,
-        fillColor: [255, 255, 255],
-        textColor: [0, 0, 0],
-      },
-      columnStyles: {
-        0: { cellWidth: SL_COL_W, halign: "center" },
-        1: { cellWidth: DESC_COL_W, halign: "left" },
-        2: { cellWidth: AMOUNT_COL_W, halign: "right" },
-      },
-      theme: "grid",
-      showHead: "everyPage",
-      showFoot: isLast ? "lastPage" : "never",
-      rowPageBreak: "avoid",
-    });
-    y = (pdf.lastAutoTable?.finalY ?? y) + WORDS_GAP;
+  // Absolute Y from page top — must clear logo + company name on continuation pages.
+  const continuationStartY = 48;
+  const foot = buildTableFoot(document);
+  y = drawPagedPdfTable(pdf, autoTable as never, {
+    startY: y,
+    tableWidth: CONTENT_W,
+    margin: { ...TABLE_MARGINS, top: continuationStartY },
+    head: [["Sl No", "Description", "Amount"]],
+    body: tableBody,
+    foot,
+    columnStyles: buildPdfColumnStyles([SL_COL_W, DESC_COL_W, AMOUNT_COL_W], CONTENT_W),
+    continuationStartY,
+    pageHeight: PAGE_H,
+    orientation: "portrait",
+    tableHeadHeightMm: 8,
+    rowHeightMm: PDF_TABLE_MIN_CELL_HEIGHT,
+    footReserveRows: 4,
+    onNewPage: () => drawQuotationBrandHeader(pdf, logoDataUrl, PDF_MARGIN.top),
   });
+  y += WORDS_GAP - 4;
 
   let endY = y;
   const wordsBoxH = textBlockHeight(pdf, document.grandTotalInWords, CONTENT_W - 6, BODY_FONT) + 14;

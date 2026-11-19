@@ -276,6 +276,7 @@ export async function saveInvoice(
       village: line.village || null,
       hobbli: line.hobbli || payload.hobbli || null,
       surveyNo: line.surveyNo || null,
+      newSurveyNo: line.newSurveyNo || null,
       naExtent: line.naExtent || null,
       acres: line.acres,
       gunta: line.gunta,

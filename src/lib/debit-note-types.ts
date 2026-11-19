@@ -5,6 +5,8 @@ export const DebitNoteType = {
   ATL_POA: "ATL_POA",
   LEASE_DEED_EXECUTION: "LEASE_DEED_EXECUTION",
   SERVICE_ORDER: "SERVICE_ORDER",
+  /** Land Conversion Fee clone — same layout; fee terminology is K2 Challan. */
+  K2_CHALLAN: "K2_CHALLAN",
 } as const;
 
 export type DebitNoteType = (typeof DebitNoteType)[keyof typeof DebitNoteType];
@@ -14,26 +16,43 @@ export const DEBIT_NOTE_TYPE_OPTIONS: { value: DebitNoteType; label: string }[] 
   { value: DebitNoteType.ATL_POA, label: "ATL and POA/GPA" },
   { value: DebitNoteType.LEASE_DEED_EXECUTION, label: "Lease Deed Execution" },
   { value: DebitNoteType.SERVICE_ORDER, label: "Service Order" },
+  { value: DebitNoteType.K2_CHALLAN, label: "K2 Challan" },
 ];
 
-/** Land conversion debit note — NA extent + LC / Podi / Recovery fees. */
+/** Classic land conversion debit note — NA extent + LC / Podi / Recovery fees. */
 export function isLandConversionOnly(type: DebitNoteType): boolean {
   return type === DebitNoteType.LAND_CONVERSION;
 }
 
-/** Service order / lease deed — RTC + lease extent + K2 challan fee. */
+/** K2 Challan debit note module (Land Conversion Fee layout clone). */
+export function isK2ChallanModule(type: DebitNoteType): boolean {
+  return type === DebitNoteType.K2_CHALLAN;
+}
+
+/**
+ * Land Conversion–shaped document layout (LC or K2 Challan module).
+ * Same table, form, and PDF structure; only fee labels / narration differ.
+ */
+export function isLandConversionLayout(type: DebitNoteType): boolean {
+  return isLandConversionOnly(type) || isK2ChallanModule(type);
+}
+
+/**
+ * Lease deed / service order — RTC + lease extent + K2 challan fee columns.
+ * Distinct from {@link isK2ChallanModule} (the Land Conversion Fee clone).
+ */
 export function isK2ChallanDebitNote(type: DebitNoteType): boolean {
   return (
     type === DebitNoteType.LEASE_DEED_EXECUTION || type === DebitNoteType.SERVICE_ORDER
   );
 }
 
-/** Rows persisted as land-conversion-shaped line items (LC or K2). */
+/** Rows persisted as land-conversion-shaped line items (LC, K2 module, or lease/service). */
 export function isLandConversionDataRow(type: DebitNoteType): boolean {
-  return isLandConversionOnly(type) || isK2ChallanDebitNote(type);
+  return isLandConversionLayout(type) || isK2ChallanDebitNote(type);
 }
 
-/** @deprecated Use isLandConversionOnly or isK2ChallanDebitNote */
+/** @deprecated Use isLandConversionLayout or isK2ChallanDebitNote */
 export function isLandConversionStyleDebitNote(type: DebitNoteType): boolean {
   return isLandConversionDataRow(type);
 }
@@ -51,6 +70,9 @@ export function normalizeDebitNoteType(type: string): DebitNoteType {
   }
   if (type === DebitNoteType.SERVICE_ORDER || type === "service-order") {
     return DebitNoteType.SERVICE_ORDER;
+  }
+  if (type === DebitNoteType.K2_CHALLAN || type === "k2-challan") {
+    return DebitNoteType.K2_CHALLAN;
   }
   return DebitNoteType.LAND_CONVERSION;
 }
